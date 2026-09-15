@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+.vercel
+.env*
+
+# Supabase CLI local cache
+supabase/.temp
+supabase/.branches
