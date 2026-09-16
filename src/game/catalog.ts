@@ -1,3 +1,6 @@
+import type { ImageSourcePropType } from 'react-native';
+import type { SpriteSheetSpec } from '../components/SpriteSheetAnimator';
+
 export type SlotId = 'background' | 'body' | 'outfit' | 'accessory';
 
 export type ShopItem = {
@@ -7,6 +10,10 @@ export type ShopItem = {
   price: number;
   color: string;
   emoji?: string;
+  /** Static image (e.g. a background photo/illustration). Takes priority over color/emoji. */
+  image?: ImageSourcePropType;
+  /** Animated sprite sheet (e.g. a character part that breathes/idles). Takes priority over image/color/emoji. */
+  sprite?: SpriteSheetSpec;
 };
 
 export const SLOT_ORDER: SlotId[] = ['background', 'body', 'outfit', 'accessory'];

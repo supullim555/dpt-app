@@ -1,8 +1,10 @@
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { EXERCISES } from '../data/exercises';
 import { useGame } from '../game/GameContext';
+import DialogueExercise from '../components/DialogueExercise';
+import { saveEntry } from '../storage/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExerciseDetail'>;
 
@@ -18,6 +20,17 @@ export default function ExerciseDetailScreen({ route }: Props) {
     );
   }
 
+  const alreadyDoneToday = isCompletedToday(exercise.id);
+
+  const handleDialogueComplete = (answers: string[]) => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveEntry(`answers.${exercise.id}.${today}`, answers);
+    const success = completeExercise(exercise.id);
+    if (success) {
+      Alert.alert('완료!', '+10 코인을 받았어요. 상점에서 사용해보세요.');
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>{exercise.title}</Text>
@@ -29,27 +42,16 @@ export default function ExerciseDetailScreen({ route }: Props) {
       <Text style={styles.label}>목표</Text>
       <Text style={styles.body}>{exercise.goal}</Text>
 
-      {!exercise.implemented && (
+      {alreadyDoneToday ? (
+        <Text style={styles.notice}>오늘은 이미 이 실습을 완료했어요. 내일 다시 만나요!</Text>
+      ) : exercise.questions.length > 0 ? (
+        <DialogueExercise questions={exercise.questions} onComplete={handleDialogueComplete} />
+      ) : (
         <Text style={styles.notice}>
           이 실습의 인터랙티브 화면은 아직 구현되지 않았습니다. 다음 개발 단계에서 추가될
           예정입니다.
         </Text>
       )}
-
-      <TouchableOpacity
-        style={[styles.completeButton, isCompletedToday(exercise.id) && styles.completeButtonDone]}
-        disabled={isCompletedToday(exercise.id)}
-        onPress={() => {
-          const success = completeExercise(exercise.id);
-          if (success) {
-            Alert.alert('완료!', '+10 코인을 받았어요. 상점에서 사용해보세요.');
-          }
-        }}
-      >
-        <Text style={styles.completeButtonText}>
-          {isCompletedToday(exercise.id) ? '오늘은 이미 완료했어요' : '오늘 이 실습을 했어요 (+10 코인)'}
-        </Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -67,13 +69,4 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
   },
-  completeButton: {
-    marginTop: 28,
-    backgroundColor: '#222',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  completeButtonDone: { backgroundColor: '#bbb' },
-  completeButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
