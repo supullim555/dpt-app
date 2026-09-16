@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, type ImageSourcePropType } from 'react-native';
+import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 
 // A sprite sheet is one image containing `frameCount` frames laid out in a
 // grid, `columns` frames per row (defaults to a single row). Frame (0,0) is
@@ -33,7 +34,7 @@ function SpriteSheetAnimatorBase({ spec, size }: Props) {
     // so the whole loop runs on the native thread without crossing the bridge.
     const steps = Array.from({ length: frameCount }, (_, i) =>
       Animated.sequence([
-        Animated.timing(frameIndex, { toValue: i, duration: 0, useNativeDriver: true }),
+        Animated.timing(frameIndex, { toValue: i, duration: 0, useNativeDriver: USE_NATIVE_DRIVER }),
         Animated.delay(1000 / fps),
       ])
     );

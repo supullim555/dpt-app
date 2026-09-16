@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { ITEM_MAP, type ShopItem, type SlotId } from '../game/catalog';
 import SpriteSheetAnimator from './SpriteSheetAnimator';
+import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 
 type Props = {
   equipped: Record<SlotId, string>;
@@ -74,13 +75,13 @@ function CharacterViewBase({ equipped, size = 220 }: Props) {
           toValue: 1,
           duration: 900,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(bob, {
           toValue: 0,
           duration: 900,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     );

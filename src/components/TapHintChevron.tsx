@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
+import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 
 // A small bouncing "⌄" that hints a tappable bubble/element can be advanced.
 export default function TapHintChevron() {
@@ -11,13 +12,13 @@ export default function TapHintChevron() {
           toValue: 1,
           duration: 500,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(bounce, {
           toValue: 0,
           duration: 500,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     );
