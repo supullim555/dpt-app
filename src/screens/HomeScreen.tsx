@@ -6,6 +6,7 @@ import CharacterView from '../components/CharacterView';
 import TapHintChevron from '../components/TapHintChevron';
 import { useGame } from '../game/GameContext';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
+import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
 import { saveEntry } from '../storage/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -85,7 +86,8 @@ export default function HomeScreen({ navigation }: Props) {
               style={styles.input}
               value={draft}
               onChangeText={setDraft}
-              placeholder="여기에 적어보세요"
+              onKeyPress={makeSubmitOnEnterHandler(advance)}
+              placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
               placeholderTextColor="#999"
               multiline
               autoFocus

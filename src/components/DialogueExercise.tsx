@@ -3,6 +3,7 @@ import CharacterView from './CharacterView';
 import TapHintChevron from './TapHintChevron';
 import { useGame } from '../game/GameContext';
 import { useDialogue } from '../hooks/useDialogue';
+import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
 
 type Props = {
   questions: string[];
@@ -41,7 +42,8 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
             style={styles.input}
             value={draft}
             onChangeText={setDraft}
-            placeholder="여기에 적어보세요"
+            onKeyPress={makeSubmitOnEnterHandler(advance)}
+            placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
             placeholderTextColor="#aaa"
             multiline
             autoFocus
