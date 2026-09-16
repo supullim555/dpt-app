@@ -101,7 +101,9 @@ function CharacterViewBase({ equipped, size = 220 }: Props) {
     >
       {hasBackgroundAsset && <BackgroundLayer item={background} size={size} />}
 
-      <Animated.View style={[styles.backgroundFill, { transform: [{ translateY: bobTranslateY }] }]}>
+      <Animated.View
+        style={[styles.characterLayers, { transform: [{ translateY: bobTranslateY }] }]}
+      >
         <Layer item={body} style={styles.body} layerSize={size * 0.5} />
         {outfit && (outfit.color !== 'transparent' || outfit.image || outfit.sprite) && (
           <Layer item={outfit} style={styles.outfit} layerSize={size * 0.4} />
@@ -126,6 +128,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   backgroundFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  characterLayers: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+  },
   body: { position: 'absolute', bottom: '15%', borderRadius: 999 },
   outfit: { position: 'absolute', bottom: '18%', borderRadius: 10 },
   accessory: { position: 'absolute', top: '10%' },

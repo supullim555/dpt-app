@@ -1,11 +1,16 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import CharacterView from '../components/CharacterView';
+import TapHintChevron from '../components/TapHintChevron';
 import { useGame } from '../game/GameContext';
+import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
+import { saveEntry } from '../storage/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+const DAILY_CHECKIN_ID = 'daily-checkin';
 
 const GREETINGS: { until: number; text: string }[] = [
   { until: 11, text: '좋은 아침이에요! 오늘 하루도 함께해요.' },
@@ -19,13 +24,41 @@ function getGreeting() {
   return GREETINGS.find((g) => hour < g.until)?.text ?? GREETINGS[GREETINGS.length - 1].text;
 }
 
+function buildDailyBeats(greeting: string): DialogueBeat[] {
+  return [
+    { text: greeting, answerable: false },
+    { text: '오늘 하루는 어땠나요?', answerable: true },
+    { text: '그중에서 가장 기억에 남는 순간이 있다면요?', answerable: true },
+  ];
+}
+
 export default function HomeScreen({ navigation }: Props) {
-  const { state } = useGame();
+  const { state, completeExercise, isCompletedToday } = useGame();
   const { width, height } = useWindowDimensions();
-  // Computed once per mount so the greeting doesn't change while the screen stays open.
-  const greeting = useMemo(getGreeting, []);
-  // Room feel: the character's space fills ~70% of the screen, capped by width so it never overflows.
   const roomSize = Math.min(width * 0.92, height * 0.7);
+
+  // Computed once per mount so the opening line doesn't change while the screen stays open.
+  const greeting = useMemo(getGreeting, []);
+  const alreadyCheckedInToday = isCompletedToday(DAILY_CHECKIN_ID);
+  const beats = useMemo(() => buildDailyBeats(greeting), [greeting]);
+
+  const handleComplete = (answers: string[]) => {
+    const today = new Date().toISOString().slice(0, 10);
+    saveEntry(`answers.${DAILY_CHECKIN_ID}.${today}`, answers);
+    const success = completeExercise(DAILY_CHECKIN_ID);
+    if (success) {
+      Alert.alert('완료!', '오늘 이야기 나눠줘서 고마워요. +10 코인을 받았어요.');
+    }
+  };
+
+  const { current, phase, draft, setDraft, advance, done } = useDialogue(beats, handleComplete);
+  const showAnswerBox = !alreadyCheckedInToday && phase === 'input';
+  const bubbleText = alreadyCheckedInToday
+    ? '오늘은 이미 이야기 나눴어요. 내일 또 얘기해요!'
+    : done
+      ? '오늘 이야기 나눠줘서 고마워요.'
+      : current.text;
+  const bubbleTappable = !alreadyCheckedInToday && !done;
 
   return (
     <View style={styles.container}>
@@ -36,21 +69,44 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.coinBadgeText}>🪙 {state.coins}</Text>
         </View>
 
-        <View style={styles.bubble}>
-          <Text style={styles.bubbleText}>{greeting}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.bubble}
+          activeOpacity={bubbleTappable ? 0.8 : 1}
+          disabled={!bubbleTappable}
+          onPress={advance}
+        >
+          <Text style={styles.bubbleText}>{bubbleText}</Text>
+          {bubbleTappable && <TapHintChevron />}
+        </TouchableOpacity>
 
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={styles.roomButton}
-            onPress={() => navigation.navigate('ExerciseList')}
-          >
-            <Text style={styles.roomButtonText}>실습</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.roomButton} onPress={() => navigation.navigate('Shop')}>
-            <Text style={styles.roomButtonText}>상점</Text>
-          </TouchableOpacity>
-        </View>
+        {showAnswerBox ? (
+          <View style={styles.answerBar}>
+            <TextInput
+              style={styles.input}
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="여기에 적어보세요"
+              placeholderTextColor="#999"
+              multiline
+              autoFocus
+            />
+            <TouchableOpacity style={styles.roomButton} onPress={advance}>
+              <Text style={styles.roomButtonText}>다음</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.bottomBar}>
+            <TouchableOpacity
+              style={styles.roomButton}
+              onPress={() => navigation.navigate('ExerciseList')}
+            >
+              <Text style={styles.roomButtonText}>실습</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.roomButton} onPress={() => navigation.navigate('Shop')}>
+              <Text style={styles.roomButtonText}>상점</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -73,8 +129,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     alignSelf: 'center',
-    maxWidth: '65%',
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    maxWidth: '75%',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -86,6 +142,22 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     gap: 10,
+  },
+  answerBar: {
+    position: 'absolute',
+    bottom: 14,
+    left: 14,
+    right: 14,
+    gap: 8,
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 12,
+    padding: 10,
+    minHeight: 56,
+    fontSize: 13,
+    color: '#222',
+    textAlignVertical: 'top',
   },
   roomButton: {
     backgroundColor: 'rgba(34,34,34,0.88)',

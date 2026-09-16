@@ -1,75 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Easing,
-  Keyboard,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CharacterView from './CharacterView';
+import TapHintChevron from './TapHintChevron';
 import { useGame } from '../game/GameContext';
+import { useDialogue } from '../hooks/useDialogue';
 
 type Props = {
   questions: string[];
   onComplete: (answers: string[]) => void;
 };
 
-// Tapping the speech bubble always advances the conversation by one beat:
-// the first tap on a question reveals the answer box, the next tap submits
-// it and moves to the next question (or finishes on the last one).
 export default function DialogueExercise({ questions, onComplete }: Props) {
   const { state } = useGame();
-  const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<'bubble' | 'input'>('bubble');
-  const [draft, setDraft] = useState('');
-  const [done, setDone] = useState(false);
-
-  const bounce = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounce, {
-          toValue: 1,
-          duration: 500,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounce, {
-          toValue: 0,
-          duration: 500,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [bounce]);
-  const chevronTranslate = bounce.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
-
-  const collected = useRef<string[]>([]);
-
-  const advance = () => {
-    if (done) return;
-    if (phase === 'bubble') {
-      setPhase('input');
-      return;
-    }
-    const answer = draft.trim();
-    collected.current.push(answer);
-    setDraft('');
-    Keyboard.dismiss();
-    if (index + 1 < questions.length) {
-      setIndex(index + 1);
-      setPhase('bubble');
-    } else {
-      setDone(true);
-      onComplete(collected.current);
-    }
-  };
+  const beats = questions.map((text) => ({ text, answerable: true }));
+  const { current, index, total, phase, draft, setDraft, advance, done } = useDialogue(
+    beats,
+    onComplete
+  );
 
   return (
     <View style={styles.container}>
@@ -77,19 +23,17 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
         <CharacterView equipped={state.equipped} size={72} />
         <TouchableOpacity style={styles.bubble} onPress={advance} activeOpacity={0.8}>
           <Text style={styles.bubbleText}>
-            {done ? '오늘 이야기 나눠줘서 고마워요.' : questions[index]}
+            {done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}
           </Text>
-          {!done && (
-            <Animated.Text
-              style={[styles.chevron, { transform: [{ translateY: chevronTranslate }] }]}
-            >
-              ⌄
-            </Animated.Text>
-          )}
+          {!done && <TapHintChevron />}
         </TouchableOpacity>
       </View>
 
-      {!done && <Text style={styles.progress}>{index + 1} / {questions.length}</Text>}
+      {!done && (
+        <Text style={styles.progress}>
+          {index + 1} / {total}
+        </Text>
+      )}
 
       {!done && phase === 'input' && (
         <View style={styles.answerBox}>
@@ -103,9 +47,7 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
             autoFocus
           />
           <TouchableOpacity style={styles.nextButton} onPress={advance}>
-            <Text style={styles.nextButtonText}>
-              {index + 1 < questions.length ? '다음' : '완료'}
-            </Text>
+            <Text style={styles.nextButtonText}>{index + 1 < total ? '다음' : '완료'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -125,7 +67,6 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   bubbleText: { fontSize: 15, color: '#333', lineHeight: 21 },
-  chevron: { alignSelf: 'center', marginTop: 4, fontSize: 16, color: '#999' },
   progress: { fontSize: 12, color: '#999', textAlign: 'right', marginTop: 6 },
   answerBox: { marginTop: 12, gap: 8 },
   input: {
