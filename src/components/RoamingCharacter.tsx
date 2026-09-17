@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image } from 'react-native';
+import { Animated, Easing } from 'react-native';
 import SpriteSheetAnimator from './SpriteSheetAnimator';
-import { IDLE_FRONT_SPRITE, WALK_SOUTH_SPRITE, WALK_AWAY_IMAGE } from '../assets/character';
+import { IDLE_FRONT_SPRITE, WALK_SOUTH_SPRITE, WALK_AWAY_SPRITE } from '../assets/character';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 
 type Props = {
@@ -100,14 +100,10 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
     <Animated.View
       style={{ position: 'absolute', top: 0, left: 0, transform: [{ translateX: x }, { translateY: y }] }}
     >
-      {pose === 'up' ? (
-        <Image source={WALK_AWAY_IMAGE} style={{ width: size, height: size * (277 / 252) }} resizeMode="contain" />
-      ) : (
-        <SpriteSheetAnimator
-          spec={pose === 'idle' ? IDLE_FRONT_SPRITE : WALK_SOUTH_SPRITE}
-          size={size}
-        />
-      )}
+      <SpriteSheetAnimator
+        spec={pose === 'idle' ? IDLE_FRONT_SPRITE : pose === 'up' ? WALK_AWAY_SPRITE : WALK_SOUTH_SPRITE}
+        size={size}
+      />
     </Animated.View>
   );
 }

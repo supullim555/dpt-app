@@ -18,8 +18,15 @@ export const WALK_SOUTH_SPRITE: SpriteSheetSpec = {
   fps: 6,
 };
 
-// Single static pose (not a cycle — the sheet only has one "back of head"
-// frame) used while walking away from the viewer (upward on screen).
-export const WALK_AWAY_IMAGE = require('./walk-away.png');
+// Generated with Gemini (scripts/generate-walk-away.js) from the original
+// back-of-head frame, since the sheet only had one still pose for this
+// angle — a 4-frame walk cycle for moving away from the viewer (upward).
+export const WALK_AWAY_SPRITE: SpriteSheetSpec = {
+  source: require('./walk-away.png'),
+  frameWidth: 252,
+  frameHeight: 277,
+  frameCount: 4,
+  fps: 6,
+};
 
 export const PORTRAIT_FRONT = require('./portrait-front.png');
