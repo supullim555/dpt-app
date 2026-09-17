@@ -18,4 +18,8 @@ export const WALK_SOUTH_SPRITE: SpriteSheetSpec = {
   fps: 6,
 };
 
+// Single static pose (not a cycle — the sheet only has one "back of head"
+// frame) used while walking away from the viewer (upward on screen).
+export const WALK_AWAY_IMAGE = require('./walk-away.png');
+
 export const PORTRAIT_FRONT = require('./portrait-front.png');

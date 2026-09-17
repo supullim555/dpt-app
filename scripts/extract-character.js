@@ -38,7 +38,15 @@ const CORNER_RADIUS = 22;
 // true corner point — not the corner point itself. (Using the corner point
 // as the circle center, as an earlier version of this did, means "distance
 // > radius" is never true near the corner, so nothing actually gets cut.)
+// A faint 1px sliver of the card's antialiased boundary survives right at
+// the crop edge (distinct from the interior vignette, and just outside the
+// color-key's radius) — trim a couple of pixels off every straight edge too,
+// not just the rounded corners. Cheap insurance; the character never reaches
+// this close to any edge.
+const EDGE_TRIM = 3;
+
 function cornerAlpha(x, y, width, height) {
+  if (x < EDGE_TRIM || y < EDGE_TRIM || x >= width - EDGE_TRIM || y >= height - EDGE_TRIM) return 0;
   const inLeft = x <= CORNER_RADIUS;
   const inRight = x >= width - CORNER_RADIUS;
   const inTop = y <= CORNER_RADIUS;
@@ -80,6 +88,9 @@ const IDLE_FRONT = { y: [87, 363], cells: [[628, 880], [891, 1143], [1155, 1407]
 // character is actually moving on screen. The remaining 4 all face the
 // viewer through the stride.
 const WALK_SOUTH = { y: [438, 715], cells: [[628, 880], [1155, 1408], [1419, 1672], [1684, 1935]] };
+// The dropped back-of-head frame, kept on its own — the only art we have
+// that reads as "walking away from the viewer" (used for upward movement).
+const WALK_AWAY = { y: [438, 715], cells: [[891, 1143]] };
 const PORTRAIT = { x: [111, 505], y: [64, 692] };
 
 async function extractRow(spec, outFile) {
@@ -105,6 +116,7 @@ async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   await extractRow(IDLE_FRONT, path.join(OUT_DIR, 'idle-front.png'));
   await extractRow(WALK_SOUTH, path.join(OUT_DIR, 'walk-south.png'));
+  await extractRow(WALK_AWAY, path.join(OUT_DIR, 'walk-away.png'));
 
   const portraitBuf = await loadKeyed(
     PORTRAIT.x[0],

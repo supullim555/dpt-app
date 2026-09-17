@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing } from 'react-native';
+import { Animated, Easing, Image } from 'react-native';
 import SpriteSheetAnimator from './SpriteSheetAnimator';
-import { IDLE_FRONT_SPRITE, WALK_SOUTH_SPRITE } from '../assets/character';
+import { IDLE_FRONT_SPRITE, WALK_SOUTH_SPRITE, WALK_AWAY_IMAGE } from '../assets/character';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 
 type Props = {
@@ -13,22 +13,21 @@ type Props = {
 
 const SPEED = 55; // px/sec, roughly — keeps pace lifelike rather than frantic
 
-// Wanders to random points inside the given area: walks while moving
-// (WALK_SOUTH cycle), stands and idles between moves (IDLE_FRONT cycle).
-// The sprite is a front-on walk, not a side profile, so no flipping is
-// needed regardless of which way it's actually heading.
-//
-// Each destination is far from the last (at least half the area's
-// diagonal) and pauses are long, so it reads as "walked somewhere and is
-// resting" rather than constantly re-picking a direction, which otherwise
-// looks like aimless twitching in place.
+type Pose = 'idle' | 'sideways' | 'down' | 'up';
+
+// Wanders to random points inside the given area. Which animation plays is
+// picked from the actual displacement of each move — a mostly-horizontal
+// move plays the sideways walk, a mostly-vertical one plays "toward the
+// viewer" (down) or "away from the viewer" (up). Distinguishing that from
+// mixing them randomly is the whole point: the pose should match where the
+// character is actually headed.
 function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
   const maxX = Math.max(0, areaWidth - size);
   const maxY = Math.max(0, areaHeight - size);
   const minDist = Math.hypot(maxX, maxY) * 0.5;
   const x = useRef(new Animated.Value(Math.random() * maxX)).current;
   const y = useRef(new Animated.Value(Math.random() * maxY)).current;
-  const [moving, setMoving] = useState(false);
+  const [pose, setPose] = useState<Pose>('idle');
 
   useEffect(() => {
     if (maxX <= 0 && maxY <= 0) return;
@@ -57,11 +56,17 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
 
     function step() {
       if (cancelled) return;
+      const startX = currentX();
+      const startY = currentY();
       const [targetX, targetY] = pickFarTarget();
-      const dist = Math.hypot(targetX - currentX(), targetY - currentY());
+      const dx = targetX - startX;
+      const dy = targetY - startY;
+      const dist = Math.hypot(dx, dy);
       const duration = Math.max(1200, (dist / SPEED) * 1000);
 
-      setMoving(true);
+      // Whichever axis moves more determines the pose for this leg.
+      setPose(Math.abs(dx) >= Math.abs(dy) ? 'sideways' : dy < 0 ? 'up' : 'down');
+
       Animated.parallel([
         Animated.timing(x, {
           toValue: targetX,
@@ -77,7 +82,7 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
         }),
       ]).start(({ finished }) => {
         if (!finished || cancelled) return;
-        setMoving(false);
+        setPose('idle');
         setTimeout(() => {
           if (!cancelled) step();
         }, 2500 + Math.random() * 2500);
@@ -95,7 +100,14 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
     <Animated.View
       style={{ position: 'absolute', top: 0, left: 0, transform: [{ translateX: x }, { translateY: y }] }}
     >
-      <SpriteSheetAnimator spec={moving ? WALK_SOUTH_SPRITE : IDLE_FRONT_SPRITE} size={size} />
+      {pose === 'up' ? (
+        <Image source={WALK_AWAY_IMAGE} style={{ width: size, height: size * (277 / 252) }} resizeMode="contain" />
+      ) : (
+        <SpriteSheetAnimator
+          spec={pose === 'idle' ? IDLE_FRONT_SPRITE : WALK_SOUTH_SPRITE}
+          size={size}
+        />
+      )}
     </Animated.View>
   );
 }
