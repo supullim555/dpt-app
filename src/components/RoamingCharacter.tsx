@@ -17,9 +17,15 @@ const SPEED = 55; // px/sec, roughly — keeps pace lifelike rather than frantic
 // (WALK_SOUTH cycle), stands and idles between moves (IDLE_FRONT cycle).
 // The sprite is a front-on walk, not a side profile, so no flipping is
 // needed regardless of which way it's actually heading.
+//
+// Each destination is far from the last (at least half the area's
+// diagonal) and pauses are long, so it reads as "walked somewhere and is
+// resting" rather than constantly re-picking a direction, which otherwise
+// looks like aimless twitching in place.
 function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
   const maxX = Math.max(0, areaWidth - size);
   const maxY = Math.max(0, areaHeight - size);
+  const minDist = Math.hypot(maxX, maxY) * 0.5;
   const x = useRef(new Animated.Value(Math.random() * maxX)).current;
   const y = useRef(new Animated.Value(Math.random() * maxY)).current;
   const [moving, setMoving] = useState(false);
@@ -31,12 +37,29 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
     const currentX = () => (x as unknown as { __getValue: () => number }).__getValue();
     const currentY = () => (y as unknown as { __getValue: () => number }).__getValue();
 
+    function pickFarTarget(): [number, number] {
+      let best: [number, number] = [Math.random() * maxX, Math.random() * maxY];
+      let bestDist = -1;
+      // A few tries for a destination that's actually far away, rather than
+      // an infinite retry loop (fine to settle for "far enough" on a small area).
+      for (let i = 0; i < 6; i++) {
+        const tx = Math.random() * maxX;
+        const ty = Math.random() * maxY;
+        const d = Math.hypot(tx - currentX(), ty - currentY());
+        if (d > bestDist) {
+          best = [tx, ty];
+          bestDist = d;
+        }
+        if (d >= minDist) break;
+      }
+      return best;
+    }
+
     function step() {
       if (cancelled) return;
-      const targetX = Math.random() * maxX;
-      const targetY = Math.random() * maxY;
+      const [targetX, targetY] = pickFarTarget();
       const dist = Math.hypot(targetX - currentX(), targetY - currentY());
-      const duration = Math.max(500, (dist / SPEED) * 1000);
+      const duration = Math.max(1200, (dist / SPEED) * 1000);
 
       setMoving(true);
       Animated.parallel([
@@ -57,7 +80,7 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
         setMoving(false);
         setTimeout(() => {
           if (!cancelled) step();
-        }, 900 + Math.random() * 1400);
+        }, 2500 + Math.random() * 2500);
       });
     }
 

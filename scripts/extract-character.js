@@ -27,6 +27,28 @@ function bgAlpha(r, g, b) {
   return minAlpha;
 }
 
+// Each card in the template has rounded corners, so the crop's four corner
+// wedges are actually the page's plain white behind the card — not caught by
+// the lavender color-key above. Punch those out geometrically instead of by
+// color, since color-matching "white" would also eat the character's white
+// shirt/socks. The character art never reaches into these corners.
+const CORNER_RADIUS = 20;
+
+function cornerAlpha(x, y, width, height) {
+  const corners = [
+    [0, 0],
+    [width, 0],
+    [0, height],
+    [width, height],
+  ];
+  for (const [cx, cy] of corners) {
+    if (Math.abs(x - cx) <= CORNER_RADIUS && Math.abs(y - cy) <= CORNER_RADIUS) {
+      if (Math.hypot(x - cx, y - cy) > CORNER_RADIUS) return 0;
+    }
+  }
+  return 255;
+}
+
 async function loadKeyed(x0, y0, w, h) {
   const { data, info } = await sharp(SRC)
     .extract({ left: x0, top: y0, width: w, height: h })
@@ -34,9 +56,16 @@ async function loadKeyed(x0, y0, w, h) {
     .ensureAlpha()
     .toBuffer({ resolveWithObject: true });
   const out = Buffer.from(data);
-  for (let i = 0; i < info.width * info.height; i++) {
-    const o = i * 4;
-    out[o + 3] = bgAlpha(data[o], data[o + 1], data[o + 2]);
+  for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+      const i = y * info.width + x;
+      const o = i * 4;
+      const alpha = Math.min(
+        bgAlpha(data[o], data[o + 1], data[o + 2]),
+        cornerAlpha(x, y, info.width, info.height)
+      );
+      out[o + 3] = alpha;
+    }
   }
   return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
 }
