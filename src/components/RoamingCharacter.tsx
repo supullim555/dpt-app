@@ -13,14 +13,25 @@ type Props = {
 
 const SPEED = 55; // px/sec, roughly — keeps pace lifelike rather than frantic
 
-type Pose = 'idle' | 'sideways' | 'down' | 'up';
+type Pose = 'idle' | 'left' | 'right' | 'down' | 'up';
 
-// Wanders to random points inside the given area. Which animation plays is
-// picked from the actual displacement of each move — a mostly-horizontal
-// move plays the sideways walk, a mostly-vertical one plays "toward the
-// viewer" (down) or "away from the viewer" (up). Distinguishing that from
-// mixing them randomly is the whole point: the pose should match where the
-// character is actually headed.
+// Classic 4-direction sprite convention (RPG Maker etc): a walk cycle per
+// cardinal direction, with left/right sharing one sheet mirrored rather than
+// being drawn twice. Direction is picked by the angle of travel in equal
+// 90° wedges — NOT by comparing raw |dx| vs |dy|, which biases toward
+// whichever axis the play area happens to be wider on (this room is much
+// wider than it is tall, so magnitude comparison almost never picked "up").
+function directionFromDelta(dx: number, dy: number): 'left' | 'right' | 'down' | 'up' {
+  const angle = Math.atan2(dy, dx); // screen space: +x right, +y down
+  if (angle > -Math.PI / 4 && angle <= Math.PI / 4) return 'right';
+  if (angle > Math.PI / 4 && angle <= (3 * Math.PI) / 4) return 'down';
+  if (angle > (-3 * Math.PI) / 4 && angle <= -Math.PI / 4) return 'up';
+  return 'left';
+}
+
+// Wanders to random points inside the given area. Which animation plays —
+// and which way it faces — is picked from the actual displacement of each
+// move, so the pose always matches where the character is actually headed.
 function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
   const maxX = Math.max(0, areaWidth - size);
   const maxY = Math.max(0, areaHeight - size);
@@ -64,8 +75,7 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
       const dist = Math.hypot(dx, dy);
       const duration = Math.max(1200, (dist / SPEED) * 1000);
 
-      // Whichever axis moves more determines the pose for this leg.
-      setPose(Math.abs(dx) >= Math.abs(dy) ? 'sideways' : dy < 0 ? 'up' : 'down');
+      setPose(directionFromDelta(dx, dy));
 
       Animated.parallel([
         Animated.timing(x, {
@@ -96,14 +106,18 @@ function RoamingCharacterBase({ areaWidth, areaHeight, size = 90 }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxX, maxY]);
 
+  const spec = pose === 'idle' ? IDLE_FRONT_SPRITE : pose === 'up' ? WALK_AWAY_SPRITE : WALK_SOUTH_SPRITE;
+  // Only one side-facing sheet exists (drawn facing right); mirror it for
+  // "left", the standard way to avoid drawing both.
+  const flip = pose === 'left';
+
   return (
     <Animated.View
       style={{ position: 'absolute', top: 0, left: 0, transform: [{ translateX: x }, { translateY: y }] }}
     >
-      <SpriteSheetAnimator
-        spec={pose === 'idle' ? IDLE_FRONT_SPRITE : pose === 'up' ? WALK_AWAY_SPRITE : WALK_SOUTH_SPRITE}
-        size={size}
-      />
+      <Animated.View style={flip ? { transform: [{ scaleX: -1 }] } : undefined}>
+        <SpriteSheetAnimator spec={spec} size={size} />
+      </Animated.View>
     </Animated.View>
   );
 }
