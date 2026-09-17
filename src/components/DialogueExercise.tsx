@@ -1,7 +1,6 @@
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import CharacterView from './CharacterView';
+import CharacterPortrait from './CharacterPortrait';
 import TapHintChevron from './TapHintChevron';
-import { useGame } from '../game/GameContext';
 import { useDialogue } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
 
@@ -11,7 +10,6 @@ type Props = {
 };
 
 export default function DialogueExercise({ questions, onComplete }: Props) {
-  const { state } = useGame();
   const beats = questions.map((text) => ({ text, answerable: true }));
   const { current, index, total, phase, draft, setDraft, advance, done } = useDialogue(
     beats,
@@ -20,15 +18,16 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.row}>
-        <CharacterView equipped={state.equipped} size={72} />
-        <TouchableOpacity style={styles.bubble} onPress={advance} activeOpacity={0.8}>
-          <Text style={styles.bubbleText}>
-            {done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}
-          </Text>
-          {!done && <TapHintChevron />}
-        </TouchableOpacity>
+      <View style={styles.portraitRow}>
+        <CharacterPortrait size={140} />
       </View>
+
+      <TouchableOpacity style={styles.bubble} onPress={advance} activeOpacity={0.8}>
+        <Text style={styles.bubbleText}>
+          {done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}
+        </Text>
+        {!done && <TapHintChevron />}
+      </TouchableOpacity>
 
       {!done && (
         <Text style={styles.progress}>
@@ -58,19 +57,19 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 24 },
-  row: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  container: { marginTop: 24, alignItems: 'center' },
+  portraitRow: { marginBottom: 12 },
   bubble: {
-    flex: 1,
+    alignSelf: 'stretch',
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#eee',
     padding: 14,
   },
-  bubbleText: { fontSize: 15, color: '#333', lineHeight: 21 },
-  progress: { fontSize: 12, color: '#999', textAlign: 'right', marginTop: 6 },
-  answerBox: { marginTop: 12, gap: 8 },
+  bubbleText: { fontSize: 15, color: '#333', lineHeight: 21, textAlign: 'center' },
+  progress: { fontSize: 12, color: '#999', textAlign: 'right', marginTop: 6, alignSelf: 'stretch' },
+  answerBox: { marginTop: 12, gap: 8, alignSelf: 'stretch' },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,

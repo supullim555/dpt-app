@@ -1,8 +1,18 @@
-import { useMemo } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
-import CharacterView from '../components/CharacterView';
+import RoomBackdrop from '../components/RoomBackdrop';
+import CharacterPortrait from '../components/CharacterPortrait';
+import RoamingCharacter from '../components/RoamingCharacter';
 import TapHintChevron from '../components/TapHintChevron';
 import { useGame } from '../game/GameContext';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
@@ -12,6 +22,7 @@ import { saveEntry } from '../storage/storage';
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const DAILY_CHECKIN_ID = 'daily-checkin';
+const BOTTOM_BAR_HEIGHT = 150;
 
 const GREETINGS: { until: number; text: string }[] = [
   { until: 11, text: '좋은 아침이에요! 오늘 하루도 함께해요.' },
@@ -35,8 +46,8 @@ function buildDailyBeats(greeting: string): DialogueBeat[] {
 
 export default function HomeScreen({ navigation }: Props) {
   const { state, completeExercise, isCompletedToday } = useGame();
-  const { width, height } = useWindowDimensions();
-  const roomSize = Math.min(width * 0.92, height * 0.7);
+  const { width } = useWindowDimensions();
+  const [stageHeight, setStageHeight] = useState(0);
 
   // Computed once per mount so the opening line doesn't change while the screen stays open.
   const greeting = useMemo(getGreeting, []);
@@ -59,53 +70,66 @@ export default function HomeScreen({ navigation }: Props) {
     : done
       ? '오늘 이야기 나눠줘서 고마워요.'
       : current.text;
-  const bubbleTappable = !alreadyCheckedInToday && !done;
+  const inDialogue = !alreadyCheckedInToday && !done;
 
   return (
     <View style={styles.container}>
-      <View style={[styles.room, { width: roomSize, height: roomSize }]}>
-        <CharacterView equipped={state.equipped} size={roomSize} />
+      <View style={styles.topBar}>
+        <Text style={styles.coinText}>🪙 {state.coins}</Text>
+      </View>
 
-        <View style={styles.coinBadge}>
-          <Text style={styles.coinBadgeText}>🪙 {state.coins}</Text>
-        </View>
+      <View style={styles.stage} onLayout={(e) => setStageHeight(e.nativeEvent.layout.height)}>
+        <RoomBackdrop equippedBackgroundId={state.equipped.background} full>
+          {stageHeight > 0 &&
+            (inDialogue ? (
+              <View style={styles.portraitWrap} pointerEvents="none">
+                <CharacterPortrait size={Math.min(width, stageHeight) * 0.55} />
+              </View>
+            ) : (
+              <RoamingCharacter
+                areaWidth={width}
+                areaHeight={stageHeight}
+                size={Math.min(width, stageHeight) * 0.24}
+              />
+            ))}
+        </RoomBackdrop>
+      </View>
 
-        <TouchableOpacity
-          style={styles.bubble}
-          activeOpacity={bubbleTappable ? 0.8 : 1}
-          disabled={!bubbleTappable}
-          onPress={advance}
-        >
-          <Text style={styles.bubbleText}>{bubbleText}</Text>
-          {bubbleTappable && <TapHintChevron />}
-        </TouchableOpacity>
-
-        {showAnswerBox ? (
-          <View style={styles.answerBar}>
-            <TextInput
-              style={styles.input}
-              value={draft}
-              onChangeText={setDraft}
-              onKeyPress={makeSubmitOnEnterHandler(advance)}
-              placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
-              placeholderTextColor="#999"
-              multiline
-              autoFocus
-            />
-            <TouchableOpacity style={styles.roomButton} onPress={advance}>
-              <Text style={styles.roomButtonText}>다음</Text>
+      <View style={[styles.bottomBar, inDialogue && styles.dialogueBar]}>
+        {inDialogue ? (
+          <>
+            <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.dialogueTouchable}>
+              <Text style={styles.dialogueText}>{bubbleText}</Text>
+              {!done && <TapHintChevron />}
             </TouchableOpacity>
-          </View>
+            {showAnswerBox && (
+              <View style={styles.answerRow}>
+                <TextInput
+                  style={styles.input}
+                  value={draft}
+                  onChangeText={setDraft}
+                  onKeyPress={makeSubmitOnEnterHandler(advance)}
+                  placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
+                  placeholderTextColor="#aaa"
+                  multiline
+                  autoFocus
+                />
+                <TouchableOpacity style={styles.sendButton} onPress={advance}>
+                  <Text style={styles.sendButtonText}>다음</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         ) : (
-          <View style={styles.bottomBar}>
+          <View style={styles.actionRow}>
             <TouchableOpacity
-              style={styles.roomButton}
+              style={styles.actionButton}
               onPress={() => navigation.navigate('ExerciseList')}
             >
-              <Text style={styles.roomButtonText}>실습</Text>
+              <Text style={styles.actionButtonText}>실습</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.roomButton} onPress={() => navigation.navigate('Shop')}>
-              <Text style={styles.roomButtonText}>상점</Text>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Shop')}>
+              <Text style={styles.actionButtonText}>상점</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -115,57 +139,59 @@ export default function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fafafa' },
-  room: { position: 'relative' },
-  coinBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
+  container: { flex: 1, backgroundColor: '#fafafa' },
+  topBar: {
+    height: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  coinBadgeText: { fontSize: 13, fontWeight: '700', color: '#333' },
-  bubble: {
+  coinText: { fontSize: 14, fontWeight: '700', color: '#444' },
+  stage: { flex: 1 },
+  portraitWrap: {
     position: 'absolute',
-    top: 12,
-    alignSelf: 'center',
-    maxWidth: '75%',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  bubbleText: { fontSize: 12, color: '#333', textAlign: 'center', lineHeight: 17 },
   bottomBar: {
-    position: 'absolute',
-    bottom: 14,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 10,
+    minHeight: BOTTOM_BAR_HEIGHT,
+    padding: 16,
+    justifyContent: 'center',
   },
-  answerBar: {
-    position: 'absolute',
-    bottom: 14,
-    left: 14,
-    right: 14,
-    gap: 8,
-  },
+  dialogueBar: { backgroundColor: 'rgba(20,20,20,0.82)' },
+  dialogueTouchable: { alignItems: 'center' },
+  dialogueText: { color: '#fff', fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  answerRow: { marginTop: 12, gap: 8 },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
     borderRadius: 12,
     padding: 10,
     minHeight: 56,
-    fontSize: 13,
-    color: '#222',
+    fontSize: 14,
+    color: '#fff',
     textAlignVertical: 'top',
   },
-  roomButton: {
-    backgroundColor: 'rgba(34,34,34,0.88)',
+  sendButton: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#fff',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
   },
-  roomButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  sendButtonText: { color: '#111', fontSize: 14, fontWeight: '700' },
+  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  actionButton: {
+    backgroundColor: 'rgba(34,34,34,0.88)',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  actionButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
