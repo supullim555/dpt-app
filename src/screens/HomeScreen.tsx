@@ -79,7 +79,7 @@ export default function HomeScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.stage} onLayout={(e) => setStageHeight(e.nativeEvent.layout.height)}>
-        <RoomBackdrop equippedBackgroundId={state.equipped.background} full>
+        <RoomBackdrop full>
           {stageHeight > 0 &&
             (inDialogue ? (
               <View style={styles.portraitWrap} pointerEvents="none">

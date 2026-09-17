@@ -5,7 +5,7 @@ import { useGame } from '../game/GameContext';
 
 export default function ShopScreen() {
   const { state, purchaseItem, equipItem } = useGame();
-  const [activeSlot, setActiveSlot] = useState<SlotId>('background');
+  const [activeSlot, setActiveSlot] = useState<SlotId>('body');
 
   const handlePress = useCallback(
     (item: ShopItem, owned: boolean) => {
