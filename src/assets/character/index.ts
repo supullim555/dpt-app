@@ -14,7 +14,7 @@ export const WALK_SOUTH_SPRITE: SpriteSheetSpec = {
   source: require('./walk-south.png'),
   frameWidth: 252,
   frameHeight: 277,
-  frameCount: 5,
+  frameCount: 4,
   fps: 6,
 };
 

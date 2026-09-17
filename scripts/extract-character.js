@@ -32,21 +32,25 @@ function bgAlpha(r, g, b) {
 // the lavender color-key above. Punch those out geometrically instead of by
 // color, since color-matching "white" would also eat the character's white
 // shirt/socks. The character art never reaches into these corners.
-const CORNER_RADIUS = 20;
+const CORNER_RADIUS = 22;
 
+// A rounded rect's corner is an arc centered *inset* by the radius from the
+// true corner point — not the corner point itself. (Using the corner point
+// as the circle center, as an earlier version of this did, means "distance
+// > radius" is never true near the corner, so nothing actually gets cut.)
 function cornerAlpha(x, y, width, height) {
-  const corners = [
-    [0, 0],
-    [width, 0],
-    [0, height],
-    [width, height],
-  ];
-  for (const [cx, cy] of corners) {
-    if (Math.abs(x - cx) <= CORNER_RADIUS && Math.abs(y - cy) <= CORNER_RADIUS) {
-      if (Math.hypot(x - cx, y - cy) > CORNER_RADIUS) return 0;
-    }
-  }
-  return 255;
+  const inLeft = x <= CORNER_RADIUS;
+  const inRight = x >= width - CORNER_RADIUS;
+  const inTop = y <= CORNER_RADIUS;
+  const inBottom = y >= height - CORNER_RADIUS;
+  let cx = null;
+  let cy = null;
+  if (inLeft && inTop) { cx = CORNER_RADIUS; cy = CORNER_RADIUS; }
+  else if (inRight && inTop) { cx = width - CORNER_RADIUS; cy = CORNER_RADIUS; }
+  else if (inLeft && inBottom) { cx = CORNER_RADIUS; cy = height - CORNER_RADIUS; }
+  else if (inRight && inBottom) { cx = width - CORNER_RADIUS; cy = height - CORNER_RADIUS; }
+  if (cx === null) return 255;
+  return Math.hypot(x - cx, y - cy) > CORNER_RADIUS ? 0 : 255;
 }
 
 async function loadKeyed(x0, y0, w, h) {
@@ -71,7 +75,11 @@ async function loadKeyed(x0, y0, w, h) {
 }
 
 const IDLE_FRONT = { y: [87, 363], cells: [[628, 880], [891, 1143], [1155, 1407], [1419, 1671]] };
-const WALK_SOUTH = { y: [438, 715], cells: [[628, 880], [891, 1143], [1155, 1408], [1419, 1672], [1684, 1935]] };
+// Cell 2 of the original 5 (x:[891,1143]) is a full back-of-head turn —
+// dropped, since it reads as "walking away" no matter which way the
+// character is actually moving on screen. The remaining 4 all face the
+// viewer through the stride.
+const WALK_SOUTH = { y: [438, 715], cells: [[628, 880], [1155, 1408], [1419, 1672], [1684, 1935]] };
 const PORTRAIT = { x: [111, 505], y: [64, 692] };
 
 async function extractRow(spec, outFile) {
