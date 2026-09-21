@@ -82,16 +82,9 @@ async function loadKeyed(x0, y0, w, h) {
   return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toBuffer();
 }
 
+// Only kept as the small game-sprite reference sent to Gemini (scripts/generate-*.js).
+// The walking/standing art the app plays now comes from scripts/extract-character-clips.js.
 const IDLE_FRONT = { y: [87, 363], cells: [[628, 880], [891, 1143], [1155, 1407], [1419, 1671]] };
-// Cell 2 of the original 5 (x:[891,1143]) is a full back-of-head turn —
-// dropped, since it reads as "walking away" no matter which way the
-// character is actually moving on screen. The remaining 4 all face the
-// viewer through the stride.
-const WALK_SOUTH = { y: [438, 715], cells: [[628, 880], [1155, 1408], [1419, 1672], [1684, 1935]] };
-// The dropped back-of-head frame, kept on its own — the only art we have
-// that reads as "walking away from the viewer" (used for upward movement).
-const WALK_AWAY = { y: [438, 715], cells: [[891, 1143]] };
-const PORTRAIT = { x: [111, 505], y: [64, 692] };
 
 async function extractRow(spec, outFile) {
   const frameW = spec.cells[0][1] - spec.cells[0][0];
@@ -115,17 +108,8 @@ async function extractRow(spec, outFile) {
 async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   await extractRow(IDLE_FRONT, path.join(OUT_DIR, 'idle-front.png'));
-  await extractRow(WALK_SOUTH, path.join(OUT_DIR, 'walk-south.png'));
-  await extractRow(WALK_AWAY, path.join(OUT_DIR, 'walk-away.png'));
 
-  const portraitBuf = await loadKeyed(
-    PORTRAIT.x[0],
-    PORTRAIT.y[0],
-    PORTRAIT.x[1] - PORTRAIT.x[0],
-    PORTRAIT.y[1] - PORTRAIT.y[0]
-  );
-  fs.writeFileSync(path.join(OUT_DIR, 'portrait-front.png'), portraitBuf);
-  console.log('wrote portrait-front.png');
+  // portrait-front.png is produced by scripts/extract-portrait.js (white page, not a card).
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

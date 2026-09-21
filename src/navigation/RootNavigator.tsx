@@ -1,11 +1,13 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import GateScreen from '../screens/GateScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ExerciseListScreen from '../screens/ExerciseListScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ShopScreen from '../screens/ShopScreen';
 
 export type RootStackParamList = {
+  Gate: undefined;
   Home: undefined;
   ExerciseList: undefined;
   ExerciseDetail: { exerciseId: string };
@@ -17,7 +19,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
+      <Stack.Navigator initialRouteName="Gate">
+        <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen
           name="ExerciseList"

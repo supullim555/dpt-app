@@ -9,7 +9,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { loadEntry, saveEntry } from '../storage/storage';
-import { DEFAULT_EQUIPPED, ITEM_MAP } from './catalog';
+import { ITEM_MAP } from './catalog';
 import type { GameState } from './types';
 
 const STORAGE_KEY = 'game-state';
@@ -17,8 +17,7 @@ const EXERCISE_REWARD = 10;
 
 const DEFAULT_STATE: GameState = {
   coins: 0,
-  inventory: Object.values(DEFAULT_EQUIPPED),
-  equipped: DEFAULT_EQUIPPED,
+  inventory: [],
   lastCompleted: {},
 };
 
@@ -30,7 +29,6 @@ type GameContextValue = {
   state: GameState;
   loaded: boolean;
   purchaseItem: (itemId: string) => boolean;
-  equipItem: (itemId: string) => void;
   completeExercise: (exerciseId: string) => boolean;
   isCompletedToday: (exerciseId: string) => boolean;
 };
@@ -49,7 +47,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     loadEntry<GameState>(STORAGE_KEY).then((saved) => {
       if (cancelled) return;
-      if (saved) setState(saved);
+      // Field by field: saves from before the shop sold furniture also carry an `equipped`
+      // map and colour-item ids, which are simply dropped here.
+      if (saved) {
+        setState({
+          coins: saved.coins ?? 0,
+          inventory: saved.inventory ?? [],
+          lastCompleted: saved.lastCompleted ?? {},
+        });
+      }
       setLoaded(true);
     });
     return () => {
@@ -73,13 +79,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
-  const equipItem = useCallback((itemId: string) => {
-    const item = ITEM_MAP[itemId];
-    const prev = stateRef.current;
-    if (!item || !prev.inventory.includes(itemId)) return;
-    setState({ ...prev, equipped: { ...prev.equipped, [item.slot]: itemId } });
-  }, []);
-
   const completeExercise = useCallback((exerciseId: string) => {
     const today = todayKey();
     const prev = stateRef.current;
@@ -98,8 +97,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<GameContextValue>(
-    () => ({ state, loaded, purchaseItem, equipItem, completeExercise, isCompletedToday }),
-    [state, loaded, purchaseItem, equipItem, completeExercise, isCompletedToday]
+    () => ({ state, loaded, purchaseItem, completeExercise, isCompletedToday }),
+    [state, loaded, purchaseItem, completeExercise, isCompletedToday]
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

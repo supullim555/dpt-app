@@ -1,0 +1,28 @@
+{
+  "cellWidth": 162,
+  "cellHeight": 203,
+  "contentHeight": 200,
+  "clips": {
+    "breathe": {
+      "frames": 5
+    },
+    "blink": {
+      "frames": 4
+    },
+    "look": {
+      "frames": 5
+    },
+    "stretch": {
+      "frames": 5
+    },
+    "walk_down": {
+      "frames": 5
+    },
+    "walk_up": {
+      "frames": 5
+    },
+    "walk_side": {
+      "frames": 5
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, type ImageSourcePropType } from 'react-native';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 
@@ -12,6 +12,12 @@ export type SpriteSheetSpec = {
   frameCount: number;
   columns?: number;
   fps?: number;
+  /**
+   * Order to play the frames in (indices into the sheet, repeats allowed) instead
+   * of 0..frameCount-1. Lets one sheet hold each pose once while the loop plays
+   * ping-pong or holds a pose. Must be a stable reference (define it once).
+   */
+  sequence?: number[];
 };
 
 type Props = {
@@ -21,27 +27,28 @@ type Props = {
 };
 
 function SpriteSheetAnimatorBase({ spec, size }: Props) {
-  const { source, frameWidth, frameHeight, frameCount, fps = 8 } = spec;
+  const { source, frameWidth, frameHeight, frameCount, fps = 8, sequence } = spec;
   const columns = spec.columns ?? frameCount;
   const rows = Math.ceil(frameCount / columns);
   const scale = size ? size / frameWidth : 1;
 
   const frameIndex = useRef(new Animated.Value(0)).current;
+  const playOrder = useMemo(() => sequence ?? Array.from({ length: frameCount }, (_, i) => i), [sequence, frameCount]);
 
   useEffect(() => {
-    // Step the value through every integer frame index, holding each for
+    // Step the value through the frame indices in play order, holding each for
     // 1000/fps ms. duration:0 + delay keeps every leg native-driver-eligible,
     // so the whole loop runs on the native thread without crossing the bridge.
-    const steps = Array.from({ length: frameCount }, (_, i) =>
+    const steps = playOrder.map((frame) =>
       Animated.sequence([
-        Animated.timing(frameIndex, { toValue: i, duration: 0, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(frameIndex, { toValue: frame, duration: 0, useNativeDriver: USE_NATIVE_DRIVER }),
         Animated.delay(1000 / fps),
       ])
     );
     const loop = Animated.loop(Animated.sequence(steps));
     loop.start();
     return () => loop.stop();
-  }, [frameIndex, frameCount, fps]);
+  }, [frameIndex, playOrder, fps]);
 
   const frameNumbers = Array.from({ length: frameCount }, (_, i) => i);
   const translateX = frameIndex.interpolate({

@@ -46,3 +46,6 @@ yarn-error.*
 # Supabase CLI local cache
 supabase/.temp
 supabase/.branches
+
+# raw Gemini outputs (cut-out versions live in src/assets)
+generated/

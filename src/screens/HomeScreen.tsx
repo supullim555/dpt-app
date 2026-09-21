@@ -1,19 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import RoomBackdrop from '../components/RoomBackdrop';
-import CharacterPortrait from '../components/CharacterPortrait';
+import RoomPortrait from '../components/RoomPortrait';
 import RoamingCharacter from '../components/RoamingCharacter';
 import TapHintChevron from '../components/TapHintChevron';
+import CrisisFooter from '../components/CrisisFooter';
 import { useGame } from '../game/GameContext';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
@@ -25,7 +24,7 @@ const DAILY_CHECKIN_ID = 'daily-checkin';
 const BOTTOM_BAR_HEIGHT = 150;
 
 const GREETINGS: { until: number; text: string }[] = [
-  { until: 11, text: '좋은 아침이에요! 오늘 하루도 함께해요.' },
+  { until: 11, text: '아침이네요. 지금 마음은 어때요?' },
   { until: 17, text: '오늘 하루 어떻게 흘러가고 있나요?' },
   { until: 22, text: '수고 많았어요. 잠깐 마음을 돌아볼까요?' },
   { until: 24, text: '이 시간까지 깨어있네요. 무리하지 말아요.' },
@@ -45,28 +44,25 @@ function buildDailyBeats(greeting: string): DialogueBeat[] {
 }
 
 export default function HomeScreen({ navigation }: Props) {
-  const { state, completeExercise, isCompletedToday } = useGame();
-  const { width } = useWindowDimensions();
-  const [stageHeight, setStageHeight] = useState(0);
+  const { state, loaded, completeExercise, isCompletedToday } = useGame();
 
   // Computed once per mount so the opening line doesn't change while the screen stays open.
   const greeting = useMemo(getGreeting, []);
   const alreadyCheckedInToday = isCompletedToday(DAILY_CHECKIN_ID);
   const beats = useMemo(() => buildDailyBeats(greeting), [greeting]);
 
+  // No popup and no praise: the character's closing line thanks them for talking, and
+  // the coin count simply goes up (§4: rewards accumulate quietly).
   const handleComplete = (answers: string[]) => {
     const today = new Date().toISOString().slice(0, 10);
     saveEntry(`answers.${DAILY_CHECKIN_ID}.${today}`, answers);
-    const success = completeExercise(DAILY_CHECKIN_ID);
-    if (success) {
-      Alert.alert('완료!', '오늘 이야기 나눠줘서 고마워요. +10 코인을 받았어요.');
-    }
+    completeExercise(DAILY_CHECKIN_ID);
   };
 
   const { current, phase, draft, setDraft, advance, done } = useDialogue(beats, handleComplete);
   const showAnswerBox = !alreadyCheckedInToday && phase === 'input';
   const bubbleText = alreadyCheckedInToday
-    ? '오늘은 이미 이야기 나눴어요. 내일 또 얘기해요!'
+    ? '오늘은 이미 이야기 나눴어요. 편할 때 또 와요.'
     : done
       ? '오늘 이야기 나눠줘서 고마워요.'
       : current.text;
@@ -78,21 +74,11 @@ export default function HomeScreen({ navigation }: Props) {
         <Text style={styles.coinText}>🪙 {state.coins}</Text>
       </View>
 
-      <View style={styles.stage} onLayout={(e) => setStageHeight(e.nativeEvent.layout.height)}>
-        <RoomBackdrop full>
-          {stageHeight > 0 &&
-            (inDialogue ? (
-              <View style={styles.portraitWrap} pointerEvents="none">
-                <CharacterPortrait size={Math.min(width, stageHeight) * 0.55} />
-              </View>
-            ) : (
-              <RoamingCharacter
-                areaWidth={width}
-                areaHeight={stageHeight}
-                size={Math.min(width, stageHeight) * 0.24}
-              />
-            ))}
-        </RoomBackdrop>
+      <View style={styles.stage}>
+        {/* wait for the saved state so bought furniture doesn't pop in a moment after the room appears */}
+        {loaded && (
+          <RoomBackdrop owned={state.inventory}>{inDialogue ? <RoomPortrait /> : <RoamingCharacter />}</RoomBackdrop>
+        )}
       </View>
 
       <View style={[styles.bottomBar, inDialogue && styles.dialogueBar]}>
@@ -119,6 +105,7 @@ export default function HomeScreen({ navigation }: Props) {
                 </TouchableOpacity>
               </View>
             )}
+            <CrisisFooter tone="dark" />
           </>
         ) : (
           <View style={styles.actionRow}>
@@ -149,15 +136,6 @@ const styles = StyleSheet.create({
   },
   coinText: { fontSize: 14, fontWeight: '700', color: '#444' },
   stage: { flex: 1 },
-  portraitWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   bottomBar: {
     minHeight: BOTTOM_BAR_HEIGHT,
     padding: 16,

@@ -19,7 +19,7 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.portraitRow}>
-        <CharacterPortrait size={140} />
+        <CharacterPortrait size={200} />
       </View>
 
       <TouchableOpacity style={styles.bubble} onPress={advance} activeOpacity={0.8}>

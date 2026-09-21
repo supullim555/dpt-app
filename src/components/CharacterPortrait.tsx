@@ -1,20 +1,23 @@
 import React from 'react';
-import { View } from 'react-native';
-import SpriteSheetAnimator from './SpriteSheetAnimator';
-import { IDLE_FRONT_SPRITE } from '../assets/character';
+import { Image } from 'react-native';
+import { PORTRAIT_ASPECT, PORTRAIT_FRONT } from '../assets/character';
 
 type Props = {
+  /** Rendered height; width follows the artwork's proportions. */
   size?: number;
 };
 
-// Large front-facing idle animation, used while the character is actively
-// talking (dialogue bubble visible) — as opposed to RoamingCharacter, which
-// is used the rest of the time.
+// Large, detailed still used while the character is actively talking (dialogue
+// bubble visible). Deliberately not animated: a moving sprite competes with
+// the words, and this closer-up art has no frames to move through anyway.
+// RoamingCharacter is what's shown the rest of the time.
 function CharacterPortraitBase({ size = 160 }: Props) {
   return (
-    <View style={{ width: size, alignItems: 'center' }}>
-      <SpriteSheetAnimator spec={IDLE_FRONT_SPRITE} size={size} />
-    </View>
+    <Image
+      source={PORTRAIT_FRONT}
+      style={{ width: size * PORTRAIT_ASPECT, height: size }}
+      resizeMode="contain"
+    />
   );
 }
 

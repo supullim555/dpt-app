@@ -1,0 +1,66 @@
+{
+  "bed": {
+    "width": 338,
+    "height": 420
+  },
+  "nightstand": {
+    "width": 299,
+    "height": 420
+  },
+  "bookshelf": {
+    "width": 291,
+    "height": 420
+  },
+  "desk_set": {
+    "width": 347,
+    "height": 420
+  },
+  "rug": {
+    "width": 420,
+    "height": 208
+  },
+  "cushion": {
+    "width": 420,
+    "height": 218
+  },
+  "plant": {
+    "width": 333,
+    "height": 420
+  },
+  "wardrobe": {
+    "width": 316,
+    "height": 420
+  },
+  "wall_frames": {
+    "width": 420,
+    "height": 263
+  },
+  "window": {
+    "width": 420,
+    "height": 355
+  },
+  "standing_lamp": {
+    "width": 105,
+    "height": 420
+  },
+  "teddy_bear": {
+    "width": 310,
+    "height": 420
+  },
+  "book_stack": {
+    "width": 415,
+    "height": 365
+  },
+  "basket": {
+    "width": 420,
+    "height": 252
+  },
+  "floor": {
+    "width": 720,
+    "height": 523
+  },
+  "wallpaper": {
+    "width": 720,
+    "height": 523
+  }
+}

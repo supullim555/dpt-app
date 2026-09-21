@@ -1,8 +1,6 @@
-import type { SlotId } from './catalog';
-
 export type GameState = {
   coins: number;
+  /** Ids of the furniture bought so far (the starting room's pieces aren't listed). */
   inventory: string[];
-  equipped: Record<SlotId, string>;
   lastCompleted: Record<string, string>;
 };
