@@ -24,9 +24,14 @@ type Props = {
   spec: SpriteSheetSpec;
   /** Rendered width/height of a single frame; defaults to the frame's native size. */
   size?: number;
+  /**
+   * false = stay mounted (so the image is already loaded and decoded) but don't animate.
+   * Turning it back on restarts the loop from its first frame.
+   */
+  active?: boolean;
 };
 
-function SpriteSheetAnimatorBase({ spec, size }: Props) {
+function SpriteSheetAnimatorBase({ spec, size, active = true }: Props) {
   const { source, frameWidth, frameHeight, frameCount, fps = 8, sequence } = spec;
   const columns = spec.columns ?? frameCount;
   const rows = Math.ceil(frameCount / columns);
@@ -36,6 +41,7 @@ function SpriteSheetAnimatorBase({ spec, size }: Props) {
   const playOrder = useMemo(() => sequence ?? Array.from({ length: frameCount }, (_, i) => i), [sequence, frameCount]);
 
   useEffect(() => {
+    if (!active) return;
     // Step the value through the frame indices in play order, holding each for
     // 1000/fps ms. duration:0 + delay keeps every leg native-driver-eligible,
     // so the whole loop runs on the native thread without crossing the bridge.
@@ -48,7 +54,7 @@ function SpriteSheetAnimatorBase({ spec, size }: Props) {
     const loop = Animated.loop(Animated.sequence(steps));
     loop.start();
     return () => loop.stop();
-  }, [frameIndex, playOrder, fps]);
+  }, [frameIndex, playOrder, fps, active]);
 
   const frameNumbers = Array.from({ length: frameCount }, (_, i) => i);
   const translateX = frameIndex.interpolate({

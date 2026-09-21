@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, View } from 'react-native';
-import SpriteSheetAnimator from './SpriteSheetAnimator';
-import IdleSprite from './IdleSprite';
-import { IDLE_CLIPS, WALK_CLIPS, type CharacterSprite } from '../assets/character';
+import SpriteSwitcher from './SpriteSwitcher';
+import { CHARACTER_CLIPS, type ClipName } from '../assets/character';
+import { useIdleClip } from '../hooks/useIdleClip';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 import { useRoom } from '../room/RoomContext';
 import { pickStart, pickTarget, isFree, type Pt, type RoomLayout } from '../room/layout';
@@ -37,7 +37,7 @@ function directionFromDelta(dx: number, dy: number): 'left' | 'right' | 'down' |
 // displacement of each move, so the pose always matches where she's headed.
 // Position is her FEET, so depth (size, shadow, in-front/behind furniture)
 // all follow from one point.
-function Roamer({ room }: { room: RoomLayout }) {
+function Roamer({ room, hidden }: { room: RoomLayout; hidden: boolean }) {
   const { walk, charSize: size, depthLines, farScale, nearScale } = room;
 
   const start = useRef<Pt | null>(null);
@@ -51,6 +51,9 @@ function Roamer({ room }: { room: RoomLayout }) {
   const [inFrontOf, setInFrontOf] = useState(() => depthLines.filter((l) => l <= start.current!.y).length);
 
   useEffect(() => {
+    // Hidden (she's shown as the big portrait while talking): stay mounted so every
+    // sprite is already loaded when she appears, but don't wander yet.
+    if (hidden) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let anim: Animated.CompositeAnimation | undefined;
@@ -120,14 +123,18 @@ function Roamer({ room }: { room: RoomLayout }) {
       x.removeListener(idX);
       y.removeListener(idY);
     };
-  }, [room, size, depthLines, x, y]);
+  }, [room, size, depthLines, x, y, hidden]);
 
-  // (every idle clip shares one cell size, so any one of them describes the idle geometry)
-  const spec: CharacterSprite =
-    pose === 'idle' ? IDLE_CLIPS.breathe : pose === 'up' ? WALK_CLIPS.up : pose === 'down' ? WALK_CLIPS.down : WALK_CLIPS.side;
+  // Which clip to show. Every clip stays mounted and only the visible one changes
+  // (SpriteSwitcher), so switching walk <-> stand never leaves a blank while an image loads.
+  const idleClip = useIdleClip(pose === 'idle' && !hidden);
+  const clipName: ClipName =
+    pose === 'idle' ? idleClip : pose === 'up' ? 'walk_up' : pose === 'down' ? 'walk_down' : 'walk_side';
   // The side walk is drawn facing right; mirror it for "left", the standard
   // way to avoid drawing both.
   const flip = pose === 'left';
+  // Every clip shares one cell size, so any one describes the geometry.
+  const spec = CHARACTER_CLIPS.breathe;
 
   // Size from her visible height rather than the frame width, so she keeps the
   // same size whichever clip is playing.
@@ -160,6 +167,7 @@ function Roamer({ room }: { room: RoomLayout }) {
         top: 0,
         width: 0,
         height: 0,
+        opacity: hidden ? 0 : 1,
         // Odd numbers sit between the furniture's even zIndexes (see RoomBackdrop).
         zIndex: 2 * inFrontOf + 1,
         transform: [{ translateX: x }, { translateY: y }],
@@ -187,16 +195,16 @@ function Roamer({ room }: { room: RoomLayout }) {
           }}
         />
         <View style={flip ? { transform: [{ scaleX: -1 }] } : undefined}>
-          {pose === 'idle' ? <IdleSprite size={frameW} /> : <SpriteSheetAnimator spec={spec} size={frameW} />}
+          <SpriteSwitcher clips={CHARACTER_CLIPS} current={hidden ? null : clipName} size={frameW} />
         </View>
       </Animated.View>
     </Animated.View>
   );
 }
 
-function RoamingCharacterBase() {
+function RoamingCharacterBase({ hidden = false }: { hidden?: boolean }) {
   const room = useRoom();
-  return room ? <Roamer room={room} /> : null;
+  return room ? <Roamer room={room} hidden={hidden} /> : null;
 }
 
 export default React.memo(RoamingCharacterBase);

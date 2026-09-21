@@ -51,6 +51,16 @@ export const WALK_CLIPS = {
   side: clip(require('./clips/walk_side.png'), clipManifest.clips.walk_side.frames, 7),
 };
 
+// Every clip by name. They all share one cell size, so the roamer can keep them all
+// mounted and just change which one is visible (see SpriteSwitcher).
+export const CHARACTER_CLIPS = {
+  ...IDLE_CLIPS,
+  walk_down: WALK_CLIPS.down,
+  walk_up: WALK_CLIPS.up,
+  walk_side: WALK_CLIPS.side,
+};
+export type ClipName = keyof typeof CHARACTER_CLIPS;
+
 // The large, detailed still — used while she's talking.
 export const PORTRAIT_FRONT = require('./portrait-front.png');
 export const PORTRAIT_ASPECT = 394 / 628; // width / height

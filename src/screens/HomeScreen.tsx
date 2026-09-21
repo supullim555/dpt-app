@@ -77,7 +77,11 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.stage}>
         {/* wait for the saved state so bought furniture doesn't pop in a moment after the room appears */}
         {loaded && (
-          <RoomBackdrop owned={state.inventory}>{inDialogue ? <RoomPortrait /> : <RoamingCharacter />}</RoomBackdrop>
+          <RoomBackdrop owned={state.inventory}>
+            {/* Mounted (hidden) even during the dialogue so its sprites are already loaded when she starts to walk */}
+            <RoamingCharacter hidden={inDialogue} />
+            {inDialogue && <RoomPortrait />}
+          </RoomBackdrop>
         )}
       </View>
 
