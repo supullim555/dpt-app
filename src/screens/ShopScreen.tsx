@@ -1,20 +1,45 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SHOP_ITEMS, type ShopItem } from '../game/catalog';
+import { CATEGORY_LABELS, CATEGORY_ORDER, SHOP_ITEMS, type ShopCategory, type ShopItem } from '../game/catalog';
 import { useGame } from '../game/GameContext';
+
+type Filter = 'all' | ShopCategory;
 
 // The shop sells the room's furniture: buying a piece puts it in the room. Nothing here
 // pushes the player to buy (§4) — no badges, no "new", no countdowns; it's just a quiet list.
+//
+// Split into category tabs (소품/가구) rather than one long list: Animal Crossing: Pocket
+// Camp's decorating shop is a cited example of this going wrong once the item count grows —
+// no theme grouping, just an ever-longer scroll. Nine items don't need it yet, but the room
+// is meant to keep growing (§12), so the tabs are here before that becomes a problem.
 export default function ShopScreen() {
   const { state, purchaseItem } = useGame();
+  const [filter, setFilter] = useState<Filter>('all');
 
+  const items = useMemo(
+    () => (filter === 'all' ? SHOP_ITEMS : SHOP_ITEMS.filter((i) => i.category === filter)),
+    [filter]
+  );
   const handlePress = useCallback((item: ShopItem) => purchaseItem(item.id), [purchaseItem]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.coins}>보유 코인: {state.coins}</Text>
+      <View style={styles.tabs}>
+        {(['all', ...CATEGORY_ORDER] as const).map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.tab, filter === f && styles.tabActive]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={[styles.tabText, filter === f && styles.tabTextActive]}>
+              {f === 'all' ? '전체' : CATEGORY_LABELS[f]}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
       <FlatList
-        data={SHOP_ITEMS}
+        data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
@@ -59,6 +84,11 @@ const ShopRow = React.memo(function ShopRow({ item, owned, affordable, onPress }
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fafafa' },
   coins: { fontSize: 15, fontWeight: '700', color: '#444', padding: 16, paddingBottom: 8 },
+  tabs: { flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 8 },
+  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#eee' },
+  tabActive: { backgroundColor: '#222' },
+  tabText: { fontSize: 13, color: '#555', fontWeight: '600' },
+  tabTextActive: { color: '#fff' },
   listContent: { paddingBottom: 24 },
   row: {
     flexDirection: 'row',

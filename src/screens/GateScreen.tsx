@@ -6,7 +6,7 @@ import RoomBackdrop from '../components/RoomBackdrop';
 import RoomStander from '../components/RoomStander';
 import CrisisFooter from '../components/CrisisFooter';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
-import { EMOTION_WORDS } from '../data/emotions';
+import { EMOTION_GRID, EMOTION_UNSURE, QUADRANT_COLOR } from '../data/emotions';
 import { useGame } from '../game/GameContext';
 import {
   appendGateEntry,
@@ -159,20 +159,36 @@ export default function GateScreen({ navigation }: Props) {
         {step === 'label' && (
           <View style={styles.center}>
             <Text style={styles.prompt}>지금 마음에 가까운 말이 있다면?</Text>
-            <View style={styles.chips}>
-              {EMOTION_WORDS.map((word) => (
-                <TouchableOpacity
-                  key={word}
-                  style={styles.chip}
-                  onPress={() => {
-                    setLabel(word === '잘 모르겠어요' ? null : word);
-                    setStep('scale');
-                  }}
-                >
-                  <Text style={styles.chipText}>{word}</Text>
-                </TouchableOpacity>
+            {/* A 2x2 mood-meter grid (energy x pleasantness) rather than a flat list: color groups
+                words that feel alike, so picking one is closer to "which of these four feels right"
+                than reading through fourteen options in a row. */}
+            <View style={styles.moodGrid}>
+              {EMOTION_GRID.map(({ quadrant, words }) => (
+                <View key={quadrant} style={[styles.quadrant, { borderColor: QUADRANT_COLOR[quadrant] }]}>
+                  {words.map((word) => (
+                    <TouchableOpacity
+                      key={word}
+                      style={[styles.chip, { backgroundColor: `${QUADRANT_COLOR[quadrant]}33` }]}
+                      onPress={() => {
+                        setLabel(word);
+                        setStep('scale');
+                      }}
+                    >
+                      <Text style={styles.chipText}>{word}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               ))}
             </View>
+            <TouchableOpacity
+              style={styles.unsure}
+              onPress={() => {
+                setLabel(null);
+                setStep('scale');
+              }}
+            >
+              <Text style={styles.unsureText}>{EMOTION_UNSURE}</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -221,16 +237,30 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   pill: { backgroundColor: '#fff', paddingHorizontal: 22, paddingVertical: 11, borderRadius: 20 },
   pillText: { color: '#111', fontSize: 14, fontWeight: '700' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  moodGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, maxWidth: 340 },
+  quadrant: {
+    width: 165,
+    minHeight: 64,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignContent: 'flex-start',
+    justifyContent: 'center',
+    gap: 6,
+    padding: 8,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  chipText: { color: '#fff', fontSize: 14 },
+  chipText: { color: '#fff', fontSize: 13 },
+  unsure: { marginTop: 2, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)' },
+  unsureText: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
   scaleRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, maxWidth: 320 },
   num: {
     width: 40,
