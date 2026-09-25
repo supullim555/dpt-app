@@ -2,6 +2,7 @@ import React, { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { loadEntry, saveEntry } from '../storage/storage';
 import CrisisFooter from './CrisisFooter';
+import { BORDER, INK, SCREEN_BG } from '../theme';
 
 const ACK_KEY = 'intro.acknowledged';
 
@@ -47,11 +48,11 @@ export default function IntroGate({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  blank: { flex: 1, backgroundColor: '#fafafa' },
-  container: { flex: 1, backgroundColor: '#fafafa', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#eee', padding: 24 },
-  title: { fontSize: 18, fontWeight: '700', color: '#222', marginBottom: 16 },
+  blank: { flex: 1, backgroundColor: SCREEN_BG },
+  container: { flex: 1, backgroundColor: SCREEN_BG, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  card: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 24 },
+  title: { fontSize: 18, fontWeight: '700', color: INK, marginBottom: 16 },
   line: { fontSize: 15, lineHeight: 23, color: '#333', marginBottom: 10 },
-  button: { alignSelf: 'center', marginTop: 16, backgroundColor: '#222', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20 },
+  button: { alignSelf: 'center', marginTop: 16, backgroundColor: INK, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20 },
   buttonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

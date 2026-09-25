@@ -9,6 +9,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import { loadEntry, saveEntry } from '../storage/storage';
+import { today } from '../lib/date';
 import { ITEM_MAP } from './catalog';
 import type { GameState } from './types';
 
@@ -20,10 +21,6 @@ const DEFAULT_STATE: GameState = {
   inventory: [],
   lastCompleted: {},
 };
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 type GameContextValue = {
   state: GameState;
@@ -80,19 +77,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeExercise = useCallback((exerciseId: string) => {
-    const today = todayKey();
+    const key = today();
     const prev = stateRef.current;
-    if (prev.lastCompleted[exerciseId] === today) return false;
+    if (prev.lastCompleted[exerciseId] === key) return false;
     setState({
       ...prev,
       coins: prev.coins + EXERCISE_REWARD,
-      lastCompleted: { ...prev.lastCompleted, [exerciseId]: today },
+      lastCompleted: { ...prev.lastCompleted, [exerciseId]: key },
     });
     return true;
   }, []);
 
   const isCompletedToday = useCallback(
-    (exerciseId: string) => stateRef.current.lastCompleted[exerciseId] === todayKey(),
+    (exerciseId: string) => stateRef.current.lastCompleted[exerciseId] === today(),
     [state.lastCompleted]
   );
 

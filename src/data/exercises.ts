@@ -7,8 +7,6 @@ export type Exercise = {
   summary: string;
   theory: string;
   goal: string;
-  /** Set to true once the interactive screen for this exercise is implemented. */
-  implemented: boolean;
   /** Scripted dialogue questions the character asks, in order. */
   questions: string[];
 };
@@ -27,7 +25,6 @@ export const EXERCISES: Exercise[] = [
       '"나는 불안한 사람"이 아니라 "불안이 나를 찾아올 때"로 말하며 문제에 이름과 생김새를 붙이고, "불안이 못 이겼던 날"을 찾습니다.',
     theory: '이야기치료(White & Epston)의 외재화, 독특한 결과(unique outcomes)',
     goal: '정체성과 문제를 분리하고 대안적 자기 서사 만들기',
-    implemented: true,
     questions: [
       '요즘 나를 자꾸 찾아오는 감정이나 생각이 있다면, 이름을 붙여볼까요? (예: 불안이, 걱정이)',
       '그 친구는 주로 언제, 어떤 상황에서 나를 찾아오나요?',
@@ -42,7 +39,6 @@ export const EXERCISES: Exercise[] = [
       '"지금 0~10 중 몇인가요?" → "왜 그보다 한 칸 낮지 않은가요?" → "0.5칸 올라가면 무엇이 달라 보일까요?"',
     theory: '해결중심 단기치료(SFBT)',
     goal: '원인 분석 없이 이미 작동 중인 자원 발견',
-    implemented: true,
     questions: [
       '지금 마음 상태를 0~10 중 숫자로 말하면 몇인가요?',
       '왜 그보다 한 칸 더 낮지 않을까요? 이미 잘 되고 있는 건 뭘까요?',
@@ -56,7 +52,6 @@ export const EXERCISES: Exercise[] = [
     summary: '1년 뒤의 내가 지금의 나에게 쓰는 편지.',
     theory: '시간 조망 개입, 에피소드적 미래 사고',
     goal: '현재 고통의 절대화를 완화',
-    implemented: true,
     questions: [
       '1년 뒤의 나는 지금의 나에게 어떤 말을 해주고 싶을까요?',
       '1년 뒤의 나는 지금 이 시간을 어떻게 지나왔다고 말할까요?',
@@ -70,7 +65,6 @@ export const EXERCISES: Exercise[] = [
       '"나는 망했어"를 "나는 \'나는 망했어\'라는 생각을 하고 있다"로 바꿔 적거나, 우스운 목소리로 읽거나, 반복되는 생각에 별명을 붙입니다.',
     theory: 'ACT의 인지적 탈융합',
     goal: '생각의 내용을 바꾸지 않고 생각과의 관계만 바꾸기',
-    implemented: true,
     questions: [
       "요즘 자꾸 떠오르는 생각을 한 문장으로 적어볼까요? (예: '나는 망했어')",
       "그 생각에 별명을 붙여볼까요? (예: '망했어병')",

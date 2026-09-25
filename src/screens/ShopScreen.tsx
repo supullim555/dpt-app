@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CATEGORY_LABELS, CATEGORY_ORDER, SHOP_ITEMS, type ShopCategory, type ShopItem } from '../game/catalog';
 import { useGame } from '../game/GameContext';
+import { BORDER, INK, SCREEN_BG } from '../theme';
 
 type Filter = 'all' | ShopCategory;
 
@@ -82,11 +83,11 @@ const ShopRow = React.memo(function ShopRow({ item, owned, affordable, onPress }
 });
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
+  container: { flex: 1, backgroundColor: SCREEN_BG },
   coins: { fontSize: 15, fontWeight: '700', color: '#444', padding: 16, paddingBottom: 8 },
   tabs: { flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 8 },
   tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#eee' },
-  tabActive: { backgroundColor: '#222' },
+  tabActive: { backgroundColor: INK },
   tabText: { fontSize: 13, color: '#555', fontWeight: '600' },
   tabTextActive: { color: '#fff' },
   listContent: { paddingBottom: 24 },
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: BORDER,
   },
   rowDim: { opacity: 0.55 },
   thumb: {
@@ -113,6 +114,6 @@ const styles = StyleSheet.create({
   },
   thumbImage: { width: 52, height: 52 },
   rowInfo: { flex: 1 },
-  rowName: { fontSize: 15, fontWeight: '600', color: '#222' },
+  rowName: { fontSize: 15, fontWeight: '600', color: INK },
   rowStatus: { fontSize: 12, color: '#888', marginTop: 2 },
 });

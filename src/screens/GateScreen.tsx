@@ -14,6 +14,7 @@ import {
   loadGateHistory,
   needsSafetyNote,
 } from '../game/gate';
+import { PANEL_DARK } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 
@@ -220,12 +221,10 @@ export default function GateScreen({ navigation }: Props) {
   );
 }
 
-const PANEL_BG = 'rgba(20,20,20,0.9)';
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3a2a24' },
   stage: { flex: 1 },
-  panel: { minHeight: 210, backgroundColor: PANEL_BG, padding: 16, justifyContent: 'center' },
+  panel: { minHeight: 210, backgroundColor: PANEL_DARK, padding: 16, justifyContent: 'center' },
   center: { alignItems: 'center', gap: 12 },
   hint: { color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 19, textAlign: 'center' },
   prompt: { color: '#fff', fontSize: 15, lineHeight: 22, textAlign: 'center' },

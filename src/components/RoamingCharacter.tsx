@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, View } from 'react-native';
 import SpriteSwitcher from './SpriteSwitcher';
-import { CHARACTER_CLIPS, type ClipName } from '../assets/character';
+import { CHARACTER_CLIPS, frameSizeFor, type ClipName } from '../assets/character';
 import { useIdleClip } from '../hooks/useIdleClip';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 import { useRoom } from '../room/RoomContext';
@@ -11,10 +11,6 @@ import { pickStart, pickTarget, isFree, type Pt, type RoomLayout } from '../room
 // with how big she's drawn, rather than a fixed px/sec that would look
 // frantic on a small phone and sluggish on a big window.
 const WALK_SPEED = 0.6;
-
-// Her visible height as a multiple of `size` (the room's character size). Every clip is
-// drawn at the same standing height, so this one number sizes all of them.
-const VISIBLE_HEIGHT_PER_SIZE = 264 / 252;
 
 type Pose = 'idle' | 'left' | 'right' | 'down' | 'up';
 
@@ -138,9 +134,7 @@ function Roamer({ room, hidden }: { room: RoomLayout; hidden: boolean }) {
 
   // Size from her visible height rather than the frame width, so she keeps the
   // same size whichever clip is playing.
-  const pxPerSource = (size * VISIBLE_HEIGHT_PER_SIZE) / spec.contentHeight;
-  const frameW = spec.frameWidth * pxPerSource;
-  const frameH = spec.frameHeight * pxPerSource;
+  const { frameW, frameH } = frameSizeFor(size, spec);
 
   // Farther up the floor = smaller, nearer the bottom = bigger. Scaling
   // happens around the frame's center, so shift down by however much that

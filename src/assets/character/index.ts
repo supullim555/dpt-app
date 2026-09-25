@@ -64,3 +64,21 @@ export type ClipName = keyof typeof CHARACTER_CLIPS;
 // The large, detailed still — used while she's talking.
 export const PORTRAIT_FRONT = require('./portrait-front.png');
 export const PORTRAIT_ASPECT = 394 / 628; // width / height
+
+// Her visible height as a multiple of the room's `charSize` unit (a calibration constant from
+// the original walk sprite, kept as-is since changing it resizes her everywhere she's drawn).
+// Every clip shares one contentHeight, so any clip's spec can be passed in here.
+const VISIBLE_HEIGHT_PER_SIZE = 264 / 252;
+
+/** The rendered frame size (and the scale that produced it) for a character drawn at `size`
+ * (the room's per-character unit) using `spec`. Used everywhere she's drawn in the room —
+ * roaming (RoamingCharacter) and standing at the gate (RoomStander) — so they always agree on
+ * how big "size" actually looks, instead of each re-deriving the same formula. */
+export function frameSizeFor(size: number, spec: CharacterSprite) {
+  const pxPerSource = (size * VISIBLE_HEIGHT_PER_SIZE) / spec.contentHeight;
+  return {
+    pxPerSource,
+    frameW: spec.frameWidth * pxPerSource,
+    frameH: spec.frameHeight * pxPerSource,
+  };
+}

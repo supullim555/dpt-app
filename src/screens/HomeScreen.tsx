@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,13 +14,13 @@ import RoamingCharacter from '../components/RoamingCharacter';
 import TapHintChevron from '../components/TapHintChevron';
 import CrisisFooter from '../components/CrisisFooter';
 import { useGame } from '../game/GameContext';
+import { DAILY_CHECKIN_ID, quote, recordMemory, takeCallback, type MemoryEntry } from '../game/memory';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
-import { saveEntry } from '../storage/storage';
+import { BORDER, PANEL_DARK, SCREEN_BG, TEXT_ON_DARK } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const DAILY_CHECKIN_ID = 'daily-checkin';
 const BOTTOM_BAR_HEIGHT = 150;
 
 const GREETINGS: { until: number; text: string }[] = [
@@ -30,43 +30,85 @@ const GREETINGS: { until: number; text: string }[] = [
   { until: 24, text: '이 시간까지 깨어있네요. 무리하지 말아요.' },
 ];
 
+// Kept as their own list so the exact same questions can be recorded to memory afterward,
+// rather than re-deriving them from the beats array (which also carries the greeting and,
+// some days, a callback line — neither of those are "questions" to remember answers to).
+const DAILY_QUESTIONS = ['오늘 하루는 어땠나요?', '그중에서 가장 기억에 남는 순간이 있다면요?'];
+
 function getGreeting() {
   const hour = new Date().getHours();
   return GREETINGS.find((g) => hour < g.until)?.text ?? GREETINGS[GREETINGS.length - 1].text;
 }
 
-function buildDailyBeats(greeting: string): DialogueBeat[] {
-  return [
-    { text: greeting, answerable: false },
-    { text: '오늘 하루는 어땠나요?', answerable: true },
-    { text: '그중에서 가장 기억에 남는 순간이 있다면요?', answerable: true },
-  ];
+// A callback beat — "지난번에 '~'라고 했었죠" — sits between the greeting and today's questions
+// when there's something worth bringing back up (§4: a sign this isn't one-off, told through
+// content, not a streak). It only ever quotes; see src/game/memory.ts for the rules this keeps to.
+function buildDailyBeats(greeting: string, callback: MemoryEntry | null): DialogueBeat[] {
+  const beats: DialogueBeat[] = [{ text: greeting, answerable: false }];
+  if (callback) {
+    beats.push({ text: `지난번에 "${quote(callback.answer)}"라고 했었죠.`, answerable: false });
+  }
+  beats.push(...DAILY_QUESTIONS.map((text) => ({ text, answerable: true })));
+  return beats;
 }
 
 export default function HomeScreen({ navigation }: Props) {
   const { state, loaded, completeExercise, isCompletedToday } = useGame();
+  const [callback, setCallback] = useState<MemoryEntry | null>(null);
+  const [callbackLoaded, setCallbackLoaded] = useState(false);
 
   // Computed once per mount so the opening line doesn't change while the screen stays open.
   const greeting = useMemo(getGreeting, []);
   const alreadyCheckedInToday = isCompletedToday(DAILY_CHECKIN_ID);
-  const beats = useMemo(() => buildDailyBeats(greeting), [greeting]);
+
+  useEffect(() => {
+    let cancelled = false;
+    takeCallback().then((found) => {
+      if (cancelled) return;
+      setCallback(found);
+      setCallbackLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const beats = useMemo(() => buildDailyBeats(greeting, callback), [greeting, callback]);
 
   // No popup and no praise: the character's closing line thanks them for talking, and
-  // the coin count simply goes up (§4: rewards accumulate quietly).
+  // the coin count simply goes up (§4: rewards accumulate quietly). The only record kept is
+  // memory.ts's log — it's what the journal (JournalScreen) reads and what future callbacks
+  // are drawn from, so there's one store instead of a second write nothing ever reads back.
   const handleComplete = (answers: string[]) => {
-    const today = new Date().toISOString().slice(0, 10);
-    saveEntry(`answers.${DAILY_CHECKIN_ID}.${today}`, answers);
+    recordMemory(DAILY_CHECKIN_ID, DAILY_QUESTIONS, answers);
     completeExercise(DAILY_CHECKIN_ID);
   };
 
   const { current, phase, draft, setDraft, advance, done } = useDialogue(beats, handleComplete);
   const showAnswerBox = !alreadyCheckedInToday && phase === 'input';
-  const bubbleText = alreadyCheckedInToday
-    ? '오늘은 이미 이야기 나눴어요. 편할 때 또 와요.'
-    : done
-      ? '오늘 이야기 나눠줘서 고마워요.'
+
+  // completeExercise() flips alreadyCheckedInToday in the same render pass `done` becomes true
+  // (React batches the two setState calls), so without this, the thank-you line and the
+  // "오늘은 이미..." notice would race and the thank-you line would never actually be seen.
+  // Hold it on screen for a moment instead, then settle into the action buttons on its own —
+  // advance() is a no-op once done, so there's no tap that would otherwise dismiss it.
+  const [showThankYou, setShowThankYou] = useState(false);
+  useEffect(() => {
+    if (!done) return;
+    setShowThankYou(true);
+    const t = setTimeout(() => setShowThankYou(false), 1800);
+    return () => clearTimeout(t);
+  }, [done]);
+
+  const bubbleText = showThankYou
+    ? '오늘 이야기 나눠줘서 고마워요.'
+    : alreadyCheckedInToday
+      ? '오늘은 이미 이야기 나눴어요. 편할 때 또 와요.'
       : current.text;
-  const inDialogue = !alreadyCheckedInToday && !done;
+  // Waits on callbackLoaded too: `beats` depends on `callback`, and starting the dialogue
+  // before that resolves risks the beat array (and the greeting the user already tapped past)
+  // shifting under them once it does. The wait is a fast on-device read, imperceptible in practice.
+  const inDialogue = (showThankYou || (!alreadyCheckedInToday && !done)) && callbackLoaded;
 
   return (
     <View style={styles.container}>
@@ -119,6 +161,9 @@ export default function HomeScreen({ navigation }: Props) {
             >
               <Text style={styles.actionButtonText}>실습</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Journal')}>
+              <Text style={styles.actionButtonText}>지난 이야기</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Shop')}>
               <Text style={styles.actionButtonText}>상점</Text>
             </TouchableOpacity>
@@ -130,13 +175,13 @@ export default function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
+  container: { flex: 1, backgroundColor: SCREEN_BG },
   topBar: {
     height: 48,
     justifyContent: 'center',
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: BORDER,
   },
   coinText: { fontSize: 14, fontWeight: '700', color: '#444' },
   stage: { flex: 1 },
@@ -145,9 +190,9 @@ const styles = StyleSheet.create({
     padding: 16,
     justifyContent: 'center',
   },
-  dialogueBar: { backgroundColor: 'rgba(20,20,20,0.82)' },
+  dialogueBar: { backgroundColor: PANEL_DARK },
   dialogueTouchable: { alignItems: 'center' },
-  dialogueText: { color: '#fff', fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  dialogueText: { color: TEXT_ON_DARK, fontSize: 15, lineHeight: 22, textAlign: 'center' },
   answerRow: { marginTop: 12, gap: 8 },
   input: {
     backgroundColor: 'rgba(255,255,255,0.12)',
@@ -168,12 +213,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sendButtonText: { color: '#111', fontSize: 14, fontWeight: '700' },
-  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  // gap/padding sized for three buttons now that "지난 이야기" (journal) joined 실습/상점.
+  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   actionButton: {
-    backgroundColor: 'rgba(34,34,34,0.88)',
-    paddingHorizontal: 22,
+    backgroundColor: PANEL_DARK,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 20,
   },
-  actionButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  actionButtonText: { color: TEXT_ON_DARK, fontSize: 14, fontWeight: '700' },
 });

@@ -5,6 +5,7 @@ import HomeScreen from '../screens/HomeScreen';
 import ExerciseListScreen from '../screens/ExerciseListScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ShopScreen from '../screens/ShopScreen';
+import JournalScreen from '../screens/JournalScreen';
 
 export type RootStackParamList = {
   Gate: undefined;
@@ -12,6 +13,7 @@ export type RootStackParamList = {
   ExerciseList: undefined;
   ExerciseDetail: { exerciseId: string };
   Shop: undefined;
+  Journal: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,6 +35,7 @@ export default function RootNavigator() {
           options={{ title: '' }}
         />
         <Stack.Screen name="Shop" component={ShopScreen} options={{ title: '상점' }} />
+        <Stack.Screen name="Journal" component={JournalScreen} options={{ title: '지난 이야기' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

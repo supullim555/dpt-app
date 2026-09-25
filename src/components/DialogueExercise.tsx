@@ -3,18 +3,25 @@ import CharacterPortrait from './CharacterPortrait';
 import TapHintChevron from './TapHintChevron';
 import { useDialogue } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
+import { BORDER, INK } from '../theme';
 
 type Props = {
   questions: string[];
   onComplete: (answers: string[]) => void;
+  /** A non-answerable opening line shown before the first question — e.g. a callback to what
+   * was said here last time. Tap to continue like any other beat; doesn't count toward the
+   * "n / total" progress below, since it isn't one of the exercise's own questions. */
+  leadIn?: string;
 };
 
-export default function DialogueExercise({ questions, onComplete }: Props) {
-  const beats = questions.map((text) => ({ text, answerable: true }));
-  const { current, index, total, phase, draft, setDraft, advance, done } = useDialogue(
-    beats,
-    onComplete
-  );
+export default function DialogueExercise({ questions, onComplete, leadIn }: Props) {
+  const beats = leadIn
+    ? [{ text: leadIn, answerable: false }, ...questions.map((text) => ({ text, answerable: true }))]
+    : questions.map((text) => ({ text, answerable: true }));
+  const { current, index, phase, draft, setDraft, advance, done } = useDialogue(beats, onComplete);
+  const offset = leadIn ? 1 : 0;
+  const showProgress = !done && index >= offset;
+  const questionNumber = Math.min(index - offset + 1, questions.length);
 
   return (
     <View style={styles.container}>
@@ -29,9 +36,9 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
         {!done && <TapHintChevron />}
       </TouchableOpacity>
 
-      {!done && (
+      {showProgress && (
         <Text style={styles.progress}>
-          {index + 1} / {total}
+          {questionNumber} / {questions.length}
         </Text>
       )}
 
@@ -48,7 +55,7 @@ export default function DialogueExercise({ questions, onComplete }: Props) {
             autoFocus
           />
           <TouchableOpacity style={styles.nextButton} onPress={advance}>
-            <Text style={styles.nextButtonText}>{index + 1 < total ? '다음' : '완료'}</Text>
+            <Text style={styles.nextButtonText}>{questionNumber < questions.length ? '다음' : '완료'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -64,7 +71,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: BORDER,
     padding: 14,
   },
   bubbleText: { fontSize: 15, color: '#333', lineHeight: 21, textAlign: 'center' },
@@ -78,12 +85,12 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 80,
     fontSize: 14,
-    color: '#222',
+    color: INK,
     textAlignVertical: 'top',
   },
   nextButton: {
     alignSelf: 'flex-end',
-    backgroundColor: '#222',
+    backgroundColor: INK,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 10,

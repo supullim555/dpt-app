@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import IdleSprite from './IdleSprite';
-import { IDLE_CLIPS } from '../assets/character';
+import { IDLE_CLIPS, frameSizeFor } from '../assets/character';
 import { useRoom } from '../room/RoomContext';
 
 // She stands (and breathes) at the front of the room, a little bigger than when she's
@@ -14,9 +14,7 @@ function RoomStanderBase() {
 
   const spec = IDLE_CLIPS.breathe;
   const size = room.charSize * SIZE_FACTOR;
-  const pxPerSource = (size * (264 / 252)) / spec.contentHeight;
-  const frameW = spec.frameWidth * pxPerSource;
-  const frameH = spec.frameHeight * pxPerSource;
+  const { frameW, frameH } = frameSizeFor(size, spec);
   const feetY = room.walk.y + room.walk.h;
 
   return (
