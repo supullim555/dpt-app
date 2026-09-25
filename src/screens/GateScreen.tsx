@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { GateScreenProps } from '../navigation/types';
 import RoomBackdrop from '../components/RoomBackdrop';
 import RoomStander from '../components/RoomStander';
 import CrisisFooter from '../components/CrisisFooter';
+import FloatingPanel from '../components/FloatingPanel';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 import { EMOTION_GRID, EMOTION_UNSURE, QUADRANT_COLOR } from '../data/emotions';
 import { useGame } from '../game/GameContext';
@@ -14,9 +15,6 @@ import {
   loadGateHistory,
   needsSafetyNote,
 } from '../game/gate';
-import { PANEL_DARK } from '../theme';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 
 // S0 — the gate ("들어오기", plan §6). Each visit: she appears, we breathe together (cyclic
 // sighing), a quiet "a bit more?" that passes on its own, one word for the feeling, one number.
@@ -29,8 +27,9 @@ const MORE_AUTO_PASS_MS = 3_000; // "a bit more?" passes by itself if unanswered
 // One sigh: breathe in, a second short sip on top, then a long breath out.
 const SIGH = { in: 2000, sip: 800, out: 3600 };
 
-export default function GateScreen({ navigation }: Props) {
+export default function GateScreen({ navigation }: GateScreenProps) {
   const { state, loaded } = useGame();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('loading');
   const [cycles, setCycles] = useState(0); // sighs to do this visit
   const [done, setDone] = useState(0); // sighs finished
@@ -83,11 +82,11 @@ export default function GateScreen({ navigation }: Props) {
     return () => clearTimeout(t);
   }, [step]);
 
-  const goHome = () => navigation.replace('Home');
+  const enterApp = () => navigation.replace('Main');
 
   const skip = async () => {
     await appendGateEntry({ date: new Date().toISOString(), label: null, score: null, skipped: true });
-    goHome();
+    enterApp();
   };
 
   const finish = async (score: number) => {
@@ -98,26 +97,28 @@ export default function GateScreen({ navigation }: Props) {
       skipped: false,
     });
     if (needsSafetyNote(history)) setStep('care');
-    else goHome();
+    else enterApp();
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.stage}>
-        {/* wait for the saved state so bought furniture doesn't pop in after the room appears */}
-        {loaded && (
-          <RoomBackdrop owned={state.inventory}>
-            <RoomStander />
-          </RoomBackdrop>
-        )}
-        {showSkip && step !== 'care' && (
-          <TouchableOpacity style={styles.skip} onPress={skip} accessibilityLabel="건너뛰기">
-            <Text style={styles.skipText}>건너뛰기</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* wait for the saved state so bought furniture doesn't pop in after the room appears */}
+      {loaded && (
+        <RoomBackdrop owned={state.inventory}>
+          <RoomStander />
+        </RoomBackdrop>
+      )}
+      {showSkip && step !== 'care' && (
+        <TouchableOpacity
+          style={[styles.skip, { top: insets.top + 10 }]}
+          onPress={skip}
+          accessibilityLabel="건너뛰기"
+        >
+          <Text style={styles.skipText}>건너뛰기</Text>
+        </TouchableOpacity>
+      )}
 
-      <View style={styles.panel}>
+      <FloatingPanel style={styles.panel}>
         {step === 'breath' && (
           <View style={styles.center}>
             {done === 0 && (
@@ -211,20 +212,19 @@ export default function GateScreen({ navigation }: Props) {
           <View style={styles.center}>
             <Text style={styles.prompt}>요즘 많이 힘든 것 같아요. 혼자 견디지 않아도 돼요.</Text>
             <CrisisFooter tone="dark" />
-            <TouchableOpacity style={[styles.pill, { marginTop: 8 }]} onPress={goHome}>
+            <TouchableOpacity style={[styles.pill, { marginTop: 8 }]} onPress={enterApp}>
               <Text style={styles.pillText}>알겠어요</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </FloatingPanel>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3a2a24' },
-  stage: { flex: 1 },
-  panel: { minHeight: 210, backgroundColor: PANEL_DARK, padding: 16, justifyContent: 'center' },
+  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 210, justifyContent: 'center' },
   center: { alignItems: 'center', gap: 12 },
   hint: { color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 19, textAlign: 'center' },
   prompt: { color: '#fff', fontSize: 15, lineHeight: 22, textAlign: 'center' },
@@ -275,13 +275,13 @@ const styles = StyleSheet.create({
   scaleHint: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
   skip: {
     position: 'absolute',
-    top: 10,
     right: 14,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
     backgroundColor: 'rgba(0,0,0,0.45)',
     opacity: 0.6,
+    zIndex: 10,
   },
   skipText: { color: '#fff', fontSize: 12 },
 });

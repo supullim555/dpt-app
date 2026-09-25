@@ -1,15 +1,19 @@
 import { useCallback, useState } from 'react';
 import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import type { MemoScreenProps } from '../navigation/types';
+import ScreenHeader from '../components/ScreenHeader';
 import { EXERCISES } from '../data/exercises';
 import { clearMemory, loadMemory, DAILY_CHECKIN_ID, type MemoryEntry } from '../game/memory';
 import { confirmDestructive } from '../lib/confirm';
 import { BORDER, MUTED, SCREEN_BG } from '../theme';
 
 // A plain, read-only look back at what's been said — the missing half of the callback device
-// (§17 of the plan): callbacks surface ONE past answer at a time inside a dialogue, but until
-// now there was no way to see the rest, even though every answer was already being kept
+// (plan §17): callbacks surface ONE past answer at a time inside a dialogue, but until now
+// there was no way to see the rest, even though every answer was already being kept
 // (memory.ts). This screen just reads that same log; it doesn't add a new store.
+// Named "메모" rather than "지난 이야기" — reads like something you'd actually open, not an
+// archive.
 const LABELS: Record<string, string> = { [DAILY_CHECKIN_ID]: '오늘 하루 이야기' };
 for (const e of EXERCISES) LABELS[e.id] = e.title;
 const labelFor = (id: string) => LABELS[id] ?? id;
@@ -29,7 +33,7 @@ function toSections(log: MemoryEntry[]): Section[] {
   return sections;
 }
 
-export default function JournalScreen() {
+export default function MemoScreen(_props: MemoScreenProps) {
   const [sections, setSections] = useState<Section[] | null>(null);
 
   const reload = useCallback(() => {
@@ -41,21 +45,20 @@ export default function JournalScreen() {
   useFocusEffect(reload);
 
   const handleClear = async () => {
-    const ok = await confirmDestructive('전체 기록을 지울까요?', '지난 이야기가 모두 사라지고, 되돌릴 수 없어요.');
+    const ok = await confirmDestructive('메모를 전부 지울까요?', '지금까지 쌓인 메모가 모두 사라지고, 되돌릴 수 없어요.');
     if (ok) {
       await clearMemory();
       reload();
     }
   };
 
-  if (!sections) return <View style={styles.container} />;
-
   return (
     <View style={styles.container}>
-      {sections.length === 0 ? (
+      <ScreenHeader title="메모" />
+      {!sections ? null : sections.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>아직 쌓인 이야기가 없어요.</Text>
-          <Text style={styles.emptyText}>오늘 하루 이야기나 실습을 하면 여기 남아요.</Text>
+          <Text style={styles.emptyText}>아직 쌓인 메모가 없어요.</Text>
+          <Text style={styles.emptyText}>오늘 이야기를 나누면 여기 쌓여요.</Text>
         </View>
       ) : (
         <SectionList
@@ -73,7 +76,7 @@ export default function JournalScreen() {
           )}
           ListFooterComponent={
             <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-              <Text style={styles.clearButtonText}>전체 기록 지우기</Text>
+              <Text style={styles.clearButtonText}>메모 전체 지우기</Text>
             </TouchableOpacity>
           }
         />
@@ -93,16 +96,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: MUTED,
     backgroundColor: SCREEN_BG,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 6,
   },
   card: {
     backgroundColor: '#fff',
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginBottom: 10,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
   },

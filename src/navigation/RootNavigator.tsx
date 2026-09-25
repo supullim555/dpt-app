@@ -1,41 +1,22 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import GateScreen from '../screens/GateScreen';
-import HomeScreen from '../screens/HomeScreen';
-import ExerciseListScreen from '../screens/ExerciseListScreen';
+import MainTabs from './MainTabs';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
-import ShopScreen from '../screens/ShopScreen';
-import JournalScreen from '../screens/JournalScreen';
-
-export type RootStackParamList = {
-  Gate: undefined;
-  Home: undefined;
-  ExerciseList: undefined;
-  ExerciseDetail: { exerciseId: string };
-  Shop: undefined;
-  Journal: undefined;
-};
+import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Gate">
-        <Stack.Screen name="Gate" component={GateScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-        <Stack.Screen
-          name="ExerciseList"
-          component={ExerciseListScreen}
-          options={{ title: '마음 연습' }}
-        />
-        <Stack.Screen
-          name="ExerciseDetail"
-          component={ExerciseDetailScreen}
-          options={{ title: '' }}
-        />
-        <Stack.Screen name="Shop" component={ShopScreen} options={{ title: '상점' }} />
-        <Stack.Screen name="Journal" component={JournalScreen} options={{ title: '지난 이야기' }} />
+      <Stack.Navigator initialRouteName="Gate" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Gate" component={GateScreen} />
+        <Stack.Screen name="Main" component={MainTabs} />
+        {/* The one screen still reached by pushing from inside a tab (Talk -> an exercise) —
+            covers the tab bar while open, which is the point: a focused single task, not
+            another section of the app to jump between. */}
+        <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

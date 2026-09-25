@@ -1,27 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { HomeScreenProps } from '../navigation/types';
 import RoomBackdrop from '../components/RoomBackdrop';
 import RoomPortrait from '../components/RoomPortrait';
 import RoamingCharacter from '../components/RoamingCharacter';
 import TapHintChevron from '../components/TapHintChevron';
 import CrisisFooter from '../components/CrisisFooter';
+import CoinBadge from '../components/CoinBadge';
+import FloatingPanel from '../components/FloatingPanel';
 import { useGame } from '../game/GameContext';
 import { DAILY_CHECKIN_ID, quote, recordMemory, takeCallback, type MemoryEntry } from '../game/memory';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
-import { BORDER, PANEL_DARK, SCREEN_BG, TEXT_ON_DARK } from '../theme';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
-const BOTTOM_BAR_HEIGHT = 150;
+import { TEXT_ON_DARK } from '../theme';
 
 const GREETINGS: { until: number; text: string }[] = [
   { until: 11, text: '아침이네요. 지금 마음은 어때요?' },
@@ -52,8 +44,13 @@ function buildDailyBeats(greeting: string, callback: MemoryEntry | null): Dialog
   return beats;
 }
 
-export default function HomeScreen({ navigation }: Props) {
+// The room fills the whole tab, edge to edge — no separate top bar or button row cut out of it
+// anymore. What used to live in a bottom action row (실습/지난 이야기/상점) is now the persistent
+// tab bar (MainTabs); when there's nothing to say, Home is just the room with nothing floating
+// over it but the coin count, which is what "living in a room" actually looks like.
+export default function HomeScreen(_props: HomeScreenProps) {
   const { state, loaded, completeExercise, isCompletedToday } = useGame();
+  const insets = useSafeAreaInsets();
   const [callback, setCallback] = useState<MemoryEntry | null>(null);
   const [callbackLoaded, setCallbackLoaded] = useState(false);
 
@@ -77,8 +74,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   // No popup and no praise: the character's closing line thanks them for talking, and
   // the coin count simply goes up (§4: rewards accumulate quietly). The only record kept is
-  // memory.ts's log — it's what the journal (JournalScreen) reads and what future callbacks
-  // are drawn from, so there's one store instead of a second write nothing ever reads back.
+  // memory.ts's log — it's what the memo tab reads and what future callbacks are drawn from.
   const handleComplete = (answers: string[]) => {
     recordMemory(DAILY_CHECKIN_ID, DAILY_QUESTIONS, answers);
     completeExercise(DAILY_CHECKIN_ID);
@@ -90,7 +86,7 @@ export default function HomeScreen({ navigation }: Props) {
   // completeExercise() flips alreadyCheckedInToday in the same render pass `done` becomes true
   // (React batches the two setState calls), so without this, the thank-you line and the
   // "오늘은 이미..." notice would race and the thank-you line would never actually be seen.
-  // Hold it on screen for a moment instead, then settle into the action buttons on its own —
+  // Hold it on screen for a moment instead, then let the room take over on its own —
   // advance() is a no-op once done, so there's no tap that would otherwise dismiss it.
   const [showThankYou, setShowThankYou] = useState(false);
   useEffect(() => {
@@ -100,97 +96,60 @@ export default function HomeScreen({ navigation }: Props) {
     return () => clearTimeout(t);
   }, [done]);
 
-  const bubbleText = showThankYou
-    ? '오늘 이야기 나눠줘서 고마워요.'
-    : alreadyCheckedInToday
-      ? '오늘은 이미 이야기 나눴어요. 편할 때 또 와요.'
-      : current.text;
   // Waits on callbackLoaded too: `beats` depends on `callback`, and starting the dialogue
   // before that resolves risks the beat array (and the greeting the user already tapped past)
   // shifting under them once it does. The wait is a fast on-device read, imperceptible in practice.
-  const inDialogue = (showThankYou || (!alreadyCheckedInToday && !done)) && callbackLoaded;
+  const inDialogue = !alreadyCheckedInToday && !done && callbackLoaded;
+  const showPanel = inDialogue || showThankYou;
+  const bubbleText = showThankYou ? '오늘 이야기 나눠줘서 고마워요.' : current.text;
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Text style={styles.coinText}>🪙 {state.coins}</Text>
-      </View>
+      {/* wait for the saved state so bought furniture doesn't pop in a moment after the room appears */}
+      {loaded && (
+        <RoomBackdrop owned={state.inventory}>
+          {/* Mounted (hidden) even during the dialogue so its sprites are already loaded when she starts to walk */}
+          <RoamingCharacter hidden={inDialogue} />
+          {inDialogue && <RoomPortrait />}
+        </RoomBackdrop>
+      )}
 
-      <View style={styles.stage}>
-        {/* wait for the saved state so bought furniture doesn't pop in a moment after the room appears */}
-        {loaded && (
-          <RoomBackdrop owned={state.inventory}>
-            {/* Mounted (hidden) even during the dialogue so its sprites are already loaded when she starts to walk */}
-            <RoamingCharacter hidden={inDialogue} />
-            {inDialogue && <RoomPortrait />}
-          </RoomBackdrop>
-        )}
-      </View>
+      <CoinBadge coins={state.coins} style={[styles.coinBadge, { top: insets.top + 10 }]} />
 
-      <View style={[styles.bottomBar, inDialogue && styles.dialogueBar]}>
-        {inDialogue ? (
-          <>
-            <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.dialogueTouchable}>
-              <Text style={styles.dialogueText}>{bubbleText}</Text>
-              {!done && <TapHintChevron />}
-            </TouchableOpacity>
-            {showAnswerBox && (
-              <View style={styles.answerRow}>
-                <TextInput
-                  style={styles.input}
-                  value={draft}
-                  onChangeText={setDraft}
-                  onKeyPress={makeSubmitOnEnterHandler(advance)}
-                  placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
-                  placeholderTextColor="#aaa"
-                  multiline
-                  autoFocus
-                />
-                <TouchableOpacity style={styles.sendButton} onPress={advance}>
-                  <Text style={styles.sendButtonText}>다음</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            <CrisisFooter tone="dark" />
-          </>
-        ) : (
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('ExerciseList')}
-            >
-              <Text style={styles.actionButtonText}>실습</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Journal')}>
-              <Text style={styles.actionButtonText}>지난 이야기</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Shop')}>
-              <Text style={styles.actionButtonText}>상점</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      {showPanel && (
+        <FloatingPanel style={styles.panel}>
+          <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.dialogueTouchable}>
+            <Text style={styles.dialogueText}>{bubbleText}</Text>
+            {!done && <TapHintChevron />}
+          </TouchableOpacity>
+          {showAnswerBox && (
+            <View style={styles.answerRow}>
+              <TextInput
+                style={styles.input}
+                value={draft}
+                onChangeText={setDraft}
+                onKeyPress={makeSubmitOnEnterHandler(advance)}
+                placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
+                placeholderTextColor="#aaa"
+                multiline
+                autoFocus
+              />
+              <TouchableOpacity style={styles.sendButton} onPress={advance}>
+                <Text style={styles.sendButtonText}>다음</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <CrisisFooter tone="dark" />
+        </FloatingPanel>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: SCREEN_BG },
-  topBar: {
-    height: 48,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  coinText: { fontSize: 14, fontWeight: '700', color: '#444' },
-  stage: { flex: 1 },
-  bottomBar: {
-    minHeight: BOTTOM_BAR_HEIGHT,
-    padding: 16,
-    justifyContent: 'center',
-  },
-  dialogueBar: { backgroundColor: PANEL_DARK },
+  container: { flex: 1 },
+  coinBadge: { position: 'absolute', left: 14, zIndex: 10 },
+  panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   dialogueTouchable: { alignItems: 'center' },
   dialogueText: { color: TEXT_ON_DARK, fontSize: 15, lineHeight: 22, textAlign: 'center' },
   answerRow: { marginTop: 12, gap: 8 },
@@ -213,13 +172,4 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sendButtonText: { color: '#111', fontSize: 14, fontWeight: '700' },
-  // gap/padding sized for three buttons now that "지난 이야기" (journal) joined 실습/상점.
-  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  actionButton: {
-    backgroundColor: PANEL_DARK,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  actionButtonText: { color: TEXT_ON_DARK, fontSize: 14, fontWeight: '700' },
 });

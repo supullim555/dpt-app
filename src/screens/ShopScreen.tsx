@@ -1,5 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import type { ShopScreenProps } from '../navigation/types';
+import ScreenHeader from '../components/ScreenHeader';
+import CoinBadge from '../components/CoinBadge';
 import { CATEGORY_LABELS, CATEGORY_ORDER, SHOP_ITEMS, type ShopCategory, type ShopItem } from '../game/catalog';
 import { useGame } from '../game/GameContext';
 import { BORDER, INK, SCREEN_BG } from '../theme';
@@ -13,7 +16,7 @@ type Filter = 'all' | ShopCategory;
 // Camp's decorating shop is a cited example of this going wrong once the item count grows —
 // no theme grouping, just an ever-longer scroll. Nine items don't need it yet, but the room
 // is meant to keep growing (§12), so the tabs are here before that becomes a problem.
-export default function ShopScreen() {
+export default function ShopScreen(_props: ShopScreenProps) {
   const { state, purchaseItem } = useGame();
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -25,7 +28,7 @@ export default function ShopScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.coins}>보유 코인: {state.coins}</Text>
+      <ScreenHeader title="상점" right={<CoinBadge coins={state.coins} />} />
       <View style={styles.tabs}>
         {(['all', ...CATEGORY_ORDER] as const).map((f) => (
           <TouchableOpacity
@@ -84,8 +87,7 @@ const ShopRow = React.memo(function ShopRow({ item, owned, affordable, onPress }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: SCREEN_BG },
-  coins: { fontSize: 15, fontWeight: '700', color: '#444', padding: 16, paddingBottom: 8 },
-  tabs: { flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 8 },
+  tabs: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 8 },
   tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#eee' },
   tabActive: { backgroundColor: INK },
   tabText: { fontSize: 13, color: '#555', fontWeight: '600' },
@@ -94,11 +96,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginBottom: 10,
     padding: 12,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
   },

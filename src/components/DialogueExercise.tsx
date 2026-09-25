@@ -3,7 +3,7 @@ import CharacterPortrait from './CharacterPortrait';
 import TapHintChevron from './TapHintChevron';
 import { useDialogue } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
-import { BORDER, INK } from '../theme';
+import { TEXT_ON_DARK } from '../theme';
 
 type Props = {
   questions: string[];
@@ -14,6 +14,8 @@ type Props = {
   leadIn?: string;
 };
 
+// Lives inside a FloatingPanel (ExerciseDetailScreen) — styled to match, so this and Home's own
+// daily check-in read as the same kind of moment rather than two different-looking dialogues.
 export default function DialogueExercise({ questions, onComplete, leadIn }: Props) {
   const beats = leadIn
     ? [{ text: leadIn, answerable: false }, ...questions.map((text) => ({ text, answerable: true }))]
@@ -26,13 +28,11 @@ export default function DialogueExercise({ questions, onComplete, leadIn }: Prop
   return (
     <View style={styles.container}>
       <View style={styles.portraitRow}>
-        <CharacterPortrait size={200} />
+        <CharacterPortrait size={84} />
       </View>
 
-      <TouchableOpacity style={styles.bubble} onPress={advance} activeOpacity={0.8}>
-        <Text style={styles.bubbleText}>
-          {done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}
-        </Text>
+      <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.bubbleTouchable}>
+        <Text style={styles.bubbleText}>{done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}</Text>
         {!done && <TapHintChevron />}
       </TouchableOpacity>
 
@@ -50,12 +50,12 @@ export default function DialogueExercise({ questions, onComplete, leadIn }: Prop
             onChangeText={setDraft}
             onKeyPress={makeSubmitOnEnterHandler(advance)}
             placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
-            placeholderTextColor="#aaa"
+            placeholderTextColor="rgba(255,255,255,0.4)"
             multiline
             autoFocus
           />
-          <TouchableOpacity style={styles.nextButton} onPress={advance}>
-            <Text style={styles.nextButtonText}>{questionNumber < questions.length ? '다음' : '완료'}</Text>
+          <TouchableOpacity style={styles.sendButton} onPress={advance}>
+            <Text style={styles.sendButtonText}>{questionNumber < questions.length ? '다음' : '완료'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -64,36 +64,29 @@ export default function DialogueExercise({ questions, onComplete, leadIn }: Prop
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 24, alignItems: 'center' },
-  portraitRow: { marginBottom: 12 },
-  bubble: {
-    alignSelf: 'stretch',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 14,
-  },
-  bubbleText: { fontSize: 15, color: '#333', lineHeight: 21, textAlign: 'center' },
-  progress: { fontSize: 12, color: '#999', textAlign: 'right', marginTop: 6, alignSelf: 'stretch' },
+  container: { alignItems: 'center' },
+  portraitRow: { marginBottom: 4 },
+  bubbleTouchable: { alignItems: 'center' },
+  bubbleText: { color: TEXT_ON_DARK, fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  progress: { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'right', alignSelf: 'stretch', marginTop: 6 },
   answerBox: { marginTop: 12, gap: 8, alignSelf: 'stretch' },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(255,255,255,0.3)',
     borderRadius: 12,
-    padding: 12,
-    minHeight: 80,
+    padding: 10,
+    minHeight: 56,
     fontSize: 14,
-    color: INK,
+    color: TEXT_ON_DARK,
     textAlignVertical: 'top',
   },
-  nextButton: {
+  sendButton: {
     alignSelf: 'flex-end',
-    backgroundColor: INK,
+    backgroundColor: '#fff',
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 20,
   },
-  nextButtonText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  sendButtonText: { color: '#111', fontWeight: '700', fontSize: 14 },
 });
