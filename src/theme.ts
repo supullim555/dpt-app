@@ -16,3 +16,7 @@ export const TEXT_ON_DARK_MUTED = 'rgba(255,255,255,0.7)';
 /** A soft floating "HUD" surface over the room scene — CoinBadge, the skip pill. */
 export const OVERLAY_LIGHT = 'rgba(255,255,255,0.92)';
 export const TAB_INACTIVE = '#a8a8a8';
+
+/** ReliefScreen's full-screen background — a muted, calm green distinct from Gate's brown,
+ * deliberately not a bright/cheerful tone (a distressed user is the one opening this screen). */
+export const RELIEF_BG = '#26332c';

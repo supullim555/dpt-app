@@ -5,8 +5,10 @@ import type { ExerciseDetailScreenProps } from '../navigation/types';
 import DialogueExercise from '../components/DialogueExercise';
 import CrisisFooter from '../components/CrisisFooter';
 import FloatingPanel from '../components/FloatingPanel';
+import AiOptInRow from '../components/AiOptInRow';
 import { EXERCISES } from '../data/exercises';
 import { useGame } from '../game/GameContext';
+import { useAiClosing } from '../ai/useAiClosing';
 import { quote, recordMemory, takeCallback, type MemoryEntry } from '../game/memory';
 import { INK, MUTED, TEXT_ON_DARK_MUTED } from '../theme';
 
@@ -30,6 +32,12 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
   // notice before its own thank-you line ever got shown — so once true, keep rendering
   // DialogueExercise (it shows the thank-you line itself once its internal state is done).
   const [justFinished, setJustFinished] = useState(false);
+  const [finishedAnswers, setFinishedAnswers] = useState<string[] | null>(null);
+  // §22: optional local-AI closing line, additive over the fixed one — see useAiClosing's doc.
+  const { closingText, showOptIn, busy: aiBusy, downloadProgress, accept, decline } = useAiClosing(
+    '오늘 이야기 나눠줘서 고마워요.',
+    finishedAnswers
+  );
 
   // Looked up once per visit, specific to this exercise's own past answers — so re-entering
   // "문제 외재화 인터뷰" later can open with what was said here last time, the same thread
@@ -74,6 +82,7 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
     // No popup, no praise, and no nudge toward the shop (§4): the dialogue's closing line
     // thanks them, and the coins just quietly add up.
     completeExercise(exercise.id);
+    setFinishedAnswers(answers);
   };
 
   return (
@@ -103,9 +112,16 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
               questions={exercise.questions}
               onComplete={handleDialogueComplete}
               leadIn={callback ? `지난번 여기서 "${quote(callback.answer)}"라고 적었었죠.` : undefined}
+              closingText={justFinished ? closingText : undefined}
             />
           )
         )}
+        {justFinished && aiBusy && (
+          <Text style={styles.notice}>
+            {downloadProgress != null ? `AI를 준비하는 중이에요 (${Math.round(downloadProgress * 100)}%)` : 'AI를 준비하는 중이에요…'}
+          </Text>
+        )}
+        {justFinished && showOptIn && <AiOptInRow onAccept={accept} onDecline={decline} />}
         <CrisisFooter tone="dark" />
       </FloatingPanel>
     </View>
@@ -121,7 +137,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   container: { paddingHorizontal: 20, paddingBottom: 20, backgroundColor: '#fff' },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 12, color: INK },
-  label: { fontSize: 13, fontWeight: '700', color: '#888', marginTop: 20 },
+  label: { fontSize: 13, fontWeight: '700', color: MUTED, marginTop: 20 }, // #888 fails WCAG AA on white; MUTED clears it
   body: { fontSize: 15, color: '#333', lineHeight: 22, marginTop: 6 },
   dock: {},
   notice: { fontSize: 14, color: TEXT_ON_DARK_MUTED, textAlign: 'center' },

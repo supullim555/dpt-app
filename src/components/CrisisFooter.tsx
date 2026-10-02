@@ -1,5 +1,6 @@
 import React from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
+import { MUTED } from '../theme';
 
 type Props = {
   /** 'dark' sits on the dialogue bar, 'light' on a plain screen. */
@@ -42,7 +43,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
   text: { fontSize: 11, lineHeight: 16, textAlign: 'center' },
   mutedDark: { color: 'rgba(255,255,255,0.6)' },
-  mutedLight: { color: '#777' },
+  // #777 measured under 4.5:1 against white (WCAG AA fails for body text); MUTED (#666) clears it.
+  mutedLight: { color: MUTED },
   linkDark: { color: 'rgba(255,255,255,0.9)', fontWeight: '700' },
   linkLight: { color: '#444', fontWeight: '700' },
 });

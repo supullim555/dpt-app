@@ -18,10 +18,15 @@ export type RootStackParamList = {
   Gate: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   ExerciseDetail: { exerciseId: string };
+  // The quick-relief tool (§8's "사용자 직접 요청 버튼") — reached from a floating button that
+  // sits above every tab, not tucked inside any one of them, so it's never more than one tap
+  // away regardless of which tab the user is on when they need it.
+  Relief: undefined;
 };
 
 export type GateScreenProps = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 export type ExerciseDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'ExerciseDetail'>;
+export type ReliefScreenProps = NativeStackScreenProps<RootStackParamList, 'Relief'>;
 
 // A screen inside a tab whose "navigate" needs to reach ExerciseDetail (a root-stack screen,
 // not one of its own tab siblings) needs both navigators' prop types composed — the standard

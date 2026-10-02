@@ -5,7 +5,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import CoinBadge from '../components/CoinBadge';
 import { CATEGORY_LABELS, CATEGORY_ORDER, SHOP_ITEMS, type ShopCategory, type ShopItem } from '../game/catalog';
 import { useGame } from '../game/GameContext';
-import { BORDER, INK, SCREEN_BG } from '../theme';
+import { BORDER, INK, MUTED, SCREEN_BG } from '../theme';
 
 type Filter = 'all' | ShopCategory;
 
@@ -117,5 +117,5 @@ const styles = StyleSheet.create({
   thumbImage: { width: 52, height: 52 },
   rowInfo: { flex: 1 },
   rowName: { fontSize: 15, fontWeight: '600', color: INK },
-  rowStatus: { fontSize: 12, color: '#888', marginTop: 2 },
+  rowStatus: { fontSize: 12, color: MUTED, marginTop: 2 }, // #888 fails WCAG AA on white; MUTED clears it
 });

@@ -12,11 +12,14 @@ type Props = {
    * was said here last time. Tap to continue like any other beat; doesn't count toward the
    * "n / total" progress below, since it isn't one of the exercise's own questions. */
   leadIn?: string;
+  /** Overrides the fixed "오늘 이야기 나눠줘서 고마워요." closing line — e.g. a local-AI reply
+   * once one's ready (§22's useAiClosing). Falls back to the fixed line when omitted. */
+  closingText?: string;
 };
 
 // Lives inside a FloatingPanel (ExerciseDetailScreen) — styled to match, so this and Home's own
 // daily check-in read as the same kind of moment rather than two different-looking dialogues.
-export default function DialogueExercise({ questions, onComplete, leadIn }: Props) {
+export default function DialogueExercise({ questions, onComplete, leadIn, closingText }: Props) {
   const beats = leadIn
     ? [{ text: leadIn, answerable: false }, ...questions.map((text) => ({ text, answerable: true }))]
     : questions.map((text) => ({ text, answerable: true }));
@@ -32,7 +35,7 @@ export default function DialogueExercise({ questions, onComplete, leadIn }: Prop
       </View>
 
       <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.bubbleTouchable}>
-        <Text style={styles.bubbleText}>{done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}</Text>
+        <Text style={styles.bubbleText}>{done ? (closingText ?? '오늘 이야기 나눠줘서 고마워요.') : current.text}</Text>
         {!done && <TapHintChevron />}
       </TouchableOpacity>
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { HomeScreenProps } from '../navigation/types';
 import RoomBackdrop from '../components/RoomBackdrop';
@@ -9,7 +10,10 @@ import TapHintChevron from '../components/TapHintChevron';
 import CrisisFooter from '../components/CrisisFooter';
 import CoinBadge from '../components/CoinBadge';
 import FloatingPanel from '../components/FloatingPanel';
+import AiOptInRow from '../components/AiOptInRow';
 import { useGame } from '../game/GameContext';
+import { useAiClosing } from '../ai/useAiClosing';
+import { useReportBottomPanel } from '../navigation/PanelVisibility';
 import { DAILY_CHECKIN_ID, quote, recordMemory, takeCallback, type MemoryEntry } from '../game/memory';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
@@ -75,33 +79,54 @@ export default function HomeScreen(_props: HomeScreenProps) {
   // No popup and no praise: the character's closing line thanks them for talking, and
   // the coin count simply goes up (§4: rewards accumulate quietly). The only record kept is
   // memory.ts's log — it's what the memo tab reads and what future callbacks are drawn from.
+  const [finishedAnswers, setFinishedAnswers] = useState<string[] | null>(null);
   const handleComplete = (answers: string[]) => {
     recordMemory(DAILY_CHECKIN_ID, DAILY_QUESTIONS, answers);
     completeExercise(DAILY_CHECKIN_ID);
+    setFinishedAnswers(answers);
   };
 
   const { current, phase, draft, setDraft, advance, done } = useDialogue(beats, handleComplete);
   const showAnswerBox = !alreadyCheckedInToday && phase === 'input';
+
+  // §22: the fixed closing line, optionally replaced by a local-AI-generated one once the user
+  // has opted in and a reply for THIS completion is ready — falls back to the fixed line for
+  // everyone who hasn't opted in, so this is additive, not a requirement.
+  const { closingText, showOptIn, busy: aiBusy, downloadProgress, accept, decline } = useAiClosing(
+    '오늘 이야기 나눠줘서 고마워요.',
+    finishedAnswers
+  );
 
   // completeExercise() flips alreadyCheckedInToday in the same render pass `done` becomes true
   // (React batches the two setState calls), so without this, the thank-you line and the
   // "오늘은 이미..." notice would race and the thank-you line would never actually be seen.
   // Hold it on screen for a moment instead, then let the room take over on its own —
   // advance() is a no-op once done, so there's no tap that would otherwise dismiss it.
+  // Skips the auto-dismiss while the AI opt-in choice is unanswered, or a reply is still being
+  // generated (aiBusy — which, on a first-ever opt-in, includes a real model download): a
+  // one-time yes/no shouldn't vanish on a timer, and dismissing early would hide the panel
+  // before a slow download's reply ever gets a chance to appear in it.
   const [showThankYou, setShowThankYou] = useState(false);
   useEffect(() => {
     if (!done) return;
     setShowThankYou(true);
+    if (showOptIn || aiBusy) return;
     const t = setTimeout(() => setShowThankYou(false), 1800);
     return () => clearTimeout(t);
-  }, [done]);
+  }, [done, showOptIn, aiBusy]);
 
   // Waits on callbackLoaded too: `beats` depends on `callback`, and starting the dialogue
   // before that resolves risks the beat array (and the greeting the user already tapped past)
   // shifting under them once it does. The wait is a fast on-device read, imperceptible in practice.
   const inDialogue = !alreadyCheckedInToday && !done && callbackLoaded;
   const showPanel = inDialogue || showThankYou;
-  const bubbleText = showThankYou ? '오늘 이야기 나눠줘서 고마워요.' : current.text;
+  const bubbleText = showThankYou ? closingText : current.text;
+  // Lets MainTabs' floating relief button know to move out of this panel's way while it's open.
+  // Gated on focus too: bottom-tabs keeps Home mounted (not unmounted) when another tab is
+  // selected, so `showPanel` alone would stay true in the background after switching away with
+  // the check-in still unanswered — the button would then dodge a panel that isn't even on screen.
+  const isFocused = useIsFocused();
+  useReportBottomPanel(showPanel && isFocused);
 
   return (
     <View style={styles.container}>
@@ -122,6 +147,11 @@ export default function HomeScreen(_props: HomeScreenProps) {
             <Text style={styles.dialogueText}>{bubbleText}</Text>
             {!done && <TapHintChevron />}
           </TouchableOpacity>
+          {showThankYou && aiBusy && (
+            <Text style={styles.aiBusyHint}>
+              {downloadProgress != null ? `AI를 준비하는 중이에요 (${Math.round(downloadProgress * 100)}%)` : 'AI를 준비하는 중이에요…'}
+            </Text>
+          )}
           {showAnswerBox && (
             <View style={styles.answerRow}>
               <TextInput
@@ -139,6 +169,7 @@ export default function HomeScreen(_props: HomeScreenProps) {
               </TouchableOpacity>
             </View>
           )}
+          {showThankYou && showOptIn && <AiOptInRow onAccept={accept} onDecline={decline} />}
           <CrisisFooter tone="dark" />
         </FloatingPanel>
       )}
@@ -152,6 +183,7 @@ const styles = StyleSheet.create({
   panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   dialogueTouchable: { alignItems: 'center' },
   dialogueText: { color: TEXT_ON_DARK, fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  aiBusyHint: { marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.6)', textAlign: 'center' },
   answerRow: { marginTop: 12, gap: 8 },
   input: {
     backgroundColor: 'rgba(255,255,255,0.12)',
