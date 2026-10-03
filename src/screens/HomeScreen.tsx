@@ -10,7 +10,6 @@ import TapHintChevron from '../components/TapHintChevron';
 import CrisisFooter from '../components/CrisisFooter';
 import CoinBadge from '../components/CoinBadge';
 import FloatingPanel from '../components/FloatingPanel';
-import AiOptInRow from '../components/AiOptInRow';
 import { useGame } from '../game/GameContext';
 import { useAiClosing } from '../ai/useAiClosing';
 import { useReportBottomPanel } from '../navigation/PanelVisibility';
@@ -89,10 +88,10 @@ export default function HomeScreen(_props: HomeScreenProps) {
   const { current, phase, draft, setDraft, advance, done } = useDialogue(beats, handleComplete);
   const showAnswerBox = !alreadyCheckedInToday && phase === 'input';
 
-  // §22: the fixed closing line, optionally replaced by a local-AI-generated one once the user
-  // has opted in and a reply for THIS completion is ready — falls back to the fixed line for
-  // everyone who hasn't opted in, so this is additive, not a requirement.
-  const { closingText, showOptIn, busy: aiBusy, downloadProgress, accept, decline } = useAiClosing(
+  // §24: the fixed closing line, optionally replaced by a local-AI-generated one — the on/off
+  // choice itself was already made once at launch (IntroGate), so this hook only ever reads it.
+  // Falls back to the fixed line for anyone who chose "AI 없이 시작", so this is additive.
+  const { closingText, busy: aiBusy, downloadProgress } = useAiClosing(
     '오늘 이야기 나눠줘서 고마워요.',
     finishedAnswers
   );
@@ -102,18 +101,17 @@ export default function HomeScreen(_props: HomeScreenProps) {
   // "오늘은 이미..." notice would race and the thank-you line would never actually be seen.
   // Hold it on screen for a moment instead, then let the room take over on its own —
   // advance() is a no-op once done, so there's no tap that would otherwise dismiss it.
-  // Skips the auto-dismiss while the AI opt-in choice is unanswered, or a reply is still being
-  // generated (aiBusy — which, on a first-ever opt-in, includes a real model download): a
-  // one-time yes/no shouldn't vanish on a timer, and dismissing early would hide the panel
-  // before a slow download's reply ever gets a chance to appear in it.
+  // Skips the auto-dismiss while a reply is still being generated (aiBusy): dismissing early
+  // would hide the panel before a slow first-run reply ever gets a chance to appear in it —
+  // rare now that IntroGate warms the download up in the background, but still possible.
   const [showThankYou, setShowThankYou] = useState(false);
   useEffect(() => {
     if (!done) return;
     setShowThankYou(true);
-    if (showOptIn || aiBusy) return;
+    if (aiBusy) return;
     const t = setTimeout(() => setShowThankYou(false), 1800);
     return () => clearTimeout(t);
-  }, [done, showOptIn, aiBusy]);
+  }, [done, aiBusy]);
 
   // Waits on callbackLoaded too: `beats` depends on `callback`, and starting the dialogue
   // before that resolves risks the beat array (and the greeting the user already tapped past)
@@ -169,7 +167,6 @@ export default function HomeScreen(_props: HomeScreenProps) {
               </TouchableOpacity>
             </View>
           )}
-          {showThankYou && showOptIn && <AiOptInRow onAccept={accept} onDecline={decline} />}
           <CrisisFooter tone="dark" />
         </FloatingPanel>
       )}

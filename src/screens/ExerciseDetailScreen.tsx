@@ -5,7 +5,6 @@ import type { ExerciseDetailScreenProps } from '../navigation/types';
 import DialogueExercise from '../components/DialogueExercise';
 import CrisisFooter from '../components/CrisisFooter';
 import FloatingPanel from '../components/FloatingPanel';
-import AiOptInRow from '../components/AiOptInRow';
 import { EXERCISES } from '../data/exercises';
 import { useGame } from '../game/GameContext';
 import { useAiClosing } from '../ai/useAiClosing';
@@ -33,8 +32,8 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
   // DialogueExercise (it shows the thank-you line itself once its internal state is done).
   const [justFinished, setJustFinished] = useState(false);
   const [finishedAnswers, setFinishedAnswers] = useState<string[] | null>(null);
-  // §22: optional local-AI closing line, additive over the fixed one — see useAiClosing's doc.
-  const { closingText, showOptIn, busy: aiBusy, downloadProgress, accept, decline } = useAiClosing(
+  // §24: optional local-AI closing line, additive over the fixed one — see useAiClosing's doc.
+  const { closingText, busy: aiBusy, downloadProgress } = useAiClosing(
     '오늘 이야기 나눠줘서 고마워요.',
     finishedAnswers
   );
@@ -121,7 +120,6 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
             {downloadProgress != null ? `AI를 준비하는 중이에요 (${Math.round(downloadProgress * 100)}%)` : 'AI를 준비하는 중이에요…'}
           </Text>
         )}
-        {justFinished && showOptIn && <AiOptInRow onAccept={accept} onDecline={decline} />}
         <CrisisFooter tone="dark" />
       </FloatingPanel>
     </View>

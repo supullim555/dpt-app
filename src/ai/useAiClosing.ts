@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { loadAiOptIn, setAiOptIn, type AiOptIn } from './preference';
+import { loadAiOptIn, type AiOptIn } from './preference';
 import { containsCrisisLanguage } from './safety';
 import { hasWebGpu } from './webgpu';
 
@@ -28,18 +28,15 @@ type AiClosing = {
    * line otherwise. Never blank, never a loading state: the fixed line is the starting value. */
   closingText: string;
   /** True while the model is loading for the very first time (a real download) — show a brief
-   * "준비하는 중" note, not a spinner over the whole screen; the fixed line is already showing. */
+   * "준비하는 중" note, not a spinner over the whole screen; the fixed line is already showing.
+   * Rare in practice now that IntroGate (§24) starts the download in the background as soon as
+   * the user picks "AI 켜고 시작" — this mostly only fires if that warm-up hasn't finished yet. */
   downloadProgress: number | null;
-  /** Ask once, the first time a dialogue completes, if the opt-in choice has never been made
-   * (and only where WebGPU exists — otherwise this is always false and nothing is ever asked). */
-  showOptIn: boolean;
   /** True from the moment a reply starts generating (including a first-time model download)
    * until it resolves one way or another. The caller should keep its closing panel open while
    * this is true, rather than auto-dismissing on its usual short timer — otherwise a slow first
    * download finishes after the panel (and the reply with it) is already gone. */
   busy: boolean;
-  accept: () => void;
-  decline: () => void;
 };
 
 /**
@@ -50,21 +47,19 @@ type AiClosing = {
  * Deliberately narrow in scope: this only ever produces ONE short reaction line layered on top of
  * the existing scripted question flow, which is untouched. Everything here degrades silently to
  * `fallback` — not opted in, no WebGPU, native app, crisis keywords present, timeout, or any
- * engine error — so a user who never opts in sees exactly the app's original fixed closing line.
+ * engine error — so a user who chose "AI 없이 시작" (§24's IntroGate step) sees exactly the app's
+ * original fixed closing line. The on/off choice itself is made once, at first launch, in
+ * IntroGate — this hook only ever reads it, never asks.
  */
 export function useAiClosing(fallback: string, completedAnswers: string[] | null): AiClosing {
   const supported = Platform.OS === 'web' && hasWebGpu();
   const [optIn, setOptInState] = useState<AiOptIn>('unset');
-  const [optInLoaded, setOptInLoaded] = useState(false);
   const [text, setText] = useState(fallback);
   const [progress, setProgress] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    loadAiOptIn().then((v) => {
-      setOptInState(v);
-      setOptInLoaded(true);
-    });
+    loadAiOptIn().then(setOptInState);
   }, []);
 
   // Keep showing the current fixed line (e.g. the gate's vs. a given exercise's own wording)
@@ -107,15 +102,6 @@ export function useAiClosing(fallback: string, completedAnswers: string[] | null
   return {
     closingText: text,
     downloadProgress: progress,
-    showOptIn: optInLoaded && optIn === 'unset' && supported,
     busy,
-    accept: () => {
-      setOptInState('on');
-      setAiOptIn('on');
-    },
-    decline: () => {
-      setOptInState('off');
-      setAiOptIn('off');
-    },
   };
 }
