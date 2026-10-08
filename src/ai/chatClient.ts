@@ -8,11 +8,24 @@ import type { ChatMessage, ChatRequest, ChatResponse } from './types';
  * can be imported and even wired into a screen ahead of time without any risk of it firing.
  */
 export async function sendChatMessage(history: ChatMessage[], message: string): Promise<string> {
+  return callRelay({ history, message });
+}
+
+/**
+ * Asks for a short, non-interpretive recap of a conversation — what AiChatScreen's "정리해서
+ * 저장" button calls before handing the result to memory.ts's recordAiSummary. Uses the same
+ * relay and the same on/off gate as sendChatMessage (AI_CHAT_UI_ENABLED); no separate switch,
+ * since summarizing a conversation that already went to Gemini doesn't cross any new boundary.
+ */
+export async function summarizeChat(history: ChatMessage[]): Promise<string> {
+  return callRelay({ history, mode: 'summarize' });
+}
+
+async function callRelay(body: ChatRequest): Promise<string> {
   if (!AI_CHAT_UI_ENABLED) {
     throw new Error('AI chat is not enabled (src/ai/config.ts: AI_CHAT_UI_ENABLED is false).');
   }
 
-  const body: ChatRequest = { history, message };
   const res = await fetch(AI_CHAT_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

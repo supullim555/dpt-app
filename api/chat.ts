@@ -14,12 +14,12 @@
 // vs. this server switch: a user deciding to turn AI on, and this deployment having a key
 // configured at all, are separate facts.
 
-import { SYSTEM_PROMPT } from '../src/ai/systemPrompt';
+import { SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT } from '../src/ai/systemPrompt';
 
 export const config = { runtime: 'edge' };
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string };
-type ChatRequest = { history?: ChatMessage[]; message?: string };
+type ChatRequest = { history?: ChatMessage[]; message?: string; mode?: 'chat' | 'summarize' };
 
 // Keep in sync with src/ai/config.ts's AI_CHAT_MODEL. gemini-2.5-flash (tried first) returned
 // HTTP 404 "no longer available to new users" for this project's key — Google's own error
@@ -50,15 +50,29 @@ export default async function handler(req: Request): Promise<Response> {
   } catch {
     return json({ error: 'Invalid JSON body.' }, 400);
   }
-  const message = body.message?.trim();
-  if (!message) return json({ error: 'message is required.' }, 400);
-  if (message.length > MAX_MESSAGE_LENGTH) return json({ error: 'message is too long.' }, 400);
 
   const history = (body.history ?? []).slice(-MAX_HISTORY_TURNS);
-  const contents = [
-    ...history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })),
-    { role: 'user', parts: [{ text: message }] },
-  ];
+  const toContent = (m: ChatMessage) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
+
+  let systemPrompt: string;
+  let contents: ReturnType<typeof toContent>[];
+
+  if (body.mode === 'summarize') {
+    // No new message — the whole point is to recap `history` itself. Needs at least one real
+    // user turn, otherwise there's nothing to summarize (the chat's opening line is local UI
+    // framing never sent as history in the first place — see AiChatScreen).
+    if (!history.some((m) => m.role === 'user')) {
+      return json({ error: 'Nothing to summarize yet.' }, 400);
+    }
+    systemPrompt = SUMMARY_SYSTEM_PROMPT;
+    contents = history.map(toContent);
+  } else {
+    const message = body.message?.trim();
+    if (!message) return json({ error: 'message is required.' }, 400);
+    if (message.length > MAX_MESSAGE_LENGTH) return json({ error: 'message is too long.' }, 400);
+    systemPrompt = SYSTEM_PROMPT;
+    contents = [...history.map(toContent), { role: 'user', parts: [{ text: message }] }];
+  }
 
   let res: Response;
   try {
@@ -67,7 +81,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       // system_instruction is a top-level sibling of contents in the v1beta REST API, not a
       // leading content part — confirmed against the current API, not assumed.
-      body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents }),
+      body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents }),
     });
   } catch {
     return json({ error: 'Could not reach Gemini.' }, 502);

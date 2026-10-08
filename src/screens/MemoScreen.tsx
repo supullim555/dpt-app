@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { MemoScreenProps } from '../navigation/types';
 import ScreenHeader from '../components/ScreenHeader';
 import { EXERCISES } from '../data/exercises';
-import { clearMemory, loadMemory, DAILY_CHECKIN_ID, type MemoryEntry } from '../game/memory';
+import { clearMemory, loadMemory, DAILY_CHECKIN_ID, AI_CHAT_ID, type MemoryEntry } from '../game/memory';
 import { confirmDestructive } from '../lib/confirm';
 import { BORDER, MUTED, SCREEN_BG } from '../theme';
 
@@ -14,7 +14,7 @@ import { BORDER, MUTED, SCREEN_BG } from '../theme';
 // (memory.ts). This screen just reads that same log; it doesn't add a new store.
 // Named "메모" rather than "지난 이야기" — reads like something you'd actually open, not an
 // archive.
-const LABELS: Record<string, string> = { [DAILY_CHECKIN_ID]: '오늘 하루 이야기' };
+const LABELS: Record<string, string> = { [DAILY_CHECKIN_ID]: '오늘 하루 이야기', [AI_CHAT_ID]: 'AI와 자유 대화' };
 for (const e of EXERCISES) LABELS[e.id] = e.title;
 const labelFor = (id: string) => LABELS[id] ?? id;
 

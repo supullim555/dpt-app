@@ -4,8 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AiChatScreenProps } from '../navigation/types';
 import CharacterPortrait from '../components/CharacterPortrait';
 import CrisisFooter from '../components/CrisisFooter';
-import { sendChatMessage } from '../ai/chatClient';
+import { sendChatMessage, summarizeChat } from '../ai/chatClient';
 import { loadAiOptIn } from '../ai/preference';
+import { recordAiSummary } from '../game/memory';
 import type { ChatMessage } from '../ai/types';
 import { BORDER, INK, MUTED, SCREEN_BG } from '../theme';
 
@@ -25,7 +26,9 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
   const [messages, setMessages] = useState<DisplayMessage[]>([{ role: 'assistant', text: OPENING_LINE }]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [saving, setSaving] = useState(false);
   const listRef = useRef<FlatList>(null);
+  const hasUserTurn = messages.some((m) => m.role === 'user');
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +68,27 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
     if (messages.length > 1) listRef.current?.scrollToEnd({ animated: true });
   }, [messages.length]);
 
+  // §25's "반영·재진술로 이야기를 꺼내고, 그 이야기를 정리해서 저장" — asks Gemini to recap the
+  // conversation so far (summarizeChat, a different prompt from the chat persona's — see
+  // systemPrompt.ts's SUMMARY_SYSTEM_PROMPT) and saves the result to the 메모 tab
+  // (recordAiSummary). Doesn't clear or end the conversation — saving is just a checkpoint, not
+  // a "finish" the user is being steered toward (§4: nothing here should feel like a completion
+  // to perform).
+  const handleSave = async () => {
+    if (!hasUserTurn || sending || saving) return;
+    setSaving(true);
+    try {
+      const history: ChatMessage[] = messages.filter((m): m is ChatMessage => m.role !== 'system');
+      const summary = await summarizeChat(history);
+      await recordAiSummary(summary);
+      setMessages((cur) => [...cur, { role: 'system', text: '이 대화를 메모에 저장했어요.' }]);
+    } catch {
+      setMessages((cur) => [...cur, { role: 'system', text: '지금은 저장할 수 없어요. 잠시 후 다시 시도해 주세요.' }]);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -72,7 +96,16 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
           <Text style={styles.backArrow}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AI와 이야기</Text>
-        <View style={styles.back} />
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={!hasUserTurn || sending || saving}
+          hitSlop={8}
+          style={styles.saveButton}
+        >
+          <Text style={[styles.saveButtonText, (!hasUserTurn || sending || saving) && styles.saveButtonTextDim]}>
+            {saving ? '정리 중…' : '정리 저장'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {aiOn === false && (
@@ -149,6 +182,9 @@ const styles = StyleSheet.create({
   back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   backArrow: { fontSize: 30, color: INK, marginTop: -2 },
   headerTitle: { fontSize: 16, fontWeight: '700', color: INK },
+  saveButton: { minWidth: 36, paddingHorizontal: 8, paddingVertical: 8 },
+  saveButtonText: { fontSize: 13, fontWeight: '600', color: INK, textAlign: 'right' },
+  saveButtonTextDim: { color: '#bbb' },
   offNotice: { paddingHorizontal: 20, paddingBottom: 8 },
   offNoticeText: { fontSize: 13, color: MUTED, textAlign: 'center' },
   list: { paddingHorizontal: 16, paddingBottom: 12, flexGrow: 1 },
