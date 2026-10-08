@@ -4,6 +4,7 @@ import GateScreen from '../screens/GateScreen';
 import MainTabs from './MainTabs';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import ReliefScreen from '../screens/ReliefScreen';
+import AiChatScreen from '../screens/AiChatScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -21,6 +22,7 @@ export default function RootNavigator() {
         {/* Slides up over whatever's underneath rather than replacing it — reachable from any
             tab, and dismissing it returns to exactly where the user was. */}
         <Stack.Screen name="Relief" component={ReliefScreen} options={{ presentation: 'modal' }} />
+        <Stack.Screen name="AiChat" component={AiChatScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

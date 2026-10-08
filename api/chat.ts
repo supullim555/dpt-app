@@ -3,22 +3,31 @@
 // The only place this feature's real Gemini API key would ever live — never ship it to the
 // client (src/ai/chatClient.ts calls this endpoint, not Google, for exactly that reason).
 //
-// INERT until BOTH are set as this Vercel PROJECT's environment variables (dashboard, or
-// `vercel env add <name>`) — neither has been set:
+// Requires BOTH to be set as this Vercel PROJECT's environment variables (dashboard, or
+// `vercel env add <name>`):
 //   - AI_CHAT_ENABLED = "true"
 //   - GEMINI_API_KEY  = <a real key> — a separate variable from the one in .env.local, which
 //     is a local-machine build-time file this function never reads.
-// Until both exist, every request gets a 503 and nothing is called or billed.
+// Without both, every request gets a 503 and nothing is called or billed. On the client side,
+// this is additionally gated behind the user's own AI on/off choice (src/ai/preference.ts,
+// asked once at launch in IntroGate) — two independent switches, same as AI_CHAT_UI_ENABLED
+// vs. this server switch: a user deciding to turn AI on, and this deployment having a key
+// configured at all, are separate facts.
+
+import { SYSTEM_PROMPT } from '../src/ai/systemPrompt';
 
 export const config = { runtime: 'edge' };
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string };
 type ChatRequest = { history?: ChatMessage[]; message?: string };
 
-// Keep in sync with src/ai/config.ts's AI_CHAT_MODEL. Re-check against the current Gemini
-// model catalogue before enabling — unlike scripts/lib/gemini.js's image model, this one has
-// never actually been called.
-const MODEL = 'gemini-2.5-flash';
+// Keep in sync with src/ai/config.ts's AI_CHAT_MODEL. gemini-2.5-flash (tried first) returned
+// HTTP 404 "no longer available to new users" for this project's key — Google's own error
+// pointed to this one instead. Verified with one real generateContent call on 2026-10-08:
+// HTTP 200, system_instruction honored (reply matched systemPrompt.ts's tone and didn't
+// diagnose or advise), reply text at candidates[0].content.parts[0].text as expected. Re-check
+// against the live catalogue (GET v1beta/models) before assuming this is still current later.
+const MODEL = 'gemini-3.8-flash';
 const MAX_HISTORY_TURNS = 20;
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -45,30 +54,38 @@ export default async function handler(req: Request): Promise<Response> {
   if (!message) return json({ error: 'message is required.' }, 400);
   if (message.length > MAX_MESSAGE_LENGTH) return json({ error: 'message is too long.' }, 400);
 
-  // TODO before enabling for real:
-  //  - Import and send SYSTEM_PROMPT (src/ai/systemPrompt.ts) — it isn't wired in below, this
-  //    only assembles the turn history, on purpose (the prompt is a draft, not a decision).
-  //  - Decide how the system prompt is actually delivered (a `system_instruction` field vs. a
-  //    leading content part — check the current Gemini API docs, this repo's other Gemini
-  //    calls in scripts/lib/gemini.js are for image generation and don't cover this).
-  //  - Decide what a Gemini safety block should look like to the user (right now it just
-  //    surfaces as a generic 502, which is not necessarily the right thing to show someone
-  //    mid-conversation).
   const history = (body.history ?? []).slice(-MAX_HISTORY_TURNS);
   const contents = [
     ...history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })),
     { role: 'user', parts: [{ text: message }] },
   ];
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({ contents }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      // system_instruction is a top-level sibling of contents in the v1beta REST API, not a
+      // leading content part — confirmed against the current API, not assumed.
+      body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents }),
+    });
+  } catch {
+    return json({ error: 'Could not reach Gemini.' }, 502);
+  }
   if (!res.ok) return json({ error: `Gemini HTTP ${res.status}` }, 502);
 
   const data = await res.json();
-  const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data?.candidates?.[0];
+
+  // A safety block surfaces as a candidate with no content and a finishReason like "SAFETY" —
+  // distinguished from a plain malformed response so the client can show something sensible
+  // ("그 이야기는 여기서 다루기 어려워요" rather than a generic error) instead of the same message
+  // for every failure. See the TODO this used to carry: this is the decision that resolves it.
+  if (candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'PROHIBITED_CONTENT') {
+    return json({ error: 'blocked' }, 200);
+  }
+
+  const reply = candidate?.content?.parts?.[0]?.text;
   if (typeof reply !== 'string') return json({ error: 'No reply text in the Gemini response.' }, 502);
 
   return json({ reply }, 200);

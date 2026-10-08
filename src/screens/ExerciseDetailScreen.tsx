@@ -7,7 +7,6 @@ import CrisisFooter from '../components/CrisisFooter';
 import FloatingPanel from '../components/FloatingPanel';
 import { EXERCISES } from '../data/exercises';
 import { useGame } from '../game/GameContext';
-import { useAiClosing } from '../ai/useAiClosing';
 import { quote, recordMemory, takeCallback, type MemoryEntry } from '../game/memory';
 import { INK, MUTED, TEXT_ON_DARK_MUTED } from '../theme';
 
@@ -31,12 +30,6 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
   // notice before its own thank-you line ever got shown — so once true, keep rendering
   // DialogueExercise (it shows the thank-you line itself once its internal state is done).
   const [justFinished, setJustFinished] = useState(false);
-  const [finishedAnswers, setFinishedAnswers] = useState<string[] | null>(null);
-  // §24: optional local-AI closing line, additive over the fixed one — see useAiClosing's doc.
-  const { closingText, busy: aiBusy, downloadProgress } = useAiClosing(
-    '오늘 이야기 나눠줘서 고마워요.',
-    finishedAnswers
-  );
 
   // Looked up once per visit, specific to this exercise's own past answers — so re-entering
   // "문제 외재화 인터뷰" later can open with what was said here last time, the same thread
@@ -81,7 +74,6 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
     // No popup, no praise, and no nudge toward the shop (§4): the dialogue's closing line
     // thanks them, and the coins just quietly add up.
     completeExercise(exercise.id);
-    setFinishedAnswers(answers);
   };
 
   return (
@@ -111,14 +103,8 @@ export default function ExerciseDetailScreen({ route, navigation }: ExerciseDeta
               questions={exercise.questions}
               onComplete={handleDialogueComplete}
               leadIn={callback ? `지난번 여기서 "${quote(callback.answer)}"라고 적었었죠.` : undefined}
-              closingText={justFinished ? closingText : undefined}
             />
           )
-        )}
-        {justFinished && aiBusy && (
-          <Text style={styles.notice}>
-            {downloadProgress != null ? `AI를 준비하는 중이에요 (${Math.round(downloadProgress * 100)}%)` : 'AI를 준비하는 중이에요…'}
-          </Text>
         )}
         <CrisisFooter tone="dark" />
       </FloatingPanel>
