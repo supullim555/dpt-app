@@ -64,8 +64,15 @@ export default async function handler(req: Request): Promise<Response> {
     if (!history.some((m) => m.role === 'user')) {
       return json({ error: 'Nothing to summarize yet.' }, 400);
     }
+    // Replaying `history` as alternating turns (like the chat branch does) fails here: Gemini
+    // rejects any request ending on a model turn ("Requests ending with a model turn are not
+    // supported", confirmed with a real call) — and a conversation naturally ends on whichever
+    // side spoke last, often the assistant. Sidestepped by flattening the whole transcript into
+    // ONE user-role message instead of replaying it as multi-turn history; SUMMARY_SYSTEM_PROMPT
+    // already tells the model what to do with a transcript shaped like this.
+    const transcript = history.map((m) => `${m.role === 'user' ? '사용자' : '캐릭터'}: ${m.text}`).join('\n');
     systemPrompt = SUMMARY_SYSTEM_PROMPT;
-    contents = history.map(toContent);
+    contents = [{ role: 'user', parts: [{ text: transcript }] }];
   } else {
     const message = body.message?.trim();
     if (!message) return json({ error: 'message is required.' }, 400);
