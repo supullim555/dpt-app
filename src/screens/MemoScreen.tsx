@@ -14,6 +14,13 @@ import { BORDER, MUTED, SCREEN_BG } from '../theme';
 // (memory.ts). This screen just reads that same log; it doesn't add a new store.
 // Named "메모" rather than "지난 이야기" — reads like something you'd actually open, not an
 // archive.
+//
+// §27 (2026-10-17): the "이야기" tab — a separate list-of-exercises-then-detail-screen flow —
+// was removed; exercises now run inline on Home (its quest widget) instead of being picked from
+// a menu. That tab's other half, "look back at what you've done," was already redundant with
+// this screen (memory.ts already recorded every exercise's answers, not just check-ins), so it
+// was merged here rather than kept as a second, parallel log. Nothing below changed to make that
+// true — LABELS already covered every exercise id.
 const LABELS: Record<string, string> = { [DAILY_CHECKIN_ID]: '오늘 하루 이야기', [AI_CHAT_ID]: 'AI와 자유 대화' };
 for (const e of EXERCISES) LABELS[e.id] = e.title;
 const labelFor = (id: string) => LABELS[id] ?? id;

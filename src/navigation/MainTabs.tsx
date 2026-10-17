@@ -3,7 +3,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
-import ExerciseListScreen from '../screens/ExerciseListScreen';
 import MemoScreen from '../screens/MemoScreen';
 import ShopScreen from '../screens/ShopScreen';
 import type { MainTabParamList, RootStackParamList } from './types';
@@ -12,19 +11,15 @@ import { BORDER, INK, OVERLAY_LIGHT, TAB_INACTIVE } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// Plain emoji rather than an icon font: no new asset pipeline or font file for four glyphs,
+// Plain emoji rather than an icon font: no new asset pipeline or font file for three glyphs,
 // and it already matches how the app shows coins (🪙) elsewhere.
 const ICON: Record<keyof MainTabParamList, string> = {
   Home: '🏠',
-  Talk: '💬',
   Memo: '📝',
   Shop: '🛍️',
 };
-// "실습" (practice/exercise) and "지난 이야기" (past stories) read clinical/formal; renamed to
-// match how the feature actually feels to use — talking with her, and notes that pile up.
 const LABEL: Record<keyof MainTabParamList, string> = {
   Home: '홈',
-  Talk: '이야기',
   Memo: '메모',
   Shop: '상점',
 };
@@ -63,7 +58,6 @@ export default function MainTabs({ navigation }: Props) {
           })}
         >
           <Tab.Screen name="Home" component={HomeScreen} />
-          <Tab.Screen name="Talk" component={ExerciseListScreen} />
           <Tab.Screen name="Memo" component={MemoScreen} />
           <Tab.Screen name="Shop" component={ShopScreen} />
         </Tab.Navigator>
@@ -80,7 +74,7 @@ export default function MainTabs({ navigation }: Props) {
 // Deliberately plain text, no red, no siren icon: noticeable, not alarming, matching
 // CrisisFooter's tone.
 //
-// A fixed corner turned out not to be safe everywhere: Talk/Memo/Shop are plain scrolling lists
+// A fixed corner turned out not to be safe everywhere: Memo/Shop are plain scrolling lists
 // (a bottom-right FAB is the standard, expected place there), but Home docks its own
 // FloatingPanel — dialogue + CrisisFooter — flush to the bottom edge while checking in, and a
 // bottom-right chip ended up sitting right on top of the crisis phone numbers (caught in a

@@ -16,8 +16,8 @@ type DisplayMessage = ChatMessage | { role: 'system'; text: string };
 
 // §25's "진짜 상담하듯이" free-chat screen — a real back-and-forth with Gemini, unlike the
 // scripted exercises and the daily check-in (both untouched, still fixed questions only).
-// Reached from a card at the top of the "이야기" tab (ExerciseListScreen), which only renders
-// that card when the AI choice (IntroGate, §24) is 'on' — but this screen re-checks the choice
+// Reached from Home's quest widget (§27 — used to be a card at the top of the now-removed
+// "이야기" tab), which only offers it when the AI choice (IntroGate, §24) is 'on' — but this screen re-checks the choice
 // itself on mount too, since a stale nav state or a direct deep-link shouldn't be able to bypass
 // a user who's already said no.
 export default function AiChatScreen({ navigation }: AiChatScreenProps) {

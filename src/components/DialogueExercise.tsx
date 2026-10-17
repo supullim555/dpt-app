@@ -14,8 +14,9 @@ type Props = {
   leadIn?: string;
 };
 
-// Lives inside a FloatingPanel (ExerciseDetailScreen) — styled to match, so this and Home's own
-// daily check-in read as the same kind of moment rather than two different-looking dialogues.
+// Lives inside Home's own FloatingPanel (§27's ActiveExerciseDialogue, HomeScreen.tsx) — styled
+// to match, so this and Home's own daily check-in read as the same kind of moment rather than
+// two different-looking dialogues.
 export default function DialogueExercise({ questions, onComplete, leadIn }: Props) {
   const beats = leadIn
     ? [{ text: leadIn, answerable: false }, ...questions.map((text) => ({ text, answerable: true }))]
