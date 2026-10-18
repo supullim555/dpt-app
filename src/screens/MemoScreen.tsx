@@ -6,6 +6,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { EXERCISES } from '../data/exercises';
 import { clearMemory, loadMemory, DAILY_CHECKIN_ID, AI_CHAT_ID, type MemoryEntry } from '../game/memory';
 import { confirmDestructive } from '../lib/confirm';
+import { supabase } from '../supabase/client';
 import { BORDER, MUTED, SCREEN_BG } from '../theme';
 
 // A plain, read-only look back at what's been said — the missing half of the callback device
@@ -42,14 +43,26 @@ function toSections(log: MemoryEntry[]): Section[] {
 
 export default function MemoScreen(_props: MemoScreenProps) {
   const [sections, setSections] = useState<Section[] | null>(null);
+  // §29: shown only for a real Supabase session, not for a guest (there's nothing to log out
+  // of). Re-checked on every focus for the same reason memory reloads on every focus — this
+  // screen has no other way to learn "someone just signed in/out elsewhere" without it.
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     loadMemory().then((log) => setSections(toSections(log)));
+    supabase.auth.getSession().then(({ data }) => setUserEmail(data.session?.user.email ?? null));
   }, []);
 
   // Refetches on every visit (not just first mount), so a check-in or exercise done since the
   // last time this screen was open shows up without needing a manual pull-to-refresh.
   useFocusEffect(reload);
+
+  const handleSignOut = async () => {
+    const ok = await confirmDestructive('로그아웃할까요?', '메모 같은 기록은 이 기기에 그대로 남아요. 다시 로그인하면 돌아올 수 있어요.');
+    if (ok) await supabase.auth.signOut();
+    // No need to update local state here — LoginGate's onAuthStateChange listener picks this up
+    // and brings the login screen back on its own (see LoginGate.tsx's header comment).
+  };
 
   const handleClear = async () => {
     const ok = await confirmDestructive('메모를 전부 지울까요?', '지금까지 쌓인 메모가 모두 사라지고, 되돌릴 수 없어요.');
@@ -59,6 +72,15 @@ export default function MemoScreen(_props: MemoScreenProps) {
     }
   };
 
+  const accountFooter = userEmail && (
+    <View style={styles.accountFooter}>
+      <Text style={styles.accountEmail}>{userEmail}</Text>
+      <TouchableOpacity onPress={handleSignOut}>
+        <Text style={styles.signOutText}>로그아웃</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <ScreenHeader title="메모" />
@@ -66,6 +88,7 @@ export default function MemoScreen(_props: MemoScreenProps) {
         <View style={styles.empty}>
           <Text style={styles.emptyText}>아직 쌓인 메모가 없어요.</Text>
           <Text style={styles.emptyText}>오늘 이야기를 나누면 여기 쌓여요.</Text>
+          {accountFooter}
         </View>
       ) : (
         <SectionList
@@ -82,9 +105,12 @@ export default function MemoScreen(_props: MemoScreenProps) {
             </View>
           )}
           ListFooterComponent={
-            <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
-              <Text style={styles.clearButtonText}>메모 전체 지우기</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={styles.clearButton} onPress={handleClear}>
+                <Text style={styles.clearButtonText}>메모 전체 지우기</Text>
+              </TouchableOpacity>
+              {accountFooter}
+            </>
           }
         />
       )}
@@ -121,4 +147,7 @@ const styles = StyleSheet.create({
   answer: { fontSize: 15, color: '#222', marginTop: 6, lineHeight: 21 },
   clearButton: { alignSelf: 'center', marginTop: 16, marginBottom: 24, padding: 8 },
   clearButtonText: { fontSize: 12, color: '#b45309' },
+  accountFooter: { alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 24 },
+  accountEmail: { fontSize: 11, color: '#aaa' },
+  signOutText: { fontSize: 12, color: MUTED, fontWeight: '600' },
 });
