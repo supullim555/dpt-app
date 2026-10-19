@@ -13,8 +13,10 @@ import DialogueExercise from '../components/DialogueExercise';
 import QuestWidget from '../components/QuestWidget';
 import { useGame } from '../game/GameContext';
 import { useReportBottomPanel } from '../navigation/PanelVisibility';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
+import { useDialogueCompletion } from '../hooks/useDialogueCompletion';
 import { loadAiOptIn } from '../ai/preference';
-import { DAILY_CHECKIN_ID, quote, recordMemory, takeCallback, type MemoryEntry } from '../game/memory';
+import { DAILY_CHECKIN_ID, quote, takeCallback, type MemoryEntry } from '../game/memory';
 import { EXERCISES, type Exercise } from '../data/exercises';
 
 const GREETINGS: { until: number; text: string }[] = [
@@ -46,32 +48,23 @@ function dailyLeadIn(greeting: string, callback: MemoryEntry | null): string[] {
 // lead-in line instead (the callback quote when there's one, otherwise the exercise's own
 // summary) — a real conversation doesn't open by citing the technique's theoretical lineage.
 function ActiveExerciseDialogue({ exercise, onDone }: { exercise: Exercise; onDone: () => void }) {
-  const { completeExercise } = useGame();
   const [callback, setCallback] = useState<MemoryEntry | null>(null);
   const [callbackLoaded, setCallbackLoaded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setCallbackLoaded(false);
-    takeCallback(exercise.id).then((found) => {
-      if (cancelled) return;
+  useAsyncEffect(
+    async (isCancelled) => {
+      setCallbackLoaded(false);
+      const found = await takeCallback(exercise.id);
+      if (isCancelled()) return;
       setCallback(found);
       setCallbackLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [exercise.id]);
+    },
+    [exercise.id]
+  );
+
+  const handleComplete = useDialogueCompletion(exercise.id, exercise.questions, onDone);
 
   if (!callbackLoaded) return null;
-
-  const handleComplete = (answers: string[]) => {
-    recordMemory(exercise.id, exercise.questions, answers);
-    completeExercise(exercise.id);
-    // DialogueExercise shows its own thank-you bubble once done; hold it on screen a moment
-    // before the room takes back over, rather than snapping straight back to idle.
-    setTimeout(onDone, 1800);
-  };
 
   return (
     <DialogueExercise
@@ -89,7 +82,7 @@ function ActiveExerciseDialogue({ exercise, onDone }: { exercise: Exercise; onDo
 // over it but the coin count and the quest widget, which is what "living in a room" actually
 // looks like.
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { state, loaded, completeExercise, isCompletedToday } = useGame();
+  const { state, loaded, isCompletedToday } = useGame();
   const insets = useSafeAreaInsets();
   const [callback, setCallback] = useState<MemoryEntry | null>(null);
   const [callbackLoaded, setCallbackLoaded] = useState(false);
@@ -100,30 +93,25 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const greeting = useMemo(getGreeting, []);
   const alreadyCheckedInToday = isCompletedToday(DAILY_CHECKIN_ID);
 
-  useEffect(() => {
-    let cancelled = false;
-    takeCallback().then((found) => {
-      if (cancelled) return;
-      setCallback(found);
-      setCallbackLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+  useAsyncEffect(async (isCancelled) => {
+    const found = await takeCallback();
+    if (isCancelled()) return;
+    setCallback(found);
+    setCallbackLoaded(true);
   }, []);
 
   // Re-read on focus, not just mount: QuestWidget's own AI-on prompt can flip this while the
   // screen stays mounted (bottom-tabs keeps tabs alive), and the check-in flow below needs to
   // know about it without the user having to leave and come back to Home.
   const isFocused = useIsFocused();
-  useEffect(() => {
-    if (!isFocused) return;
-    let cancelled = false;
-    loadAiOptIn().then((v) => !cancelled && setAiOn(v === 'on'));
-    return () => {
-      cancelled = true;
-    };
-  }, [isFocused]);
+  useAsyncEffect(
+    async (isCancelled) => {
+      if (!isFocused) return;
+      const v = await loadAiOptIn();
+      if (!isCancelled()) setAiOn(v === 'on');
+    },
+    [isFocused]
+  );
 
   // §30: a single "is the check-in dialogue currently occupying the panel" flag, the same shape
   // ActiveExerciseDialogue uses above — starts true once there's something to say (not already
@@ -145,11 +133,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   // No popup and no praise: the character's closing line thanks them for talking, and
   // the coin count simply goes up (§4: rewards accumulate quietly). The only record kept is
   // memory.ts's log — it's what the memo tab reads and what future callbacks are drawn from.
-  const handleCheckinComplete = (answers: string[]) => {
-    recordMemory(DAILY_CHECKIN_ID, DAILY_QUESTIONS, answers);
-    completeExercise(DAILY_CHECKIN_ID);
-    setTimeout(() => setCheckinShowing(false), 1800);
-  };
+  const handleCheckinComplete = useDialogueCompletion(DAILY_CHECKIN_ID, DAILY_QUESTIONS, () =>
+    setCheckinShowing(false)
+  );
 
   // An exercise picked from the quest widget always takes over, even mid-check-in — tapping a
   // quest button is a deliberate choice that should win over whatever Home would otherwise show.

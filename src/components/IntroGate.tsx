@@ -1,7 +1,8 @@
-import React, { useEffect, useState, type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { loadEntry, saveEntry } from '../storage/storage';
 import { loadAiOptIn, setAiOptIn } from '../ai/preference';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import CrisisFooter from './CrisisFooter';
 import { BORDER, INK, MUTED, SCREEN_BG } from '../theme';
 
@@ -31,20 +32,14 @@ export default function IntroGate({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const acknowledged = (await loadEntry<boolean>(ACK_KEY).catch(() => false)) === true;
-      if (cancelled) return;
-      if (!acknowledged) {
-        setStep('disclaimer');
-        return;
-      }
-      await resolveAiChoiceOrDone();
-    })();
-    return () => {
-      cancelled = true;
-    };
+  useAsyncEffect(async (isCancelled) => {
+    const acknowledged = (await loadEntry<boolean>(ACK_KEY).catch(() => false)) === true;
+    if (isCancelled()) return;
+    if (!acknowledged) {
+      setStep('disclaimer');
+      return;
+    }
+    await resolveAiChoiceOrDone();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

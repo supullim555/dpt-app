@@ -9,6 +9,7 @@ import FloatingPanel from '../components/FloatingPanel';
 import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
 import { EMOTION_GRID, EMOTION_UNSURE, QUADRANT_COLOR } from '../data/emotions';
 import { useGame } from '../game/GameContext';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import {
   appendGateEntry,
   breathCyclesFor,
@@ -37,16 +38,11 @@ export default function GateScreen({ navigation }: GateScreenProps) {
   const [showSkip, setShowSkip] = useState(false);
   const circle = useRef(new Animated.Value(1)).current;
 
-  useEffect(() => {
-    let cancelled = false;
-    loadGateHistory().then((history) => {
-      if (cancelled) return;
-      setCycles(breathCyclesFor(history));
-      setStep('breath');
-    });
-    return () => {
-      cancelled = true;
-    };
+  useAsyncEffect(async (isCancelled) => {
+    const history = await loadGateHistory();
+    if (isCancelled()) return;
+    setCycles(breathCyclesFor(history));
+    setStep('breath');
   }, []);
 
   useEffect(() => {

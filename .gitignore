@@ -47,5 +47,8 @@ yarn-error.*
 supabase/.temp
 supabase/.branches
 
+# scripts/check-core-flow.js screenshots (diagnostic output, not source)
+scripts/.check-shots/
+
 # raw Gemini outputs (cut-out versions live in src/assets)
 generated/

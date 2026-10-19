@@ -10,6 +10,7 @@ import React, {
 } from 'react';
 import { loadEntry, saveEntry } from '../storage/storage';
 import { today } from '../lib/date';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { ITEM_MAP } from './catalog';
 import type { GameState } from './types';
 
@@ -40,24 +41,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  useEffect(() => {
-    let cancelled = false;
-    loadEntry<GameState>(STORAGE_KEY).then((saved) => {
-      if (cancelled) return;
-      // Field by field: saves from before the shop sold furniture also carry an `equipped`
-      // map and colour-item ids, which are simply dropped here.
-      if (saved) {
-        setState({
-          coins: saved.coins ?? 0,
-          inventory: saved.inventory ?? [],
-          lastCompleted: saved.lastCompleted ?? {},
-        });
-      }
-      setLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+  useAsyncEffect(async (isCancelled) => {
+    const saved = await loadEntry<GameState>(STORAGE_KEY);
+    if (isCancelled()) return;
+    // Field by field: saves from before the shop sold furniture also carry an `equipped`
+    // map and colour-item ids, which are simply dropped here.
+    if (saved) {
+      setState({
+        coins: saved.coins ?? 0,
+        inventory: saved.inventory ?? [],
+        lastCompleted: saved.lastCompleted ?? {},
+      });
+    }
+    setLoaded(true);
   }, []);
 
   useEffect(() => {

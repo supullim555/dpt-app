@@ -6,6 +6,7 @@ import CharacterPortrait from '../components/CharacterPortrait';
 import CrisisFooter from '../components/CrisisFooter';
 import { sendChatMessage, summarizeChat } from '../ai/chatClient';
 import { loadAiOptIn } from '../ai/preference';
+import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { recordAiSummary } from '../game/memory';
 import type { ChatMessage } from '../ai/types';
 import { BORDER, INK, MUTED, SCREEN_BG } from '../theme';
@@ -30,12 +31,9 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
   const listRef = useRef<FlatList>(null);
   const hasUserTurn = messages.some((m) => m.role === 'user');
 
-  useEffect(() => {
-    let cancelled = false;
-    loadAiOptIn().then((v) => !cancelled && setAiOn(v === 'on'));
-    return () => {
-      cancelled = true;
-    };
+  useAsyncEffect(async (isCancelled) => {
+    const v = await loadAiOptIn();
+    if (!isCancelled()) setAiOn(v === 'on');
   }, []);
 
   const send = async () => {
