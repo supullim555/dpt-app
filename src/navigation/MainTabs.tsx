@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,7 +7,7 @@ import MemoScreen from '../screens/MemoScreen';
 import ShopScreen from '../screens/ShopScreen';
 import type { MainTabParamList, RootStackParamList } from './types';
 import { PanelVisibilityProvider, useBottomPanelOpen } from './PanelVisibility';
-import { BORDER, INK, OVERLAY_LIGHT, TAB_INACTIVE } from '../theme';
+import { BORDER, CHIP_SHADOW, INK, OVERLAY_LIGHT, TAB_INACTIVE } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -105,10 +105,7 @@ const styles = StyleSheet.create({
     backgroundColor: OVERLAY_LIGHT,
     borderWidth: 1,
     borderColor: BORDER,
-    ...Platform.select({
-      web: { boxShadow: '0 2px 6px rgba(0,0,0,0.15)' },
-      default: { shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-    }),
+    ...CHIP_SHADOW,
   },
   // Clear of Home's FloatingPanel (which only ever covers the lower portion of the screen)
   // without needing to measure the panel's actual height, which varies with its content.

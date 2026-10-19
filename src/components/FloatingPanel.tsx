@@ -1,12 +1,8 @@
 import React, { type ReactNode } from 'react';
-import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { PANEL_DARK } from '../theme';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { PANEL_DARK, shadow } from '../theme';
 
-// See CoinBadge.tsx for why this is per-platform rather than one set of props.
-const shadow = Platform.select({
-  web: { boxShadow: '0 -6px 16px rgba(0,0,0,0.3)' },
-  default: { shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: -6 }, elevation: 12 },
-});
+const panelShadow = shadow({ y: -6, blur: 16, opacity: 0.3, elevation: 12 });
 
 type Props = {
   children: ReactNode;
@@ -31,6 +27,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 22,
     paddingBottom: 18,
-    ...shadow,
+    ...panelShadow,
   },
 });

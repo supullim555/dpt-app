@@ -1,14 +1,8 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { OVERLAY_LIGHT } from '../theme';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { OVERLAY_LIGHT, shadow } from '../theme';
 
-// react-native-web wants CSS boxShadow; native wants the shadow* props (plus elevation for
-// Android). Both are correct on their own platform, so pick per-platform instead of one that
-// silently does nothing (or logs a deprecation warning) on the other.
-const shadow = Platform.select({
-  web: { boxShadow: '0 2px 4px rgba(0,0,0,0.15)' },
-  default: { shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-});
+const badgeShadow = shadow({ y: 2, blur: 4, opacity: 0.15, elevation: 3 });
 
 type Props = {
   coins: number;
@@ -34,7 +28,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    ...shadow,
+    ...badgeShadow,
   },
   text: { fontSize: 13, fontWeight: '700', color: '#444' },
 });

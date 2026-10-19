@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
 import type { Exercise } from '../data/exercises';
 import { setAiOptIn } from '../ai/preference';
-import { BORDER, INK, MUTED, OVERLAY_LIGHT, SCREEN_BG } from '../theme';
+import { BORDER, CHIP_SHADOW, INK, MUTED, OVERLAY_LIGHT, SCREEN_BG } from '../theme';
 
 // A simple icon per exercise, just enough to tell the buttons apart at a glance — not meant to
 // carry meaning on its own, the title is still the real label (shown on tap, not here).
@@ -113,11 +113,6 @@ export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenA
   );
 }
 
-const shadow = Platform.select({
-  web: { boxShadow: '0 2px 6px rgba(0,0,0,0.15)' },
-  default: { shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-});
-
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 14, alignItems: 'center', gap: 10 },
   collapseButton: {
@@ -140,7 +135,7 @@ const styles = StyleSheet.create({
     backgroundColor: OVERLAY_LIGHT,
     borderWidth: 1,
     borderColor: BORDER,
-    ...shadow,
+    ...CHIP_SHADOW,
   },
   collapsedIcon: { fontSize: 18 },
   questButton: {
@@ -152,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: OVERLAY_LIGHT,
     borderWidth: 1,
     borderColor: BORDER,
-    ...shadow,
+    ...CHIP_SHADOW,
   },
   questButtonDone: { opacity: 0.45 },
   questButtonOff: { opacity: 0.55 },
@@ -180,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: OVERLAY_LIGHT,
     borderWidth: 1,
     borderColor: BORDER,
-    ...shadow,
+    ...CHIP_SHADOW,
   },
   aiPromptText: { fontSize: 12, lineHeight: 17, color: MUTED },
   aiPromptButton: {

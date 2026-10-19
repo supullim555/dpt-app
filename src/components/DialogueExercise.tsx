@@ -1,36 +1,47 @@
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import CharacterPortrait from './CharacterPortrait';
 import TapHintChevron from './TapHintChevron';
-import { useDialogue } from '../hooks/useDialogue';
+import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
 import { TEXT_ON_DARK } from '../theme';
 
 type Props = {
   questions: string[];
   onComplete: (answers: string[]) => void;
-  /** A non-answerable opening line shown before the first question — e.g. a callback to what
-   * was said here last time. Tap to continue like any other beat; doesn't count toward the
-   * "n / total" progress below, since it isn't one of the exercise's own questions. */
-  leadIn?: string;
+  /** Non-answerable opening line(s) shown before the first question — e.g. a callback to what
+   * was said last time (exercises), or a greeting plus an optional callback line (Home's daily
+   * check-in, §30 — the reason this takes an array, not just one string). Each is tapped through
+   * like any other beat; none count toward the "n / total" progress below. */
+  leadIn?: string | string[];
+  /** False when the caller already shows the character elsewhere on screen — Home's daily
+   * check-in shows RoomPortrait in the room itself (behind this panel, not inside it), so a
+   * second portrait docked in here too would just be a duplicate. Defaults to true, which is
+   * right for every exercise (nothing else on screen shows her during one). */
+  showPortrait?: boolean;
 };
 
-// Lives inside Home's own FloatingPanel (§27's ActiveExerciseDialogue, HomeScreen.tsx) — styled
-// to match, so this and Home's own daily check-in read as the same kind of moment rather than
-// two different-looking dialogues.
-export default function DialogueExercise({ questions, onComplete, leadIn }: Props) {
-  const beats = leadIn
-    ? [{ text: leadIn, answerable: false }, ...questions.map((text) => ({ text, answerable: true }))]
-    : questions.map((text) => ({ text, answerable: true }));
+// Lives inside a FloatingPanel — Home's daily check-in (HomeScreen.tsx) and its per-exercise
+// dialogue (ActiveExerciseDialogue, HomeScreen.tsx) both use this directly now (§30 — they used
+// to be two near-identical hand-rolled copies of this same bubble/input/send-button shape; one
+// read Home's `useDialogue` state straight into its own JSX instead of going through here).
+export default function DialogueExercise({ questions, onComplete, leadIn, showPortrait = true }: Props) {
+  const leadInBeats: DialogueBeat[] = (leadIn == null ? [] : Array.isArray(leadIn) ? leadIn : [leadIn]).map((text) => ({
+    text,
+    answerable: false,
+  }));
+  const beats = [...leadInBeats, ...questions.map((text) => ({ text, answerable: true }))];
   const { current, index, phase, draft, setDraft, advance, done } = useDialogue(beats, onComplete);
-  const offset = leadIn ? 1 : 0;
+  const offset = leadInBeats.length;
   const showProgress = !done && index >= offset;
   const questionNumber = Math.min(index - offset + 1, questions.length);
 
   return (
     <View style={styles.container}>
-      <View style={styles.portraitRow}>
-        <CharacterPortrait size={84} />
-      </View>
+      {showPortrait && (
+        <View style={styles.portraitRow}>
+          <CharacterPortrait size={84} />
+        </View>
+      )}
 
       <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.bubbleTouchable}>
         <Text style={styles.bubbleText}>{done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}</Text>

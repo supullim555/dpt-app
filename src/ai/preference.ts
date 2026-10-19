@@ -1,4 +1,4 @@
-import { loadEntry, saveEntry } from '../storage/storage';
+import { loadEntryOr, saveEntry } from '../storage/storage';
 
 export type AiOptIn = 'unset' | 'on' | 'off';
 
@@ -7,18 +7,7 @@ export type AiOptIn = 'unset' | 'on' | 'off';
 // anyone re-decide over a naming change alone.
 const KEY = 'ai.local-opt-in';
 
-// Caught, not propagated: IntroGate awaits this before it can show anything at all (§24), so a
-// rejection here — corrupted storage, a future incompatible stored shape, anything — would leave
-// the whole app stuck on a blank loading screen forever rather than just this one feature failing
-// closed. 'unset' is the same safe default used when nothing's been saved yet.
-export async function loadAiOptIn(): Promise<AiOptIn> {
-  try {
-    return (await loadEntry<AiOptIn>(KEY)) ?? 'unset';
-  } catch {
-    return 'unset';
-  }
-}
-
-export async function setAiOptIn(value: AiOptIn): Promise<void> {
-  await saveEntry(KEY, value);
-}
+// See storage.ts's loadEntryOr for why this fails open to 'unset' instead of throwing —
+// IntroGate awaits this before it can show anything at all.
+export const loadAiOptIn = () => loadEntryOr<AiOptIn>(KEY, 'unset');
+export const setAiOptIn = (value: AiOptIn) => saveEntry(KEY, value);
