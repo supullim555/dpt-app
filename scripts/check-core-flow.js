@@ -52,8 +52,12 @@ async function main() {
     async (t) => {
       await t.passStartupGates();
 
+      // '외재화 인터뷰' is the label QuestWidget shows under the externalization-interview
+      // button (§32) — used here instead of its old 🎭 emoji icon, which no longer appears in
+      // the DOM at all now that the icon is a generated image (QUEST_ICON_SOURCES).
+      const EXERCISE_LABEL = '외재화 인터뷰';
       t.note('이야기 탭 없음 (하단 네비에 "이야기" 텍스트 없음, §27에서 메모로 통합)', !(await t.hasText('이야기')));
-      t.note('체크인 대화 중엔 퀘스트 위젯 숨김 (🎭 안 보임)', !(await t.hasText('🎭')));
+      t.note('체크인 대화 중엔 퀘스트 위젯 숨김 (버튼 라벨 안 보임)', !(await t.hasText(EXERCISE_LABEL)));
 
       // finish the daily check-in to get to the idle room
       await t.tapAnyOf(GREETINGS);
@@ -61,21 +65,21 @@ async function main() {
       await answerDialogue(t, DAILY_QUESTIONS, ['테스트1', '테스트2']);
       await sleep(2200); // DialogueExercise's own thank-you bubble auto-dismiss
 
-      t.note('체크인 끝난 뒤 퀘스트 위젯 노출 (🎭 보임)', await t.hasText('🎭'));
+      t.note('체크인 끝난 뒤 퀘스트 위젯 노출 (버튼 라벨 보임)', await t.hasText(EXERCISE_LABEL));
       await t.shot('01_idle_with_widget.png');
 
       // collapse / expand the quest widget
       await t.clickText('⌃');
       await sleep(400);
-      t.note('접기 버튼 누르면 퀘스트 아이콘들 숨겨짐', !(await t.hasText('🎭')));
+      t.note('접기 버튼 누르면 퀘스트 아이콘들 숨겨짐', !(await t.hasText(EXERCISE_LABEL)));
       t.note('접힌 토글(📋) 노출', await t.hasText('📋'));
       await t.shot('02_collapsed.png');
       await t.clickText('📋');
       await sleep(400);
-      t.note('다시 펼치면 퀘스트 아이콘 복귀', await t.hasText('🎭'));
+      t.note('다시 펼치면 퀘스트 아이콘 복귀', await t.hasText(EXERCISE_LABEL));
 
       // start the externalization-interview exercise from the quest widget
-      t.note('퀘스트 버튼(외재화 인터뷰) 클릭됨', await t.clickEmoji('🎭'));
+      t.note('퀘스트 버튼(외재화 인터뷰) 클릭됨', await t.clickText(EXERCISE_LABEL));
       await sleep(1000);
       t.note(
         '실습 대화 시작(리드인 또는 첫 질문 노출)',
@@ -103,7 +107,7 @@ async function main() {
       t.note('실습 완료 문구 노출', await t.hasText('고마워요'));
       await t.shot('04_exercise_done.png');
       await sleep(2200);
-      t.note('실습 완료 후 홈 유휴 상태로 복귀 + 퀘스트 위젯 재노출', await t.hasText('🎭'));
+      t.note('실습 완료 후 홈 유휴 상태로 복귀 + 퀘스트 위젯 재노출', await t.hasText(EXERCISE_LABEL));
       t.note('완료한 퀘스트에 체크 표시(✓) 보임', await t.hasText('✓'));
       await t.shot('05_back_to_idle.png');
 

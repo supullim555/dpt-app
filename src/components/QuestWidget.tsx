@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
 import type { Exercise } from '../data/exercises';
 import { setAiOptIn } from '../ai/preference';
+import { QUEST_ICON_SOURCES } from '../assets/questIcons';
 import { BORDER, CHIP_SHADOW, INK, MUTED, OVERLAY_LIGHT, SCREEN_BG } from '../theme';
 
-// A simple icon per exercise, just enough to tell the buttons apart at a glance — not meant to
-// carry meaning on its own, the title is still the real label (shown on tap, not here).
-const ICON: Record<string, string> = {
-  'externalization-interview': '🎭',
-  'scaling-exception': '📏',
-  'letter-from-future-self': '💌',
-  'defusion-play': '🎈',
-  'thought-check': '🔍',
+// A short label under each button (§32 — the icons alone weren't enough to tell what an exercise
+// actually was before starting it). Its own wording, not exercise.title verbatim: titles like
+// "척도질문 + 예외 찾기" are too long to read at this width, so these are trimmed to 2-4 syllables
+// each while still naming the exercise, not just its track.
+const LABEL: Record<string, string> = {
+  'externalization-interview': '외재화 인터뷰',
+  'scaling-exception': '척도 질문',
+  'letter-from-future-self': '미래의 편지',
+  'defusion-play': '생각 거리두기',
+  'thought-check': '생각 점검',
 };
 
 type Props = {
@@ -76,26 +79,36 @@ export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenA
       {exercises.map(({ exercise, doneToday }) => (
         <TouchableOpacity
           key={exercise.id}
-          style={[styles.questButton, doneToday && styles.questButtonDone]}
+          style={styles.item}
           onPress={() => onSelectExercise(exercise)}
           disabled={doneToday}
           accessibilityLabel={exercise.title}
         >
-          <Text style={styles.questIcon}>{ICON[exercise.id] ?? '💭'}</Text>
-          {doneToday && (
-            <View style={styles.doneBadge}>
-              <Text style={styles.doneBadgeText}>✓</Text>
-            </View>
-          )}
+          <View style={[styles.questButton, doneToday && styles.questButtonDone]}>
+            {QUEST_ICON_SOURCES[exercise.id] ? (
+              <Image source={QUEST_ICON_SOURCES[exercise.id]} style={styles.questIconImage} resizeMode="contain" />
+            ) : (
+              <Text style={styles.questIcon}>💭</Text>
+            )}
+            {doneToday && (
+              <View style={styles.doneBadge}>
+                <Text style={styles.doneBadgeText}>✓</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.itemLabel} numberOfLines={2}>
+            {LABEL[exercise.id] ?? exercise.title}
+          </Text>
         </TouchableOpacity>
       ))}
 
-      <TouchableOpacity
-        style={[styles.questButton, styles.aiButton, !aiOn && styles.questButtonOff]}
-        onPress={handleAiPress}
-        accessibilityLabel="AI와 이야기"
-      >
-        <Text style={styles.questIcon}>✨</Text>
+      <TouchableOpacity style={styles.item} onPress={handleAiPress} accessibilityLabel="AI와 이야기">
+        <View style={[styles.questButton, styles.aiButton, !aiOn && styles.questButtonOff]}>
+          <Text style={styles.questIcon}>✨</Text>
+        </View>
+        <Text style={styles.itemLabel} numberOfLines={2}>
+          AI와 대화
+        </Text>
       </TouchableOpacity>
 
       {showAiPrompt && (
@@ -138,6 +151,22 @@ const styles = StyleSheet.create({
     ...CHIP_SHADOW,
   },
   collapsedIcon: { fontSize: 18 },
+  item: { alignItems: 'center', width: 64 },
+  // A small pill rather than plain text over the room art behind it — the backdrop's color
+  // varies by what furniture is bought (§12), so plain text risks low contrast somewhere.
+  itemLabel: {
+    marginTop: 4,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '700',
+    color: INK,
+    textAlign: 'center',
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
   questButton: {
     width: 48,
     height: 48,
@@ -153,6 +182,7 @@ const styles = StyleSheet.create({
   questButtonOff: { opacity: 0.55 },
   aiButton: { backgroundColor: INK, borderColor: INK },
   questIcon: { fontSize: 20 },
+  questIconImage: { width: 26, height: 26 },
   doneBadge: {
     position: 'absolute',
     right: -2,
