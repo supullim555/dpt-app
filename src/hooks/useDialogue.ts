@@ -15,7 +15,12 @@ export function useDialogue(beats: DialogueBeat[], onComplete: (answers: string[
   const [phase, setPhase] = useState<'bubble' | 'input'>('bubble');
   const [draft, setDraft] = useState('');
   const [done, setDone] = useState(false);
+  // Ref is the real source of truth for `advance`'s own logic (onComplete needs the
+  // just-pushed value synchronously, before a state update would re-render) — `answered` is a
+  // state mirror of the same pushes, read-only, purely so a caller can render a running history
+  // of what's been said so far (§36: DialogueExercise showing past Q&A, not just the current line).
   const collected = useRef<string[]>([]);
+  const [answered, setAnswered] = useState<string[]>([]);
 
   const current = beats[index];
   const isAnswerable = current?.answerable ?? true;
@@ -27,7 +32,9 @@ export function useDialogue(beats: DialogueBeat[], onComplete: (answers: string[
       return;
     }
     if (isAnswerable) {
-      collected.current.push(draft.trim());
+      const trimmed = draft.trim();
+      collected.current.push(trimmed);
+      setAnswered((prev) => [...prev, trimmed]);
       setDraft('');
     }
     if (index + 1 < beats.length) {
@@ -49,5 +56,6 @@ export function useDialogue(beats: DialogueBeat[], onComplete: (answers: string[
     advance,
     done,
     isAnswerable,
+    answered,
   };
 }

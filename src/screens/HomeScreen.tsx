@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { HomeScreenProps } from '../navigation/types';
@@ -169,7 +169,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* wait for the saved state so bought furniture doesn't pop in a moment after the room appears */}
       {loaded && (
         <RoomBackdrop owned={state.inventory}>
@@ -213,7 +213,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {showStatus && <StatusOverlay onClose={() => setShowStatus(false)} />}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

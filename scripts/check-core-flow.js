@@ -62,7 +62,21 @@ async function main() {
       // finish the daily check-in to get to the idle room
       await t.tapAnyOf(GREETINGS);
       await sleep(500);
-      await answerDialogue(t, DAILY_QUESTIONS, ['테스트1', '테스트2']);
+      await t.tapAnyOf([DAILY_QUESTIONS[0]]);
+      await sleep(400);
+      await t.fillTextarea('테스트1');
+      await sleep(200);
+      await t.clickText(submitLabel(0, DAILY_QUESTIONS.length));
+      await sleep(600);
+      // §36: a submitted answer now stays visible as a small echoed line while the next question
+      // is asked, instead of just vanishing into the input clearing — check it's actually there.
+      t.note('이전 답변이 대화 기록으로 남아 보임 (테스트1)', await t.hasText('테스트1'));
+      await t.tapAnyOf([DAILY_QUESTIONS[1]]);
+      await sleep(400);
+      await t.fillTextarea('테스트2');
+      await sleep(200);
+      await t.clickText(submitLabel(1, DAILY_QUESTIONS.length));
+      await sleep(600);
       // the stat-up toast (§33) shares useDialogueCompletion's 1800ms hold, so it must be
       // checked before that window closes — split the old flat 2200ms sleep to land inside it.
       await sleep(300);
