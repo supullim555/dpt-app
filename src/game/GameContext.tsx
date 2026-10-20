@@ -12,6 +12,7 @@ import { loadEntry, saveEntry } from '../storage/storage';
 import { today } from '../lib/date';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { ITEM_MAP } from './catalog';
+import { DEFAULT_STATS, STAT_GAIN, statForId, type StatId } from './stats';
 import type { GameState } from './types';
 
 const STORAGE_KEY = 'game-state';
@@ -21,13 +22,15 @@ const DEFAULT_STATE: GameState = {
   coins: 0,
   inventory: [],
   lastCompleted: {},
+  stats: DEFAULT_STATS,
 };
 
 type GameContextValue = {
   state: GameState;
   loaded: boolean;
   purchaseItem: (itemId: string) => boolean;
-  completeExercise: (exerciseId: string) => boolean;
+  /** Returns which stat (if any) just grew — null if already completed today. */
+  completeExercise: (exerciseId: string) => StatId | null;
   isCompletedToday: (exerciseId: string) => boolean;
 };
 
@@ -51,6 +54,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         coins: saved.coins ?? 0,
         inventory: saved.inventory ?? [],
         lastCompleted: saved.lastCompleted ?? {},
+        // Merged key-by-key, not a plain `?? `: unlike the fields above (present-as-a-whole or
+        // absent-as-a-whole), `stats` is an object whose individual keys can be missing — not
+        // just today (no `stats` at all in a pre-§33 save), but again whenever a future stat is
+        // added (an older save won't have that one key either). The merge keeps every current
+        // StatId populated no matter when the save was written.
+        stats: { ...DEFAULT_STATS, ...(saved.stats ?? {}) },
       });
     }
     setLoaded(true);
@@ -75,13 +84,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const completeExercise = useCallback((exerciseId: string) => {
     const key = today();
     const prev = stateRef.current;
-    if (prev.lastCompleted[exerciseId] === key) return false;
+    if (prev.lastCompleted[exerciseId] === key) return null;
+    const statId = statForId(exerciseId);
     setState({
       ...prev,
       coins: prev.coins + EXERCISE_REWARD,
       lastCompleted: { ...prev.lastCompleted, [exerciseId]: key },
+      stats: statId ? { ...prev.stats, [statId]: prev.stats[statId] + STAT_GAIN } : prev.stats,
     });
-    return true;
+    return statId ?? null;
   }, []);
 
   const isCompletedToday = useCallback(

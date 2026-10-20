@@ -25,11 +25,15 @@ export type RootStackParamList = {
   // §25's free-chat screen (Gemini-backed) — reached from Home's quest widget (§27; used to be
   // a card at the top of the now-removed "이야기" tab), shown there only when AI is turned on.
   AiChat: undefined;
+  // §33's growth-loop status screen — reached from Home's StatusBadge, a plain stack push like
+  // AiChat (not a modal like Relief; looking at your stats isn't an urgent interrupt).
+  Status: undefined;
 };
 
 export type GateScreenProps = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 export type ReliefScreenProps = NativeStackScreenProps<RootStackParamList, 'Relief'>;
 export type AiChatScreenProps = NativeStackScreenProps<RootStackParamList, 'AiChat'>;
+export type StatusScreenProps = NativeStackScreenProps<RootStackParamList, 'Status'>;
 
 // A screen inside a tab whose "navigate" needs to reach a root-stack screen (not one of its own
 // tab siblings — e.g. Home reaching AiChat) needs both navigators' prop types composed — the

@@ -8,6 +8,8 @@ import RoomPortrait from '../components/RoomPortrait';
 import RoamingCharacter from '../components/RoamingCharacter';
 import CrisisFooter from '../components/CrisisFooter';
 import CoinBadge from '../components/CoinBadge';
+import StatusBadge from '../components/StatusBadge';
+import StatUpToast from '../components/StatUpToast';
 import FloatingPanel from '../components/FloatingPanel';
 import DialogueExercise from '../components/DialogueExercise';
 import QuestWidget from '../components/QuestWidget';
@@ -62,17 +64,20 @@ function ActiveExerciseDialogue({ exercise, onDone }: { exercise: Exercise; onDo
     [exercise.id]
   );
 
-  const handleComplete = useDialogueCompletion(exercise.id, exercise.questions, onDone);
+  const { onComplete: handleComplete, toast } = useDialogueCompletion(exercise.id, exercise.questions, onDone);
 
   if (!callbackLoaded) return null;
 
   return (
-    <DialogueExercise
-      questions={exercise.questions}
-      onComplete={handleComplete}
-      leadIn={callback ? `지난번 여기서 "${quote(callback.answer)}"라고 적었었죠.` : exercise.summary}
-      showPortrait
-    />
+    <>
+      <StatUpToast toast={toast} />
+      <DialogueExercise
+        questions={exercise.questions}
+        onComplete={handleComplete}
+        leadIn={callback ? `지난번 여기서 "${quote(callback.answer)}"라고 적었었죠.` : exercise.summary}
+        showPortrait
+      />
+    </>
   );
 }
 
@@ -133,8 +138,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   // No popup and no praise: the character's closing line thanks them for talking, and
   // the coin count simply goes up (§4: rewards accumulate quietly). The only record kept is
   // memory.ts's log — it's what the memo tab reads and what future callbacks are drawn from.
-  const handleCheckinComplete = useDialogueCompletion(DAILY_CHECKIN_ID, DAILY_QUESTIONS, () =>
-    setCheckinShowing(false)
+  const { onComplete: handleCheckinComplete, toast: checkinToast } = useDialogueCompletion(
+    DAILY_CHECKIN_ID,
+    DAILY_QUESTIONS,
+    () => setCheckinShowing(false)
   );
 
   // An exercise picked from the quest widget always takes over, even mid-check-in — tapping a
@@ -171,6 +178,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       <CoinBadge coins={state.coins} style={[styles.coinBadge, { top: insets.top + 10 }]} />
+      <StatusBadge
+        onPress={() => navigation.navigate('Status')}
+        style={[styles.statusBadge, { top: insets.top + 10 }]}
+      />
 
       {!showPanel && (
         <QuestWidget
@@ -191,6 +202,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
       {showCheckinPanel && (
         <FloatingPanel style={styles.panel}>
+          <StatUpToast toast={checkinToast} />
           <DialogueExercise
             questions={DAILY_QUESTIONS}
             onComplete={handleCheckinComplete}
@@ -207,5 +219,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   coinBadge: { position: 'absolute', left: 14, zIndex: 10 },
+  statusBadge: { position: 'absolute', right: 14, zIndex: 10 },
   panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });

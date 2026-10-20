@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, View, type ImageSourcePropType } from 'react-native';
 import { CHARACTER_CLIPS, PORTRAIT_FRONT } from '../assets/character';
 import { QUEST_ICON_SOURCES } from '../assets/questIcons';
+import { STAT_ICON_SOURCES } from '../assets/statIcons';
 import { FLOOR_SOURCE, ROOM_OBJECTS, WALLPAPER_SOURCE } from '../room/objects';
 
 const SOURCES: ImageSourcePropType[] = [
@@ -11,6 +12,7 @@ const SOURCES: ImageSourcePropType[] = [
   FLOOR_SOURCE,
   WALLPAPER_SOURCE,
   ...Object.values(QUEST_ICON_SOURCES),
+  ...Object.values(STAT_ICON_SOURCES),
 ];
 
 // Loads every character and room image the moment the app starts, so the first time a clip,

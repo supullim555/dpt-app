@@ -63,7 +63,11 @@ async function main() {
       await t.tapAnyOf(GREETINGS);
       await sleep(500);
       await answerDialogue(t, DAILY_QUESTIONS, ['테스트1', '테스트2']);
-      await sleep(2200); // DialogueExercise's own thank-you bubble auto-dismiss
+      // the stat-up toast (§33) shares useDialogueCompletion's 1800ms hold, so it must be
+      // checked before that window closes — split the old flat 2200ms sleep to land inside it.
+      await sleep(300);
+      t.note('체크인 스탯업 토스트 보임 (유대감 +2)', await t.hasText('유대감 +2'));
+      await sleep(1900); // total ~2200ms, same as before, past the thank-you bubble's hold
 
       t.note('체크인 끝난 뒤 퀘스트 위젯 노출 (버튼 라벨 보임)', await t.hasText(EXERCISE_LABEL));
       await t.shot('01_idle_with_widget.png');
@@ -105,17 +109,33 @@ async function main() {
 
       await sleep(1000);
       t.note('실습 완료 문구 노출', await t.hasText('고마워요'));
+      t.note('실습 완료 스탯업 토스트 보임 (용기 +2)', await t.hasText('용기 +2'));
       await t.shot('04_exercise_done.png');
       await sleep(2200);
       t.note('실습 완료 후 홈 유휴 상태로 복귀 + 퀘스트 위젯 재노출', await t.hasText(EXERCISE_LABEL));
       t.note('완료한 퀘스트에 체크 표시(✓) 보임', await t.hasText('✓'));
       await t.shot('05_back_to_idle.png');
 
+      // status screen (§33) — reached from Home's StatusBadge, always visible (not hidden while
+      // a panel is open like QuestWidget), so this is checked from the idle state.
+      t.note('상태 버튼 노출', await t.hasText('📊 상태'));
+      t.note('상태 화면 진입됨', await t.clickText('📊 상태'));
+      await sleep(800);
+      const STAT_LABELS = ['용기', '통찰', '희망', '유연함', '평온', '유대감'];
+      let allStatsShown = true;
+      for (const label of STAT_LABELS) {
+        allStatsShown = allStatsShown && (await t.hasText(label));
+      }
+      t.note('상태 화면에 능력치 6종 모두 보임', allStatsShown);
+      await t.shot('06_status_screen.png');
+      await t.clickText('‹');
+      await sleep(500);
+
       // AI chat entry from the quest widget
       t.note('퀘스트 위젯의 AI(✨) 버튼 클릭됨', await t.clickEmoji('✨'));
       await sleep(1000);
       t.note('AI 채팅 화면으로 이동됨', await t.hasText('편하게 이야기해도 돼요'));
-      await t.shot('06_ai_chat.png');
+      await t.shot('07_ai_chat.png');
 
       // memo tab shows the completed exercise
       await t.clickText('‹');
@@ -123,7 +143,7 @@ async function main() {
       await t.clickText('메모');
       await sleep(1000);
       t.note('메모 탭에 방금 한 실습(문제 외재화 인터뷰) 기록 보임', await t.hasText('문제 외재화 인터뷰'));
-      await t.shot('07_memo_shows_exercise.png');
+      await t.shot('08_memo_shows_exercise.png');
     },
     { shotDir: SHOT_DIR }
   );
