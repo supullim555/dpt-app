@@ -60,7 +60,10 @@ export const ROOM_OBJECTS: RoomObjectDef[] = [
   { id: 'desk_set', source: require('../assets/room/desk_set.png'), kind: 'solid', x: 0.8, y: 0.72, w: 0.28, footDepth: 0.04, shop: { name: '책상 세트', price: 60, category: 'furniture' } },
   { id: 'basket', source: require('../assets/room/basket.png'), kind: 'solid', x: 0.13, y: 0.68, w: 0.17, footDepth: 0.03, shop: { name: '바구니', price: 20, category: 'decor' } },
   { id: 'book_stack', source: require('../assets/room/book_stack.png'), kind: 'solid', x: 0.29, y: 0.6, w: 0.09, footDepth: 0.025, shop: { name: '책 더미', price: 20, category: 'decor' } },
-  { id: 'teddy_bear', source: require('../assets/room/teddy_bear.png'), kind: 'solid', x: 0.4, y: 0.64, w: 0.13, footDepth: 0.03, footWidth: 0.7, shop: { name: '곰인형', price: 30, category: 'decor' } },
+  // Nudged to sit right at the bed's foot (its right edge is ~x:0.41) rather than floating
+  // alone in open floor — a stuffed animal reads as "placed" when it's touching the bed it
+  // belongs to, not scattered in the middle of the room.
+  { id: 'teddy_bear', source: require('../assets/room/teddy_bear.png'), kind: 'solid', x: 0.37, y: 0.58, w: 0.13, footDepth: 0.03, footWidth: 0.7, shop: { name: '곰인형', price: 30, category: 'decor' } },
   { id: 'plant', source: require('../assets/room/plant.png'), kind: 'solid', x: 0.09, y: 0.93, w: 0.17, footDepth: 0.035, footWidth: 0.6, shop: { name: '화분', price: 20, category: 'decor' } },
   { id: 'standing_lamp', source: require('../assets/room/standing_lamp.png'), kind: 'solid', x: 0.95, y: 0.94, w: 0.09, footDepth: 0.02, footWidth: 0.5, shop: { name: '스탠드 조명', price: 30, category: 'decor' } },
 ];

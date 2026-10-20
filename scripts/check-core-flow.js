@@ -116,20 +116,23 @@ async function main() {
       t.note('완료한 퀘스트에 체크 표시(✓) 보임', await t.hasText('✓'));
       await t.shot('05_back_to_idle.png');
 
-      // status screen (§33) — reached from Home's StatusBadge, always visible (not hidden while
-      // a panel is open like QuestWidget), so this is checked from the idle state.
+      // status overlay (§34/§35) — reached from Home's StatusBadge, always visible (not hidden
+      // while a panel is open like QuestWidget). A translucent floating window over the room
+      // (StatusOverlay), not a navigated screen, so it's dismissed via its own ✕ button rather
+      // than the '‹' back arrow used by actual screen pushes elsewhere in this script.
       t.note('상태 버튼 노출', await t.hasText('📊 상태'));
-      t.note('상태 화면 진입됨', await t.clickText('📊 상태'));
-      await sleep(800);
+      t.note('상태 창 열림', await t.clickText('📊 상태'));
+      await sleep(600);
       const STAT_LABELS = ['용기', '통찰', '희망', '유연함', '평온', '유대감'];
       let allStatsShown = true;
       for (const label of STAT_LABELS) {
         allStatsShown = allStatsShown && (await t.hasText(label));
       }
-      t.note('상태 화면에 능력치 6종 모두 보임', allStatsShown);
-      await t.shot('06_status_screen.png');
-      await t.clickText('‹');
-      await sleep(500);
+      t.note('상태 창에 능력치 6종 모두 보임', allStatsShown);
+      await t.shot('06_status_overlay.png');
+      await t.clickText('✕');
+      await sleep(400);
+      t.note('상태 창 닫힘 (✕)', !(await t.hasText('용기')));
 
       // AI chat entry from the quest widget
       t.note('퀘스트 위젯의 AI(✨) 버튼 클릭됨', await t.clickEmoji('✨'));

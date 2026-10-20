@@ -9,6 +9,7 @@ import RoamingCharacter from '../components/RoamingCharacter';
 import CrisisFooter from '../components/CrisisFooter';
 import CoinBadge from '../components/CoinBadge';
 import StatusBadge from '../components/StatusBadge';
+import StatusOverlay from '../components/StatusOverlay';
 import StatUpToast from '../components/StatUpToast';
 import FloatingPanel from '../components/FloatingPanel';
 import DialogueExercise from '../components/DialogueExercise';
@@ -93,6 +94,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [callbackLoaded, setCallbackLoaded] = useState(false);
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const [aiOn, setAiOn] = useState<boolean | null>(null);
+  const [showStatus, setShowStatus] = useState(false);
 
   // Computed once per mount so the opening line doesn't change while the screen stays open.
   const greeting = useMemo(getGreeting, []);
@@ -178,10 +180,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       <CoinBadge coins={state.coins} style={[styles.coinBadge, { top: insets.top + 10 }]} />
-      <StatusBadge
-        onPress={() => navigation.navigate('Status')}
-        style={[styles.statusBadge, { top: insets.top + 10 }]}
-      />
+      <StatusBadge onPress={() => setShowStatus(true)} style={[styles.statusBadge, { top: insets.top + 10 }]} />
 
       {!showPanel && (
         <QuestWidget
@@ -212,6 +211,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <CrisisFooter tone="dark" />
         </FloatingPanel>
       )}
+
+      {showStatus && <StatusOverlay onClose={() => setShowStatus(false)} />}
     </View>
   );
 }
