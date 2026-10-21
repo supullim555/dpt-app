@@ -4,6 +4,7 @@ import CharacterPortrait from './CharacterPortrait';
 import TapHintChevron from './TapHintChevron';
 import { useDialogue, type DialogueBeat } from '../hooks/useDialogue';
 import { makeSubmitOnEnterHandler } from '../hooks/useSubmitOnEnter';
+import { useRoomBoxSize } from '../hooks/useRoomBoxSize';
 import { TEXT_ON_DARK, TEXT_ON_DARK_MUTED } from '../theme';
 
 type Props = {
@@ -48,6 +49,12 @@ export default function DialogueExercise({ questions, onComplete, leadIn, showPo
     if (history.length > 0) historyRef.current?.scrollToEnd({ animated: true });
   }, [history.length]);
 
+  // §37: a wide desktop browser window has real room to show more of the exchange at once — a
+  // phone-width history box (`isWide` false) stays the original compact single-exchange height,
+  // a wide one shows roughly double before it needs to scroll.
+  const { isWide } = useRoomBoxSize();
+  const historyMaxHeight = isWide ? 170 : 86;
+
   return (
     <View style={styles.container}>
       {showPortrait && (
@@ -57,7 +64,11 @@ export default function DialogueExercise({ questions, onComplete, leadIn, showPo
       )}
 
       {history.length > 0 && (
-        <ScrollView ref={historyRef} style={styles.history} contentContainerStyle={styles.historyContent}>
+        <ScrollView
+          ref={historyRef}
+          style={[styles.history, { maxHeight: historyMaxHeight }]}
+          contentContainerStyle={styles.historyContent}
+        >
           {history.map((h, i) => (
             <View key={i} style={styles.historyEntry}>
               <Text style={styles.historyQuestion}>{h.question}</Text>
@@ -108,8 +119,9 @@ const styles = StyleSheet.create({
   portraitRow: { marginBottom: 4 },
   // Capped, not grown-to-fit: a 4-question exercise's transcript could otherwise push the panel
   // tall enough to shove the portrait and crisis footer around as it goes. Scrolls internally
-  // and auto-follows the latest entry instead.
-  history: { maxHeight: 86, alignSelf: 'stretch', marginBottom: 10 },
+  // and auto-follows the latest entry instead. The actual cap (historyMaxHeight) is set inline —
+  // phone-compact or desktop-roomier, see useRoomBoxSize above.
+  history: { alignSelf: 'stretch', marginBottom: 10 },
   historyContent: { gap: 8 },
   historyEntry: { gap: 3 },
   historyQuestion: { fontSize: 12, lineHeight: 16, color: TEXT_ON_DARK_MUTED },

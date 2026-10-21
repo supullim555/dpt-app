@@ -13,8 +13,11 @@ export const WALL_BOTTOM = 0.38;
 
 // The room is drawn in a box no wider than this (width / height), centered in
 // the stage. On phones the box is the whole stage; on wide web windows it
-// keeps furniture from stretching into an unrecognisable room.
-const ROOM_MAX_ASPECT = 0.8;
+// keeps furniture from stretching into an unrecognisable room. Exported so
+// src/hooks/useRoomBoxSize.ts (§37) can match this same box from outside
+// RoomBackdrop's own tree, for anything that wants to line up with the room's width
+// (FloatingPanel) without being able to read RoomContext.
+export const ROOM_MAX_ASPECT = 0.8;
 
 // Pixel size of every cut-out asset (written by scripts/extract-room.js), so a
 // piece keeps its proportions whatever width the layout gives it.

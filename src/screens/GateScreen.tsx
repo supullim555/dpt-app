@@ -220,7 +220,7 @@ export default function GateScreen({ navigation }: GateScreenProps) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#3a2a24' },
-  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, minHeight: 210, justifyContent: 'center' },
+  panel: { minHeight: 210, justifyContent: 'center' },
   center: { alignItems: 'center', gap: 12 },
   hint: { color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 19, textAlign: 'center' },
   prompt: { color: '#fff', fontSize: 15, lineHeight: 22, textAlign: 'center' },

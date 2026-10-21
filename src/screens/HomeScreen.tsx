@@ -193,14 +193,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       )}
 
       {showExercisePanel && activeExercise && (
-        <FloatingPanel style={styles.panel}>
+        <FloatingPanel>
           <ActiveExerciseDialogue exercise={activeExercise} onDone={() => setActiveExercise(null)} />
           <CrisisFooter tone="dark" />
         </FloatingPanel>
       )}
 
       {showCheckinPanel && (
-        <FloatingPanel style={styles.panel}>
+        <FloatingPanel>
           <StatUpToast toast={checkinToast} />
           <DialogueExercise
             questions={DAILY_QUESTIONS}
@@ -221,5 +221,4 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   coinBadge: { position: 'absolute', left: 14, zIndex: 10 },
   statusBadge: { position: 'absolute', right: 14, zIndex: 10 },
-  panel: { position: 'absolute', left: 0, right: 0, bottom: 0 },
 });
