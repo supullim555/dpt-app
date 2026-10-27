@@ -1,6 +1,7 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { BAR_MAX, STAT_EMOJI_FALLBACK, STAT_LABEL, type StatId } from '../game/stats';
 import { STAT_ICON_SOURCES } from '../assets/statIcons';
+import IconOrEmoji from './IconOrEmoji';
 import { BORDER, INK, MUTED } from '../theme';
 
 type Props = { statId: StatId; value: number };
@@ -9,15 +10,15 @@ type Props = { statId: StatId; value: number };
 // monochrome (fill/track both existing theme.ts tokens) rather than six new accent colors — the
 // icon is what tells the rows apart, the bar just shows how full each one is.
 export default function StatBar({ statId, value }: Props) {
-  const source = STAT_ICON_SOURCES[statId];
   const ratio = Math.max(0, Math.min(1, value / BAR_MAX));
   return (
     <View style={styles.row}>
-      {source ? (
-        <Image source={source} style={styles.icon} resizeMode="contain" />
-      ) : (
-        <Text style={styles.emoji}>{STAT_EMOJI_FALLBACK[statId]}</Text>
-      )}
+      <IconOrEmoji
+        source={STAT_ICON_SOURCES[statId]}
+        emoji={STAT_EMOJI_FALLBACK[statId]}
+        imageStyle={styles.icon}
+        emojiStyle={styles.emoji}
+      />
       <View style={styles.main}>
         <View style={styles.labelRow}>
           <Text style={styles.label}>{STAT_LABEL[statId]}</Text>

@@ -1,25 +1,27 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { StatToastState } from '../hooks/useStatToast';
 import { STAT_EMOJI_FALLBACK, STAT_LABEL } from '../game/stats';
 import { STAT_ICON_SOURCES } from '../assets/statIcons';
+import IconOrEmoji from './IconOrEmoji';
 import { CHIP_SHADOW, INK, OVERLAY_LIGHT } from '../theme';
 
 type Props = { toast: StatToastState };
 
-// Same small-pill recipe as CoinBadge — nothing new invented. Rendered as the first child inside
-// whichever FloatingPanel is currently showing a dialogue (§33), so it appears and disappears in
-// the same 1800ms window as DialogueExercise's own "고마워요" bubble instead of as a competing
-// independent overlay.
+// Same small-pill recipe as CoinBadge (HudBadge) — not built on it directly since this one also
+// needs an icon alongside the text, which HudBadge's plain-text-child shape doesn't fit. Rendered
+// as the first child inside whichever FloatingPanel is currently showing a dialogue (§33), so it
+// appears and disappears in the same 1800ms window as DialogueExercise's own "고마워요" bubble
+// instead of as a competing independent overlay.
 export default function StatUpToast({ toast }: Props) {
   if (!toast) return null;
-  const source = STAT_ICON_SOURCES[toast.statId];
   return (
     <View style={styles.pill}>
-      {source ? (
-        <Image source={source} style={styles.icon} resizeMode="contain" />
-      ) : (
-        <Text style={styles.emoji}>{STAT_EMOJI_FALLBACK[toast.statId]}</Text>
-      )}
+      <IconOrEmoji
+        source={STAT_ICON_SOURCES[toast.statId]}
+        emoji={STAT_EMOJI_FALLBACK[toast.statId]}
+        imageStyle={styles.icon}
+        emojiStyle={styles.emoji}
+      />
       <Text style={styles.text}>
         {STAT_LABEL[toast.statId]} +{toast.gain}
       </Text>

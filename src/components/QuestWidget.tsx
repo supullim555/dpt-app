@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
 import type { Exercise } from '../data/exercises';
 import { setAiOptIn } from '../ai/preference';
 import { QUEST_ICON_SOURCES } from '../assets/questIcons';
+import IconOrEmoji from './IconOrEmoji';
 import { BORDER, CHIP_SHADOW, INK, MUTED, OVERLAY_LIGHT, SCREEN_BG } from '../theme';
 
 // A short label under each button (§32 — the icons alone weren't enough to tell what an exercise
@@ -85,11 +86,12 @@ export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenA
           accessibilityLabel={exercise.title}
         >
           <View style={[styles.questButton, doneToday && styles.questButtonDone]}>
-            {QUEST_ICON_SOURCES[exercise.id] ? (
-              <Image source={QUEST_ICON_SOURCES[exercise.id]} style={styles.questIconImage} resizeMode="contain" />
-            ) : (
-              <Text style={styles.questIcon}>💭</Text>
-            )}
+            <IconOrEmoji
+              source={QUEST_ICON_SOURCES[exercise.id]}
+              emoji="💭"
+              imageStyle={styles.questIconImage}
+              emojiStyle={styles.questIcon}
+            />
             {doneToday && (
               <View style={styles.doneBadge}>
                 <Text style={styles.doneBadgeText}>✓</Text>
