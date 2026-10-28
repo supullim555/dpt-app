@@ -21,7 +21,7 @@ fs.mkdirSync(SHOT_DIR, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Must match src/screens/HomeScreen.tsx's DAILY_QUESTIONS and the greeting lines in GREETINGS —
+// Must match src/features/home/HomeScreen.tsx's DAILY_QUESTIONS and the greeting lines in GREETINGS —
 // not imported from there since this runs as plain Node against a built bundle, not TS source.
 const GREETINGS = [
   '아침이네요. 지금 마음은 어때요?',
@@ -31,7 +31,7 @@ const GREETINGS = [
 ];
 const DAILY_QUESTIONS = ['오늘 하루는 어땠나요?', '그중에서 가장 기억에 남는 순간이 있다면요?'];
 
-// src/components/DialogueExercise.tsx labels the submit button '완료' only on the LAST question
+// src/features/dialogue/DialogueExercise.tsx labels the submit button '완료' only on the LAST question
 // of however many are asked, '다음' on every one before that — a script that always clicks '다음'
 // will stall on the final question (this bit the test suite once already, see §31).
 const submitLabel = (index, total) => (index < total - 1 ? '다음' : '완료');
@@ -165,7 +165,7 @@ async function main() {
 
       // The gate's full breathing flow (useBreathPacer, v0.25) — every check above skips it.
       // Reloading lands back on the gate; one skipped visit is on record, so it's 2 sighs
-      // (src/game/gate.ts breathCyclesFor), ~6.4s each.
+      // (src/features/gate/history.ts breathCyclesFor), ~6.4s each.
       await t.navigate(BASE);
       t.note('관문: 호흡 2회 끝나고 "조금 더 있을까?" 노출', await t.waitText('조금 더 있을까?', 25000));
       await t.clickText('조금 더');

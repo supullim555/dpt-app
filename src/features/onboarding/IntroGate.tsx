@@ -1,0 +1,109 @@
+import React, { useState, type ReactNode } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { loadEntryOr, saveEntry } from '@/core/storage';
+import { loadAiOptIn, setAiOptIn } from '@/features/ai';
+import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
+import CrisisFooter from '@/ui/CrisisFooter';
+import { BORDER, INK, MUTED, SCREEN_BG } from '@/ui/theme';
+
+const ACK_KEY = 'intro.acknowledged';
+
+type Step = 'loading' | 'disclaimer' | 'ai-choice' | 'done';
+
+// First launch only: a short, ordered one-time sequence before the rest of the app ever
+// mounts — the safety disclaimer (always), then the AI on/off choice. Each step writes its own
+// flag the moment it's answered, so a user who already passed the disclaimer under an older
+// build only sees the ai-choice step added after it, not the whole sequence again.
+export default function IntroGate({ children }: { children: ReactNode }) {
+  const [step, setStep] = useState<Step>('loading');
+
+  // Shared by the initial mount check and by acknowledgeDisclaimer() just below, so acknowledging
+  // moves straight to ai-choice (or done) without a second mount/effect round-trip.
+  // Wrapped so that ANY failure here (loadAiOptIn already catches its own, but this guards
+  // against anything else — a future change, an unexpected throw) still reaches 'done' instead
+  // of leaving step stuck on 'loading': this gate sits in front of the entire app, so the one
+  // thing worse than the AI choice failing is the whole app failing to ever render because of it.
+  const resolveAiChoiceOrDone = async () => {
+    try {
+      const optIn = await loadAiOptIn();
+      setStep(optIn === 'unset' ? 'ai-choice' : 'done');
+    } catch {
+      setStep('done');
+    }
+  };
+
+  useAsyncEffect(async (isCancelled) => {
+    const acknowledged = (await loadEntryOr<boolean>(ACK_KEY, false)) === true;
+    if (isCancelled()) return;
+    if (!acknowledged) {
+      setStep('disclaimer');
+      return;
+    }
+    await resolveAiChoiceOrDone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const acknowledgeDisclaimer = async () => {
+    await saveEntry(ACK_KEY, true).catch(() => {});
+    await resolveAiChoiceOrDone();
+  };
+
+  const chooseAi = (on: boolean) => {
+    setAiOptIn(on ? 'on' : 'off');
+    setStep('done');
+  };
+
+  if (step === 'loading') return <View style={styles.blank} />;
+  if (step === 'done') return <>{children}</>;
+
+  if (step === 'ai-choice') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Text style={styles.title}>AI와 자유롭게 이야기하기, 켜볼까요?</Text>
+          <Text style={styles.line}>켜면 "이야기" 탭에서 정해진 질문 없이 AI(Google Gemini)와 자유롭게 대화할 수 있어요.</Text>
+          <Text style={styles.line}>
+            거기서 나누는 대화는 이 기기가 아니라 <Text style={styles.bold}>Google Gemini 서버로 전송되어 처리</Text>돼요. 그 외
+            실습 답변·메모 등 다른 모든 내용은 지금처럼 이 기기에만 남아요.
+          </Text>
+          <Text style={styles.line}>꺼도 나머지 기능은 지금까지와 똑같이 쓸 수 있어요.</Text>
+          <TouchableOpacity style={styles.button} onPress={() => chooseAi(true)}>
+            <Text style={styles.buttonText}>AI 켜고 시작</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.buttonGhost} onPress={() => chooseAi(false)}>
+            <Text style={styles.buttonGhostText}>AI 없이 시작</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // step === 'disclaimer'
+  return (
+    <View style={styles.container}>
+      <View style={styles.card}>
+        <Text style={styles.title}>시작하기 전에</Text>
+        <Text style={styles.line}>이 앱은 치료가 아니에요. 전문가의 도움을 대신하지 않아요.</Text>
+        <Text style={styles.line}>여기에 쓰는 글은 이 기기에만 저장되고, 아무도 읽지 않아요.</Text>
+        <Text style={styles.line}>많이 힘들 때는 혼자 견디지 않아도 돼요.</Text>
+        <CrisisFooter tone="light" />
+        <TouchableOpacity style={styles.button} onPress={acknowledgeDisclaimer}>
+          <Text style={styles.buttonText}>알겠어요</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  blank: { flex: 1, backgroundColor: SCREEN_BG },
+  container: { flex: 1, backgroundColor: SCREEN_BG, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  card: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 24 },
+  title: { fontSize: 18, fontWeight: '700', color: INK, marginBottom: 16 },
+  line: { fontSize: 15, lineHeight: 23, color: '#333', marginBottom: 10 },
+  bold: { fontWeight: '700', color: INK },
+  button: { alignSelf: 'center', marginTop: 16, backgroundColor: INK, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20 },
+  buttonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  buttonGhost: { alignSelf: 'center', marginTop: 10, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20 },
+  buttonGhostText: { color: MUTED, fontSize: 14, fontWeight: '600' },
+});

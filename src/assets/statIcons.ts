@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
-import type { StatId } from '../game/stats';
+import type { StatId } from '@/features/game/stats';
 
-// Gemini-generated (scripts/generate-stat-icons.js + extract-stat-icons.js, §33), drawn in the
+// Gemini-generated (scripts/assets/generate-stat-icons.js + extract-stat-icons.js, §33), drawn in the
 // same pixel-art style as the room/character/quest-icon assets. Partial, not a full Record, so a
 // stat added later without a generated icon yet just falls back to STAT_EMOJI_FALLBACK (see
 // StatUpToast/StatBar) instead of breaking the build.

@@ -1,10 +1,9 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import RootNavigator from './src/navigation/RootNavigator';
-import LoginGate from './src/components/LoginGate';
-import IntroGate from './src/components/IntroGate';
-import ArtPreloader from './src/components/ArtPreloader';
-import { GameProvider } from './src/game/GameContext';
+import RootNavigator from '@/app/navigation/RootNavigator';
+import { LoginGate, IntroGate } from '@/features/onboarding';
+import ArtPreloader from '@/app/ArtPreloader';
+import { GameProvider } from '@/features/game';
 
 export default function App() {
   return (

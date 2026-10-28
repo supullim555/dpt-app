@@ -1,6 +1,6 @@
 // The one command for "did this change actually work" — replaces manually running tsc, then
 // build, then starting a static server by hand, then remembering the right port for the
-// regression script, every single time (§31). Chains: type-check -> web build -> serve dist on a
+// regression script, every single time (§31). Chains: architecture check -> type-check -> web build -> serve dist on a
 // free local port -> scripts/check-core-flow.js against it -> shut the server down. Exits nonzero
 // on the first failing step, with that step's own output already printed.
 //
@@ -63,6 +63,7 @@ async function main() {
     return;
   }
 
+  run('architecture (layers / feature boundaries)', 'node', ['scripts/check-architecture.js']);
   run('tsc --noEmit', 'npx', ['tsc', '--noEmit']);
   if (!skipBuild) run('web build', 'npm', ['run', 'build']);
 

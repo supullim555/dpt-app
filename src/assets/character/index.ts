@@ -1,4 +1,4 @@
-import type { SpriteSheetSpec } from '../../components/SpriteSheetAnimator';
+import type { SpriteSheetSpec } from '@/features/character/SpriteSheetAnimator';
 import clipManifest from './clips/manifest.json';
 
 // A sheet plus where the character sits inside each frame, so the roamer can draw
@@ -11,8 +11,8 @@ export type CharacterSprite = SpriteSheetSpec & {
 };
 
 // Every animation clip — standing and walking — is a Gemini strip drawn from the same
-// detailed portrait (scripts/generate-idle-clips.js, generate-character-views.js), cut
-// out by scripts/extract-character-clips.js. They all share ONE cell size and standing
+// detailed portrait (scripts/assets/generate-idle-clips.js, generate-character-views.js), cut
+// out by scripts/assets/extract-character-clips.js. They all share ONE cell size and standing
 // height, so she keeps the same size and foot position whichever clip is playing and the
 // walking, standing and talking art reads as one character.
 //

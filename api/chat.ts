@@ -1,7 +1,7 @@
-// Vercel serverless function: POST /api/chat. See src/ai/README.md before touching this.
+// Vercel serverless function: POST /api/chat. See src/features/ai/README.md before touching this.
 //
 // The only place this feature's real Gemini API key would ever live — never ship it to the
-// client (src/ai/chatClient.ts calls this endpoint, not Google, for exactly that reason).
+// client (src/features/ai/chatClient.ts calls this endpoint, not Google, for exactly that reason).
 //
 // Requires BOTH to be set as this Vercel PROJECT's environment variables (dashboard, or
 // `vercel env add <name>`):
@@ -9,19 +9,19 @@
 //   - GEMINI_API_KEY  = <a real key> — a separate variable from the one in .env.local, which
 //     is a local-machine build-time file this function never reads.
 // Without both, every request gets a 503 and nothing is called or billed. On the client side,
-// this is additionally gated behind the user's own AI on/off choice (src/ai/preference.ts,
+// this is additionally gated behind the user's own AI on/off choice (src/features/ai/preference.ts,
 // asked once at launch in IntroGate) — two independent switches, same as AI_CHAT_UI_ENABLED
 // vs. this server switch: a user deciding to turn AI on, and this deployment having a key
 // configured at all, are separate facts.
 
-import { SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT } from '../src/ai/systemPrompt';
+import { SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT } from '../src/features/ai/systemPrompt';
 
 export const config = { runtime: 'edge' };
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string };
 type ChatRequest = { history?: ChatMessage[]; message?: string; mode?: 'chat' | 'summarize' };
 
-// Keep in sync with src/ai/config.ts's AI_CHAT_MODEL. gemini-2.5-flash (tried first) returned
+// Keep in sync with src/features/ai/config.ts's AI_CHAT_MODEL. gemini-2.5-flash (tried first) returned
 // HTTP 404 "no longer available to new users" for this project's key — Google's own error
 // pointed to this one instead. Verified with one real generateContent call on 2026-10-08:
 // HTTP 200, system_instruction honored (reply matched systemPrompt.ts's tone and didn't

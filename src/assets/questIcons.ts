@@ -1,6 +1,6 @@
 import type { ImageSourcePropType } from 'react-native';
 
-// Gemini-generated (scripts/generate-quest-icons.js + extract-quest-icons.js), drawn in the
+// Gemini-generated (scripts/assets/generate-quest-icons.js + extract-quest-icons.js), drawn in the
 // room/character's own pixel-art style and kept close to the plain emoji they replace (🎭📏💌🎈🔍)
 // so the meaning carries over for anyone who already knew those.
 export const QUEST_ICON_SOURCES: Record<string, ImageSourcePropType> = {

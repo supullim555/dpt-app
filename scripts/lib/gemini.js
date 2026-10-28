@@ -3,10 +3,10 @@ const path = require('path');
 const sharp = require('sharp');
 
 const MODEL = 'gemini-2.5-flash-image';
-const REF_SHEET = path.join(__dirname, '..', '..', '캐릭터_스포트라이트_시트.png');
+const { ROOT, REFERENCE_SHEET: REF_SHEET } = require('./paths');
 
 function loadApiKey() {
-  const text = fs.readFileSync(path.join(__dirname, '..', '..', '.env.local'), 'utf8');
+  const text = fs.readFileSync(path.join(ROOT, '.env.local'), 'utf8');
   for (const line of text.split('\n')) {
     const m = line.match(/^GEMINI_API_KEY="?([^"\r\n]*)"?\s*$/);
     if (m) return m[1];
