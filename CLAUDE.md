@@ -1,1 +1,104 @@
 @AGENTS.md
+
+# 마음 연습 (DPT app)
+
+Korean-language self-help psychology Expo/React Native Web app. Repo `supullim555/dpt-app`,
+deployed to Vercel at production alias `dpt-app-green.vercel.app` (auto-deploys on push to
+`master`). The living project log/plan is **`심리지원_프로그램_계획서.md`** — read its header
+blurb and the last few numbered sections before starting any new work; it has the actual
+product philosophy (§1, "요구하지 않는다"), decision history and "다음 단계" backlog that this
+file doesn't repeat.
+
+## Ship workflow — follow this for every change, every time
+
+1. Implement.
+2. `npx tsc --noEmit`.
+3. `npm run verify` — builds, serves `dist` on a free local port, runs the headless-Chrome
+   regression suite (`scripts/check-core-flow.js`, built on `scripts/lib/uitest.js`). If a UI
+   change altered visible text/DOM structure the suite depends on, update the suite in the same
+   change — don't ship with a stale regression script.
+4. Update `심리지원_프로그램_계획서.md` (see below) — **before** committing, not after.
+5. `git add` the specific files (never `-A`), commit, `git push`.
+6. Poll the new Vercel deployment (`npx vercel ls`, then `npx vercel inspect <url>` until
+   `Ready`), confirm `npx vercel inspect dpt-app-green.vercel.app` now points at it.
+7. `node scripts/verify.js --live` — re-run the regression suite against the live production URL.
+
+Only report a change as done once all seven steps pass. Docs-only commits (no app code changed)
+can skip steps 2–3 and 6–7's regression re-run, but still get pushed and Vercel will still rebuild
+(harmless).
+
+## Updating the plan doc
+
+Every shipped feature gets its own numbered `## N. Title (vX.Y)` section, inserted **immediately
+before** the `## N. 다음 단계` section, with subsections roughly: 요청 (what was asked, quoted),
+what changed, what was verified. Each time you insert a new section:
+
+- Renumber the "다음 단계" section to N+1, and fix **every other section's own trailing
+  "§N 다음 단계 → §N+1로 재번호" note** that the insertion just made stale — not just the one in
+  the section you're adding next to. This is the single most common mistake made in this file so
+  far (a section number got skipped entirely once from missing this) — after editing, run
+  `grep -n "^## "` and `grep -n "다음 단계 →"` over the whole file and check the sequence is
+  consecutive with no gaps before moving on.
+- Update the header blurb (version bump, one-line summary of the new section, and the "§1~§11은
+  기획… §12~§N은…" range in "읽는 법").
+- Add a new row at the **top** of the 변경 이력 table (also carries its own
+  "§N 다음 단계 → §N+1로 재번호" note).
+
+## Gemini API
+
+**Never call it without an explicit, in-the-moment instruction from the user for that specific
+call** — not implied by "make it better" or similar. When the user does authorize it, log the
+call count and what was generated in the plan doc section for that change.
+
+### Asset generation pipeline (when Gemini is authorized for art)
+
+Pattern used for character sprites, room furniture, quest icons and stat icons — clone it rather
+than inventing a new one:
+
+1. `scripts/generate-<name>.js` — one `generateImage(prompt, refPath)` call per asset (from
+   `scripts/lib/gemini.js`), writing white-background raw PNGs to `generated/<name>/`. Keep the
+   style prompt close to the app's existing pixel-art look (dark-brown outlines, soft pastel
+   palette, simple/bold since most of these render tiny).
+2. `scripts/extract-<name>.js` — flood-fill white-background removal + crop + resize (copy the
+   algorithm from an existing `extract-*.js`, e.g. `extract-stat-icons.js`), writing to
+   `src/assets/<name>/*.png`.
+3. **Read the resulting PNGs to visually check them before wiring anything to them.**
+4. Only then write the `src/assets/<name>.ts` barrel file (`Record<Id, ImageSourcePropType>` via
+   `require()`) and reference it from components. A barrel file that `require()`s a PNG that
+   doesn't exist on disk yet breaks the build immediately — sequencing matters.
+5. Add the new sources to `ArtPreloader.tsx`'s `SOURCES` array.
+
+## Architecture notes worth knowing before touching them
+
+- **`GameContext.tsx` / `GameState` migration**: loading a saved state rebuilds it field by
+  field. Whole-object fields (`coins`, `inventory`, `lastCompleted`) use a plain `?? default`.
+  Any field shaped as a `Record<SomeId, number>` (like `stats`) must instead merge key-by-key
+  (`{ ...DEFAULT, ...saved.field }`), because individual keys can be missing even when the field
+  itself exists (an older save predates a newly-added id). Follow this when adding new
+  `GameState` fields.
+- **Shared hooks**: `useAsyncEffect` (async load + cancellation-safe setState, replaces hand-
+  written `let cancelled` effects), `useDialogueCompletion` (record answer → mark done → stat-up
+  toast → close after hold), `useRoomBoxSize` (the room's own `ROOM_MAX_ASPECT`-capped width,
+  computed outside `RoomBackdrop`'s tree for anything — like `FloatingPanel` — that needs to
+  match the room's width on a wide desktop window instead of stretching edge-to-edge).
+- **Shared components**: `HudBadge` (the floating pill shell for `CoinBadge`/`StatusBadge`),
+  `IconOrEmoji` (generated-icon-or-emoji-fallback branch used by `QuestWidget`/`StatBar`/
+  `StatUpToast`). Reuse these rather than re-deriving the same shadow/fallback logic.
+- **Testing**: `scripts/lib/uitest.js` is a from-scratch headless-Chrome CDP harness (no
+  Puppeteer) — `withBrowser(url, fn)`, `clickText`, `tapAnyOf`, `fillTextarea`, `waitText`,
+  `shot`, `passStartupGates()` for the login/intro/onboarding sequence every check needs first.
+  `scripts/check-core-flow.js` is the maintained regression suite built on it.
+
+## This machine's environment (checked, don't re-assume)
+
+- No Python, no Rust/cargo, no GIMP/Krita, no actual Adobe Creative Cloud installation.
+- `typescript-language-server` + `typescript` are installed globally (for the `typescript-lsp`
+  plugin).
+- `.claude/settings.json` enables these `claude-plugins-official` plugins: `expo`,
+  `typescript-lsp`, `playwright`, `frontend-design`, `commit-commands`, `security-guidance`
+  (inert until Python is installed — it requires Python 3.8+), `claude-md-management`.
+- `C:\Users\user\Documents\artcraft-suite` is a local checkout of the open-source "ArtCraft"
+  Crafting Apps (clean-room Rust reimplementations of the Adobe product line — EffectCraft≈After
+  Effects, PhotoCraft≈Photoshop, etc.), **not** an Adobe product. See
+  `3D_전환_가능성_검토.md` for what was already investigated there (EffectCraft's 3D features, for
+  a possible future 3D treatment of the room/character art — nothing implemented yet).
