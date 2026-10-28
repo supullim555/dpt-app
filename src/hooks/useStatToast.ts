@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { StatId } from '../game/stats';
+import { useTimer } from './useTimeout';
 
 /** Matches useDialogueCompletion's COMPLETION_HOLD_MS so a stat-up toast clears at the same
  * moment the panel that showed it closes, instead of on its own independent timer. */
@@ -12,13 +13,15 @@ export type StatToastState = { statId: StatId; gain: number } | null;
  * through that hook too, later. */
 export function useStatToast() {
   const [toast, setToast] = useState<StatToastState>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const { schedule } = useTimer();
 
-  const show = useCallback((statId: StatId, gain: number) => {
-    setToast({ statId, gain });
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), STAT_TOAST_MS);
-  }, []);
+  const show = useCallback(
+    (statId: StatId, gain: number) => {
+      setToast({ statId, gain });
+      schedule(() => setToast(null), STAT_TOAST_MS);
+    },
+    [schedule]
+  );
 
   return { toast, show };
 }

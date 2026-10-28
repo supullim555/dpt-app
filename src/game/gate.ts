@@ -1,4 +1,4 @@
-import { loadEntry, saveEntry } from '../storage/storage';
+import { createLog } from '../storage/storage';
 
 // S0 (the gate) leaves one record per visit. The label and score are what later sessions
 // (S4's "last time it was a 6, today it's a 4") and the safety check read from.
@@ -12,17 +12,15 @@ export type GateEntry = {
   skipped: boolean;
 };
 
-const KEY = 'gate.history';
+// Capped (it used to grow by one entry per visit, forever). Nothing reads further back than the
+// last few visits — breathCyclesFor looks at 2, needsSafetyNote at 3 scored ones — so 500 leaves
+// plenty of room for a future S4 "지난번과 비교" view.
+const history = createLog<GateEntry>('gate.history', { max: 500 });
 
-export async function loadGateHistory(): Promise<GateEntry[]> {
-  return (await loadEntry<GateEntry[]>(KEY)) ?? [];
-}
+export const loadGateHistory = history.load;
 
-export async function appendGateEntry(entry: GateEntry): Promise<GateEntry[]> {
-  const next = [...(await loadGateHistory()), entry];
-  await saveEntry(KEY, next);
-  return next;
-}
+/** Appends one visit and returns the whole history including it. */
+export const appendGateEntry = (entry: GateEntry) => history.append(entry);
 
 /**
  * How many sighs to breathe (§6 S0, adaptive length): first visit 3, returning 2, and just

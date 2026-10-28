@@ -2,6 +2,7 @@ import { useGame } from '../game/GameContext';
 import { recordMemory } from '../game/memory';
 import { STAT_GAIN } from '../game/stats';
 import { useStatToast } from './useStatToast';
+import { useTimer } from './useTimeout';
 
 /** How long DialogueExercise's own thank-you bubble stays on screen before the caller should
  * close its panel — shared so the daily check-in and every exercise hold it for the same beat. */
@@ -18,11 +19,13 @@ export const COMPLETION_HOLD_MS = 1800;
 export function useDialogueCompletion(id: string, questions: string[], onClosed: () => void) {
   const { completeExercise } = useGame();
   const { toast, show } = useStatToast();
+  // Cleared on unmount, so onClosed never fires into a screen that's already gone.
+  const { schedule } = useTimer();
   const onComplete = (answers: string[]) => {
     recordMemory(id, questions, answers);
     const statId = completeExercise(id);
     if (statId) show(statId, STAT_GAIN);
-    setTimeout(onClosed, COMPLETION_HOLD_MS);
+    schedule(onClosed, COMPLETION_HOLD_MS);
   };
   return { onComplete, toast };
 }

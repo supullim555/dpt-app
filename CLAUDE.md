@@ -70,17 +70,27 @@ than inventing a new one:
 
 ## Architecture notes worth knowing before touching them
 
-- **`GameContext.tsx` / `GameState` migration**: loading a saved state rebuilds it field by
-  field. Whole-object fields (`coins`, `inventory`, `lastCompleted`) use a plain `?? default`.
-  Any field shaped as a `Record<SomeId, number>` (like `stats`) must instead merge key-by-key
-  (`{ ...DEFAULT, ...saved.field }`), because individual keys can be missing even when the field
-  itself exists (an older save predates a newly-added id). Follow this when adding new
-  `GameState` fields.
+- **`GameContext.tsx` / `GameState` migration**: loading a saved state goes through
+  `mergeWithDefaults(DEFAULT_STATE, saved)` (`src/lib/mergeWithDefaults.ts`) — drops keys the
+  current shape doesn't have, falls back on wrongly-typed values, and merges plain-object
+  (`Record<SomeId, number>`, like `stats`) fields key-by-key so a newly-added id still gets its
+  default in an older save. Adding a `GameState` field = adding it to `DEFAULT_STATE`; no
+  per-field load code. Use the same helper for any other persisted object shape.
+- **Storage** (`src/storage/storage.ts`): every write is serialized per key. Read-modify-write
+  goes through `updateEntry`, never a hand-written load-then-save; an append-only list is
+  `createLog(key, { max })` (what `memory.ts`/`gate.ts` are). Day keys come from `today()` /
+  `localDateKey()` in `src/lib/date.ts` (local time — it was UTC before v0.25, which made the
+  day roll over at 09:00 KST).
 - **Shared hooks**: `useAsyncEffect` (async load + cancellation-safe setState, replaces hand-
-  written `let cancelled` effects), `useDialogueCompletion` (record answer → mark done → stat-up
-  toast → close after hold), `useRoomBoxSize` (the room's own `ROOM_MAX_ASPECT`-capped width,
-  computed outside `RoomBackdrop`'s tree for anything — like `FloatingPanel` — that needs to
-  match the room's width on a wide desktop window instead of stretching edge-to-edge).
+  written `let cancelled` effects), `useTimeout(cb, ms | null)` / `useTimer()` (declarative /
+  event-started timers that clear on unmount — no raw `setTimeout` in components),
+  `useBreathPacer(phases, { cycles, running, onDone })` (the breathing-circle animation behind
+  the gate and 숨 고르기; reuse it for any new calming routine), `useDialogueCompletion` (record
+  answer → mark done → stat-up toast → close after hold), `useRoomBoxSize` (the room's own
+  `ROOM_MAX_ASPECT`-capped width, computed outside `RoomBackdrop`'s tree for anything — like
+  `FloatingPanel` — that needs to match the room's width on a wide desktop window instead of
+  stretching edge-to-edge).
+- **Network**: client calls go through `postJson` (`src/lib/http.ts`), which has a timeout.
 - **Shared components**: `HudBadge` (the floating pill shell for `CoinBadge`/`StatusBadge`),
   `IconOrEmoji` (generated-icon-or-emoji-fallback branch used by `QuestWidget`/`StatBar`/
   `StatUpToast`). Reuse these rather than re-deriving the same shadow/fallback logic.

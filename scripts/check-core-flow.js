@@ -1,5 +1,6 @@
 // The core-flow regression check: login gate → intro → daily check-in → quest widget
-// (collapse/expand, start an exercise, complete it) → AI chat entry → memo tab shows the record.
+// (collapse/expand, start an exercise, complete it) → AI chat entry → memo tab shows the record
+// → reload through the gate's full breathing flow (no skip) → 숨 고르기 loop.
 // Built on scripts/lib/uitest.js (§31) so this is the one script to run — locally against a
 // freshly built `dist` or directly against the live URL — before treating any change as done,
 // instead of writing a one-off CDP script per feature and losing it in a scratchpad at the end
@@ -161,6 +162,32 @@ async function main() {
       await sleep(1000);
       t.note('메모 탭에 방금 한 실습(문제 외재화 인터뷰) 기록 보임', await t.hasText('문제 외재화 인터뷰'));
       await t.shot('08_memo_shows_exercise.png');
+
+      // The gate's full breathing flow (useBreathPacer, v0.25) — every check above skips it.
+      // Reloading lands back on the gate; one skipped visit is on record, so it's 2 sighs
+      // (src/game/gate.ts breathCyclesFor), ~6.4s each.
+      await t.navigate(BASE);
+      t.note('관문: 호흡 2회 끝나고 "조금 더 있을까?" 노출', await t.waitText('조금 더 있을까?', 25000));
+      await t.clickText('조금 더');
+      await sleep(600);
+      t.note('관문: "조금 더" 누르면 호흡 재개', !(await t.hasText('조금 더 있을까?')));
+      t.note('관문: 한 번 더 쉰 뒤 다시 "조금 더 있을까?"', await t.waitText('조금 더 있을까?', 12000));
+      // left unanswered, it passes by itself after 3s
+      t.note('관문: 응답 없으면 감정 고르기로 자동 진행', await t.waitText('지금 마음에 가까운 말이 있다면?', 6000));
+      await t.clickText('잘 모르겠어요');
+      await sleep(500);
+      await t.waitText('0에서 10 중에', 4000);
+      await t.clickText('5');
+      t.note('관문: 점수 고르면 홈으로 들어감', await t.waitText('🫧 숨 고르기', 6000));
+      await t.shot('09_after_full_gate.png');
+
+      // 숨 고르기 (ReliefScreen, same pacer, open-ended loop): in 4s → hold 2s → out 6s → in again
+      await t.clickText('🫧 숨 고르기');
+      t.note('숨 고르기: 들이쉬기 단계 노출', await t.waitText('숨을 들이쉬어요', 4000));
+      t.note('숨 고르기: 멈춤 단계로 넘어감', await t.waitText('잠깐 멈춰요', 6000));
+      t.note('숨 고르기: 내쉬기 단계로 넘어감', await t.waitText('천천히 내쉬어요', 4000));
+      t.note('숨 고르기: 한 바퀴 돌고 다시 들이쉬기 (반복)', await t.waitText('숨을 들이쉬어요', 8000));
+      await t.shot('10_relief.png');
     },
     { shotDir: SHOT_DIR }
   );

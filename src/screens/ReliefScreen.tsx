@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ReliefScreenProps } from '../navigation/types';
 import CrisisFooter from '../components/CrisisFooter';
-import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
+import { useBreathPacer } from '../hooks/useBreathPacer';
 import { RELIEF_BG, TEXT_ON_DARK, TEXT_ON_DARK_MUTED } from '../theme';
 
 // §8's "사용자 직접 요청 버튼" (user-initiated request button), the one item in that section's
@@ -16,38 +15,15 @@ import { RELIEF_BG, TEXT_ON_DARK, TEXT_ON_DARK_MUTED } from '../theme';
 // as long as the user stays — no count, no "session complete", nothing recorded. Leaving no
 // trace is deliberate: this is a tool, not an exercise to log (§1's "매일 쓰는 앱이 아니다").
 const PHASE = [
-  { key: 'in', label: '숨을 들이쉬어요', ms: 4000, scale: 1.5 },
-  { key: 'hold', label: '잠깐 멈춰요', ms: 2000, scale: 1.7 },
-  { key: 'out', label: '천천히 내쉬어요', ms: 6000, scale: 1 },
+  { key: 'in', label: '숨을 들이쉬어요', ms: 4000, toValue: 1.5 },
+  { key: 'hold', label: '잠깐 멈춰요', ms: 2000, toValue: 1.7 },
+  { key: 'out', label: '천천히 내쉬어요', ms: 6000, toValue: 1 },
 ] as const;
 
 export default function ReliefScreen({ navigation }: ReliefScreenProps) {
   const insets = useSafeAreaInsets();
-  const circle = useRef(new Animated.Value(1)).current;
-  const [phaseIndex, setPhaseIndex] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    let index = 0;
-    const opts = { useNativeDriver: USE_NATIVE_DRIVER, easing: Easing.inOut(Easing.quad) };
-
-    const step = () => {
-      if (cancelled) return;
-      const phase = PHASE[index];
-      setPhaseIndex(index);
-      Animated.timing(circle, { toValue: phase.scale, duration: phase.ms, ...opts }).start(({ finished }) => {
-        if (!finished || cancelled) return;
-        index = (index + 1) % PHASE.length;
-        step();
-      });
-    };
-    step();
-
-    return () => {
-      cancelled = true;
-      circle.stopAnimation();
-    };
-  }, [circle]);
+  // No cycle count: loops for as long as the screen is open.
+  const { value: circle, phaseIndex } = useBreathPacer(PHASE);
 
   return (
     <View style={styles.screen}>

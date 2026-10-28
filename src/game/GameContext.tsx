@@ -8,8 +8,9 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { loadEntry, saveEntry } from '../storage/storage';
+import { loadEntryOr, saveEntry } from '../storage/storage';
 import { today } from '../lib/date';
+import { mergeWithDefaults } from '../lib/mergeWithDefaults';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import { ITEM_MAP } from './catalog';
 import { DEFAULT_STATS, STAT_GAIN, statForId, type StatId } from './stats';
@@ -45,23 +46,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   stateRef.current = state;
 
   useAsyncEffect(async (isCancelled) => {
-    const saved = await loadEntry<GameState>(STORAGE_KEY);
+    const saved = await loadEntryOr<unknown>(STORAGE_KEY, null);
     if (isCancelled()) return;
-    // Field by field: saves from before the shop sold furniture also carry an `equipped`
-    // map and colour-item ids, which are simply dropped here.
-    if (saved) {
-      setState({
-        coins: saved.coins ?? 0,
-        inventory: saved.inventory ?? [],
-        lastCompleted: saved.lastCompleted ?? {},
-        // Merged key-by-key, not a plain `?? `: unlike the fields above (present-as-a-whole or
-        // absent-as-a-whole), `stats` is an object whose individual keys can be missing — not
-        // just today (no `stats` at all in a pre-§33 save), but again whenever a future stat is
-        // added (an older save won't have that one key either). The merge keeps every current
-        // StatId populated no matter when the save was written.
-        stats: { ...DEFAULT_STATS, ...(saved.stats ?? {}) },
-      });
-    }
+    // mergeWithDefaults is the whole migration: keys older saves carried but this version doesn't
+    // (the pre-furniture shop's `equipped` map) are dropped, a wrongly-typed value falls back to
+    // its default, and `stats` merges key by key so a stat added after the save was written still
+    // starts at 0 instead of `undefined`. A new GameState field needs only a DEFAULT_STATE entry.
+    if (saved) setState(mergeWithDefaults(DEFAULT_STATE, saved));
     setLoaded(true);
   }, []);
 

@@ -1,6 +1,6 @@
 import React, { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { loadEntry, saveEntry } from '../storage/storage';
+import { loadEntryOr, saveEntry } from '../storage/storage';
 import { loadAiOptIn, setAiOptIn } from '../ai/preference';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
 import CrisisFooter from './CrisisFooter';
@@ -33,7 +33,7 @@ export default function IntroGate({ children }: { children: ReactNode }) {
   };
 
   useAsyncEffect(async (isCancelled) => {
-    const acknowledged = (await loadEntry<boolean>(ACK_KEY).catch(() => false)) === true;
+    const acknowledged = (await loadEntryOr<boolean>(ACK_KEY, false)) === true;
     if (isCancelled()) return;
     if (!acknowledged) {
       setStep('disclaimer');

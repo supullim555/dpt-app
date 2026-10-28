@@ -1,6 +1,10 @@
 // See src/ai/README.md before touching anything in this folder.
 import { AI_CHAT_ENDPOINT, AI_CHAT_UI_ENABLED } from './config';
 import type { ChatMessage, ChatRequest, ChatResponse } from './types';
+import { postJson } from '../lib/http';
+
+// Generous: a Gemini reply normally takes a few seconds, a summary of a long chat a bit more.
+const RELAY_TIMEOUT_MS = 45_000;
 
 /**
  * What a future screen would call. Talks to the server relay (api/chat.ts), never to Google
@@ -26,20 +30,12 @@ async function callRelay(body: ChatRequest): Promise<string> {
     throw new Error('AI chat is not enabled (src/ai/config.ts: AI_CHAT_UI_ENABLED is false).');
   }
 
-  const res = await fetch(AI_CHAT_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  let json: ChatResponse;
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error(`Chat relay returned a non-JSON response (HTTP ${res.status}).`);
+  // Timeout so a stalled relay surfaces as the screen's normal "지금은 답을 받을 수 없어요"
+  // notice instead of leaving it on "듣고 있어요…" forever.
+  const { ok, status, data } = await postJson<ChatResponse>(AI_CHAT_ENDPOINT, body, { timeoutMs: RELAY_TIMEOUT_MS });
+  if (!data) throw new Error(`Chat relay returned a non-JSON response (HTTP ${status}).`);
+  if (!ok || 'error' in data) {
+    throw new Error('error' in data ? data.error : `Chat relay HTTP ${status}`);
   }
-  if (!res.ok || 'error' in json) {
-    throw new Error('error' in json ? json.error : `Chat relay HTTP ${res.status}`);
-  }
-  return json.reply;
+  return data.reply;
 }

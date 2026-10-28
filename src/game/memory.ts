@@ -1,4 +1,4 @@
-import { loadEntry, saveEntry } from '../storage/storage';
+import { createLog } from '../storage/storage';
 import { today } from '../lib/date';
 
 // The device-local record of what the user has actually said, so a later session can bring
@@ -41,14 +41,13 @@ export type MemoryEntry = {
   kind?: 'qa' | 'ai-summary';
 };
 
-const KEY = 'memory.log';
-const MAX_ENTRIES = 300; // caps growth on a long-lived install
+// 300 caps growth on a long-lived install. createLog serializes every write, so a check-in's
+// recordMemory and Home's takeCallback landing at the same moment can't drop each other's change.
+const log = createLog<MemoryEntry>('memory.log', { max: 300 });
 const MIN_ANSWER_LENGTH = 4; // shorter than this is rarely worth quoting back (e.g. "네", "몰라요")
 const QUOTE_MAX = 40; // characters shown in a dialogue bubble before truncating
 
-export async function loadMemory(): Promise<MemoryEntry[]> {
-  return (await loadEntry<MemoryEntry[]>(KEY)) ?? [];
-}
+export const loadMemory = log.load;
 
 /** Records today's answerable Q/A pairs, skipping blank or too-short ones. Call after a
  * dialogue completes, with the same `questions` that were actually asked and the `answers`
@@ -62,9 +61,7 @@ export async function recordMemory(id: string, questions: string[], answers: str
       entries.push({ id, date, question, answer, recalled: false });
     }
   });
-  if (!entries.length) return;
-  const log = await loadMemory();
-  await saveEntry(KEY, [...log, ...entries].slice(-MAX_ENTRIES));
+  if (entries.length) await log.append(...entries);
 }
 
 /** Saves a Gemini-generated recap of a free-chat conversation (AiChatScreen's "정리해서 저장").
@@ -82,8 +79,7 @@ export async function recordAiSummary(summary: string): Promise<void> {
     recalled: false,
     kind: 'ai-summary',
   };
-  const log = await loadMemory();
-  await saveEntry(KEY, [...log, entry].slice(-MAX_ENTRIES));
+  await log.append(entry);
 }
 
 /**
@@ -99,15 +95,20 @@ export async function recordAiSummary(summary: string): Promise<void> {
  */
 export async function takeCallback(sameId?: string): Promise<MemoryEntry | null> {
   const date = today();
-  const log = await loadMemory();
-  const pool = log.filter(
-    (e) => !e.recalled && e.date !== date && e.kind !== 'ai-summary' && (!sameId || e.id === sameId)
-  );
-  if (!pool.length) return null;
-  const preferred = sameId ? pool : pool.filter((e) => e.id === DAILY_CHECKIN_ID);
-  const candidates = preferred.length ? preferred : pool;
-  const chosen = candidates[candidates.length - 1]; // most recent
-  await saveEntry(KEY, log.map((e) => (e === chosen ? { ...e, recalled: true } : e)));
+  let chosen: MemoryEntry | null = null;
+  // Pick and mark inside one atomic update, so two screens asking at once can't both get the
+  // same line.
+  await log.update((entries) => {
+    const pool = entries.filter(
+      (e) => !e.recalled && e.date !== date && e.kind !== 'ai-summary' && (!sameId || e.id === sameId)
+    );
+    if (!pool.length) return entries;
+    const preferred = sameId ? pool : pool.filter((e) => e.id === DAILY_CHECKIN_ID);
+    const candidates = preferred.length ? preferred : pool;
+    const pick = candidates[candidates.length - 1]; // most recent
+    chosen = pick;
+    return entries.map((e) => (e === pick ? { ...e, recalled: true } : e));
+  });
   return chosen;
 }
 
@@ -120,6 +121,4 @@ export function quote(answer: string): string {
 /** Erases the whole log — the journal screen's "전체 기록 지우기". Also empties what future
  * callbacks (takeCallback) can draw from; there's nothing else to clear alongside it, since
  * this is the only place any of this is stored (§8: on-device only, never sent anywhere). */
-export async function clearMemory(): Promise<void> {
-  await saveEntry(KEY, []);
-}
+export const clearMemory = log.clear;

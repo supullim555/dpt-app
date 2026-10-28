@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { GateScreenProps } from '../navigation/types';
 import RoomBackdrop from '../components/RoomBackdrop';
 import RoomStander from '../components/RoomStander';
 import CrisisFooter from '../components/CrisisFooter';
 import FloatingPanel from '../components/FloatingPanel';
-import { USE_NATIVE_DRIVER } from '../anim/useNativeDriver';
+import { useBreathPacer, type BreathPhase } from '../hooks/useBreathPacer';
+import { useTimeout } from '../hooks/useTimeout';
 import { EMOTION_GRID, EMOTION_UNSURE, QUADRANT_COLOR } from '../data/emotions';
 import { useGame } from '../game/GameContext';
 import { useAsyncEffect } from '../hooks/useAsyncEffect';
@@ -26,17 +27,24 @@ const SKIP_APPEARS_AFTER_MS = 10_000; // §6: the skip button shows up, faded, a
 const MORE_AUTO_PASS_MS = 3_000; // "a bit more?" passes by itself if unanswered
 
 // One sigh: breathe in, a second short sip on top, then a long breath out.
-const SIGH = { in: 2000, sip: 800, out: 3600 };
+const SIGH: BreathPhase[] = [
+  { toValue: 1.5, ms: 2000 },
+  { toValue: 1.85, ms: 800 },
+  { toValue: 1, ms: 3600 },
+];
 
 export default function GateScreen({ navigation }: GateScreenProps) {
   const { state, loaded } = useGame();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('loading');
   const [cycles, setCycles] = useState(0); // sighs to do this visit
-  const [done, setDone] = useState(0); // sighs finished
   const [label, setLabel] = useState<string | null>(null);
   const [showSkip, setShowSkip] = useState(false);
-  const circle = useRef(new Animated.Value(1)).current;
+  const { value: circle, cyclesDone: done } = useBreathPacer(SIGH, {
+    cycles,
+    running: step === 'breath',
+    onDone: () => setStep('more'),
+  });
 
   useAsyncEffect(async (isCancelled) => {
     const history = await loadGateHistory();
@@ -45,38 +53,8 @@ export default function GateScreen({ navigation }: GateScreenProps) {
     setStep('breath');
   }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => setShowSkip(true), SKIP_APPEARS_AFTER_MS);
-    return () => clearTimeout(t);
-  }, []);
-
-  // One sigh per pass of this effect; finishing one bumps `done`, which runs it again.
-  useEffect(() => {
-    if (step !== 'breath') return;
-    let cancelled = false;
-    const opts = { useNativeDriver: USE_NATIVE_DRIVER, easing: Easing.inOut(Easing.quad) };
-    const anim = Animated.sequence([
-      Animated.timing(circle, { toValue: 1.5, duration: SIGH.in, ...opts }),
-      Animated.timing(circle, { toValue: 1.85, duration: SIGH.sip, ...opts }),
-      Animated.timing(circle, { toValue: 1, duration: SIGH.out, ...opts }),
-    ]);
-    anim.start(({ finished }) => {
-      if (!finished || cancelled) return;
-      const n = done + 1;
-      setDone(n);
-      if (n >= cycles) setStep('more');
-    });
-    return () => {
-      cancelled = true;
-      anim.stop();
-    };
-  }, [step, done, cycles, circle]);
-
-  useEffect(() => {
-    if (step !== 'more') return;
-    const t = setTimeout(() => setStep('label'), MORE_AUTO_PASS_MS);
-    return () => clearTimeout(t);
-  }, [step]);
+  useTimeout(() => setShowSkip(true), SKIP_APPEARS_AFTER_MS);
+  useTimeout(() => setStep('label'), step === 'more' ? MORE_AUTO_PASS_MS : null);
 
   const enterApp = () => navigation.replace('Main');
 
@@ -141,7 +119,7 @@ export default function GateScreen({ navigation }: GateScreenProps) {
               <TouchableOpacity
                 style={styles.pill}
                 onPress={() => {
-                  setCycles(done + 1);
+                  setCycles(done + 1); // the pacer keeps its count, so this is one more sigh
                   setStep('breath');
                 }}
               >
