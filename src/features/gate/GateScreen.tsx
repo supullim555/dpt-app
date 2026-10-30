@@ -6,7 +6,7 @@ import { RoomBackdrop, RoomStander } from '@/features/room';
 import CrisisFooter from '@/ui/CrisisFooter';
 import FloatingPanel from '@/ui/FloatingPanel';
 import { useBreathPacer, type BreathPhase } from '@/core/anim/useBreathPacer';
-import { EMOTION_GRID, EMOTION_UNSURE, QUADRANT_COLOR } from './emotions';
+import { EMOTION_FAMILIES, EMOTION_UNSURE, type EmotionFamily } from './emotions';
 import { useProgress } from '@/features/progress';
 import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
 import {
@@ -41,6 +41,8 @@ export default function GateScreen({ navigation }: GateScreenProps) {
   const [step, setStep] = useState<Step>('loading');
   const [cycles, setCycles] = useState(0); // sighs, if breathing is chosen
   const [label, setLabel] = useState<string | null>(null);
+  // The primary (일차정서) picked first; null = still choosing among primaries.
+  const [family, setFamily] = useState<EmotionFamily | null>(null);
   const [recorded, setRecorded] = useState(false); // this visit's entry is saved
   const enterApp = () => navigation.replace('Main');
   const { value: circle, cyclesDone: done } = useBreathPacer(SIGH, {
@@ -65,6 +67,7 @@ export default function GateScreen({ navigation }: GateScreenProps) {
     const history = await appendGateEntry({
       date: new Date().toISOString(),
       label,
+      family: label ? (family?.id ?? null) : null,
       score,
       skipped: false,
     });
@@ -126,17 +129,31 @@ export default function GateScreen({ navigation }: GateScreenProps) {
 
         {step === 'label' && (
           <View style={styles.center}>
-            <Text style={styles.prompt}>지금 마음에 가까운 말이 있다면?</Text>
-            {/* A 2x2 mood-meter grid (energy x pleasantness) rather than a flat list: color groups
-                words that feel alike, so picking one is closer to "which of these four feels right"
-                than reading through fourteen options in a row. */}
-            <View style={styles.moodGrid}>
-              {EMOTION_GRID.map(({ quadrant, words }) => (
-                <View key={quadrant} style={[styles.quadrant, { borderColor: QUADRANT_COLOR[quadrant] }]}>
-                  {words.map((word) => (
+            {!family ? (
+              <>
+                <Text style={styles.prompt}>지금 마음에 가까운 말이 있다면?</Text>
+                {/* 일차정서 first — six broad families (Willcox's Feeling Wheel, emotions.ts) —
+                    then, on the next tap, the 이차정서 inside the chosen one. */}
+                <View style={styles.familyGrid}>
+                  {EMOTION_FAMILIES.map((f) => (
+                    <TouchableOpacity
+                      key={f.id}
+                      style={[styles.familyButton, { borderColor: f.color, backgroundColor: `${f.color}33` }]}
+                      onPress={() => setFamily(f)}
+                    >
+                      <Text style={styles.familyText}>{f.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.prompt}>{family.label} 중에서는 어떤 쪽에 가까워?</Text>
+                <View style={styles.wordRow}>
+                  {family.words.map((word) => (
                     <TouchableOpacity
                       key={word}
-                      style={[styles.chip, { backgroundColor: `${QUADRANT_COLOR[quadrant]}33` }]}
+                      style={[styles.chip, { backgroundColor: `${family.color}33`, borderColor: family.color }]}
                       onPress={() => {
                         setLabel(word);
                         setStep('scale');
@@ -146,17 +163,31 @@ export default function GateScreen({ navigation }: GateScreenProps) {
                     </TouchableOpacity>
                   ))}
                 </View>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={styles.unsure}
-              onPress={() => {
-                setLabel(null);
-                setStep('scale');
-              }}
-            >
-              <Text style={styles.unsureText}>{EMOTION_UNSURE}</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.chip, styles.chipPlain]}
+                  onPress={() => {
+                    setLabel(family.label);
+                    setStep('scale');
+                  }}
+                >
+                  <Text style={styles.chipText}>그냥 {family.label}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.back} onPress={() => setFamily(null)}>
+                  <Text style={styles.unsureText}>‹ 다른 감정</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {!family && (
+              <TouchableOpacity
+                style={styles.unsure}
+                onPress={() => {
+                  setLabel(null);
+                  setStep('scale');
+                }}
+              >
+                <Text style={styles.unsureText}>{EMOTION_UNSURE}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -202,28 +233,26 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   pill: { backgroundColor: '#fff', paddingHorizontal: 22, paddingVertical: 11, borderRadius: 20 },
   pillText: { color: '#111', fontSize: 14, fontWeight: '700' },
-  moodGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, maxWidth: 340 },
-  quadrant: {
-    width: 165,
-    minHeight: 64,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignContent: 'flex-start',
-    justifyContent: 'center',
-    gap: 6,
-    padding: 8,
-    borderRadius: 14,
+  familyGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, maxWidth: 330 },
+  familyButton: {
+    width: 100,
+    paddingVertical: 16,
+    borderRadius: 16,
     borderWidth: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
   },
+  familyText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  wordRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, maxWidth: 330 },
+  chipPlain: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  back: { paddingHorizontal: 12, paddingVertical: 6 },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  chipText: { color: '#fff', fontSize: 13 },
+  chipText: { color: '#fff', fontSize: 14 },
   unsure: { marginTop: 2, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)' },
   unsureText: { color: 'rgba(255,255,255,0.75)', fontSize: 13 },
   scaleRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, maxWidth: 320 },

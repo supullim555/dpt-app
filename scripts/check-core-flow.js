@@ -64,10 +64,18 @@ async function main() {
       const reached = await t.waitText('지금 마음에 가까운 말이 있다면?', 10000);
       const secs = ((Date.now() - t0) / 1000).toFixed(1);
       t.note(`열고 첫 질문까지 ${secs}초 (10초 이내)`, reached && Date.now() - t0 < 10000);
-      t.note(
-        '감정 단어 보강됨 (억울함·서운함·뿌듯함 보임)',
-        (await t.hasText('억울함')) && (await t.hasText('서운함')) && (await t.hasText('뿌듯함'))
-      );
+      // v0.29: 일차정서 (six families) first; their 이차정서 only after one is tapped
+      let familiesShown = true;
+      for (const fam of ['분노', '슬픔', '두려움', '기쁨', '자신감', '평온']) familiesShown = familiesShown && (await t.hasText(fam));
+      t.note('감정: 일차정서 6개가 먼저 보임', familiesShown);
+      t.note('감정: 이차정서는 아직 안 보임 (억울함 없음)', !(await t.hasText('억울함')));
+      await t.clickText('슬픔');
+      await sleep(400);
+      t.note('감정: 슬픔을 누르면 이차정서(서운함·외로움)와 "그냥 슬픔"', (await t.hasText('서운함')) && (await t.hasText('외로움')) && (await t.hasText('그냥 슬픔')));
+      await t.shot('00b_gate_secondary.png');
+      await t.clickText('‹ 다른 감정');
+      await sleep(400);
+      t.note('감정: "‹ 다른 감정"으로 일차정서로 돌아감', (await t.hasText('분노')) && !(await t.hasText('서운함')));
       await t.shot('00_gate_first_question.png');
       await t.clickText('건너뛰기');
       await sleep(1200);
@@ -166,6 +174,8 @@ async function main() {
       // features/gate/history.ts breathCyclesFor — ~6.4s each), then enters the app.
       await t.navigate(BASE);
       t.note('관문: 새로고침 후 바로 감정 질문 (호흡이 먼저 오지 않음)', await t.waitText('지금 마음에 가까운 말이 있다면?', 6000));
+      await t.clickText('분노');
+      await sleep(400);
       await t.clickText('억울함');
       await sleep(500);
       await t.waitText('0에서 10 중에', 4000);

@@ -1,12 +1,16 @@
 import { createLog } from '@/core/storage';
+import type { EmotionFamilyId } from './emotions';
 
 // S0 (the gate) leaves one record per visit. The label and score are what later sessions
 // (S4's "last time it was a 6, today it's a 4") and the safety check read from.
 export type GateEntry = {
   /** ISO timestamp. */
   date: string;
-  /** The emotion word they picked, or null if skipped / "don't know". */
+  /** The emotion word they picked (a secondary, or a primary on its own), or null if skipped /
+   * "don't know". */
   label: string | null;
+  /** The primary (일차정서) that word belongs to — absent in entries before v0.29. */
+  family?: EmotionFamilyId | null;
   /** 0 (very hard) .. 10 (at ease), or null if skipped. */
   score: number | null;
   skipped: boolean;
