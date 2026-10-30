@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -6,6 +6,7 @@ import HomeScreen from '@/features/home/HomeScreen';
 import MemoScreen from '@/features/memory/MemoScreen';
 import type { MainTabParamList, RootStackParamList } from './types';
 import { PanelVisibilityProvider, useBottomPanelOpen } from '@/ui/PanelVisibility';
+import { ReservedHeightContext, roomBoxWidth, useRoomBoxSize } from '@/ui/useRoomBoxSize';
 import { BORDER, CHIP_SHADOW, INK, OVERLAY_LIGHT, TAB_INACTIVE } from '@/ui/theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -33,8 +34,12 @@ export default function MainTabs({ navigation }: Props) {
   // fine on the web viewport this was checked in, but would sit the tab bar (and labels) under
   // it on a real notched phone. Folds the bottom inset into the bar instead of guessing a value.
   const tabBarHeight = 64 + insets.bottom;
+  // On a wide window the tabs sit under the room, not spread across the whole page.
+  const { width, height } = useWindowDimensions();
+  const sideMargin = (width - roomBoxWidth(width, height - tabBarHeight)) / 2;
 
   return (
+    <ReservedHeightContext.Provider value={tabBarHeight}>
     <PanelVisibilityProvider>
       <View style={styles.fill}>
         <Tab.Navigator
@@ -48,7 +53,9 @@ export default function MainTabs({ navigation }: Props) {
               height: tabBarHeight,
               paddingTop: 4,
               paddingBottom: 4 + insets.bottom,
+              paddingHorizontal: sideMargin,
             },
+            tabBarLabelPosition: 'below-icon',
             tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
             tabBarIcon: () => <Text style={{ fontSize: 20 }}>{ICON[route.name]}</Text>,
             tabBarLabel: LABEL[route.name],
@@ -61,6 +68,7 @@ export default function MainTabs({ navigation }: Props) {
         <ReliefButton onPress={() => navigation.navigate('Relief')} tabBarHeight={tabBarHeight} />
       </View>
     </PanelVisibilityProvider>
+    </ReservedHeightContext.Provider>
   );
 }
 
@@ -79,9 +87,13 @@ export default function MainTabs({ navigation }: Props) {
 // (useBottomPanelOpen, reported by HomeScreen) and moves up out of its way only then.
 function ReliefButton({ onPress, tabBarHeight }: { onPress: () => void; tabBarHeight: number }) {
   const panelOpen = useBottomPanelOpen();
+  // Inside the room's right edge, not the page's.
+  const { width: pageWidth } = useWindowDimensions();
+  const { width: roomWidth } = useRoomBoxSize();
+  const right = (pageWidth - roomWidth) / 2 + 14;
   return (
     <TouchableOpacity
-      style={[styles.relief, panelOpen ? styles.reliefHigh : { bottom: tabBarHeight + 12 }]}
+      style={[styles.relief, { right }, panelOpen ? styles.reliefHigh : { bottom: tabBarHeight + 12 }]}
       onPress={onPress}
       accessibilityLabel="숨 고르기 — 지금 바로 진정하기"
     >
@@ -94,7 +106,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   relief: {
     position: 'absolute',
-    right: 14,
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 18,

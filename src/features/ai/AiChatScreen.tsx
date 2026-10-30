@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AiChatScreenProps } from '@/app/navigation/types';
 import { CharacterPortrait } from '@/features/character';
 import CrisisFooter from '@/ui/CrisisFooter';
+import RoomColumn from '@/ui/RoomColumn';
 import { sendChatMessage, summarizeChat } from './chatClient';
 import { loadAiOptIn } from './preference';
 import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
@@ -89,6 +90,7 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <RoomColumn>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.back}>
           <Text style={styles.backArrow}>‹</Text>
@@ -146,6 +148,7 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
         </TouchableOpacity>
       </View>
       <CrisisFooter tone="light" />
+      </RoomColumn>
     </KeyboardAvoidingView>
   );
 }

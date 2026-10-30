@@ -213,7 +213,30 @@ async function main() {
     },
     { shotDir: SHOT_DIR }
   );
-  process.exit(passed ? 0 : 1);
+
+  // A wide window (§45): everything stays in the room's column. 900 tall minus the 64 tab bar,
+  // times ROOM_MAX_ASPECT 0.66 = 552 wide, centered in 1400.
+  const WIDE = { width: 1400, height: 900, left: 424, right: 976 };
+  const { passed: widePassed } = await withBrowser(
+    BASE,
+    async (t) => {
+      await t.passStartupGates();
+      const rectOf = (text) =>
+        t.evalJs(
+          `(()=>{const e=[...document.querySelectorAll('div,span')].filter(e=>e.children.length===0&&e.textContent.trim()===${JSON.stringify(text)}).pop();if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,right:r.right}})()`
+        );
+      const inColumn = (r) => !!r && r.left >= WIDE.left - 1 && r.right <= WIDE.right + 1;
+      t.note('넓은 화면: 숨 고르기 버튼이 방 안에 있음', inColumn(await rectOf('🫧 숨 고르기')));
+      t.note('넓은 화면: 하단 탭이 방 폭 안에 있음', inColumn(await rectOf('홈')) && inColumn(await rectOf('메모')));
+      await t.shot('wide_01_home.png');
+      await t.clickText('메모');
+      await sleep(800);
+      t.note('넓은 화면: 메모 내용이 방 폭 안에 있음', inColumn(await rectOf('아직 쌓인 메모가 없어요.')));
+      await t.shot('wide_02_memo.png');
+    },
+    { shotDir: SHOT_DIR, width: WIDE.width, height: WIDE.height }
+  );
+  process.exit(passed && widePassed ? 0 : 1);
 }
 
 main().catch((e) => {

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MemoScreenProps } from '@/app/navigation/types';
+import RoomColumn from '@/ui/RoomColumn';
 import ScreenHeader from '@/ui/ScreenHeader';
 import { EXERCISES } from '@/features/exercises';
 import { clearMemory, loadMemory, DAILY_CHECKIN_ID, AI_CHAT_ID, type MemoryEntry } from './memory';
@@ -96,6 +97,7 @@ export default function MemoScreen({ navigation }: MemoScreenProps) {
 
   return (
     <View style={styles.container}>
+      <RoomColumn>
       <ScreenHeader title="메모" />
       {!sections ? null : sections.length === 0 ? (
         <View style={styles.empty}>
@@ -127,6 +129,7 @@ export default function MemoScreen({ navigation }: MemoScreenProps) {
           }
         />
       )}
+      </RoomColumn>
     </View>
   );
 }
