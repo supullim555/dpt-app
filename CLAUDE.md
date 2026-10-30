@@ -7,7 +7,10 @@ deployed to Vercel at production alias `dpt-app-green.vercel.app` (auto-deploys 
 `master`). The living project log/plan is **`docs/심리지원_프로그램_계획서.md`** — read its header
 blurb and the last few numbered sections before starting any new work; it has the actual
 product philosophy (§1, "요구하지 않는다"), decision history and "다음 단계" backlog that this
-file doesn't repeat. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
+file doesn't repeat. Since v0.27 the product is a **7-chapter story with an ending** (one chapter
+per visit-day, tap-first, the user's own words woven into a "book" at the end) — §1, §2 and §40
+of the plan; the chapter script draft is `docs/스토리_대본_초안.md`, which the user edits and is
+the source of truth for any dialogue text. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
 (layers, feature folders, "how do I add an exercise / stat / furniture") is in **`src/README.md`**.
 
 ## Ship workflow — follow this for every change, every time
