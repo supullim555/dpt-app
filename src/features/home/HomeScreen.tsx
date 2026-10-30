@@ -13,11 +13,16 @@ import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
 import { loadAiOptIn } from '@/features/ai';
 import { DAILY_CHECKIN_ID, quote, takeCallback, type MemoryEntry } from '@/features/memory';
 
+const LATE_GREETING = '이 시간까지 깨어있네요. 무리하지 말아요.';
+
+// First entry whose `until` the current hour is below. Before 5 is still the night before, not
+// morning — this app is often opened before sleep (§10).
 const GREETINGS: { until: number; text: string }[] = [
+  { until: 5, text: LATE_GREETING },
   { until: 11, text: '아침이네요. 지금 마음은 어때요?' },
   { until: 17, text: '오늘 하루 어떻게 흘러가고 있나요?' },
   { until: 22, text: '수고 많았어요. 잠깐 마음을 돌아볼까요?' },
-  { until: 24, text: '이 시간까지 깨어있네요. 무리하지 말아요.' },
+  { until: 24, text: LATE_GREETING },
 ];
 
 // Kept as its own list so the exact same questions can be recorded to memory afterward, rather
