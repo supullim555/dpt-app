@@ -75,6 +75,9 @@ than inventing a new one:
    `require()`) and reference it from components. A barrel file that `require()`s a PNG that
    doesn't exist on disk yet breaks the build immediately — sequencing matters.
 5. Add the new sources to `src/app/ArtPreloader.tsx`'s `SOURCES` array.
+6. Add the asset to `scripts/assets/polish.js`'s `RECIPES` and run it (PhotoCraft: Defringe, plus
+   Vibrance/Unsharp Mask for icons; refuses any size or alpha change). It starts from
+   `generated/unpolished/`, so after re-running an extract script delete that asset's copy there.
 
 ## Architecture notes worth knowing before touching them
 
@@ -124,7 +127,8 @@ than inventing a new one:
 
 ## This machine's environment (checked, don't re-assume)
 
-- No Python, no Rust/cargo, no GIMP/Krita, no actual Adobe Creative Cloud installation.
+- No GIMP/Krita, no actual Adobe Creative Cloud installation (checked 2026-10-31). Python 3.12 and
+  cargo are installed.
 - `typescript-language-server` + `typescript` are installed globally (for the `typescript-lsp`
   plugin).
 - `.claude/settings.json` enables these `claude-plugins-official` plugins: `expo`,
@@ -132,6 +136,7 @@ than inventing a new one:
   (inert until Python is installed — it requires Python 3.8+), `claude-md-management`.
 - `C:\Users\user\Documents\artcraft-suite` is a local checkout of the open-source "ArtCraft"
   Crafting Apps (clean-room Rust reimplementations of the Adobe product line — EffectCraft≈After
-  Effects, PhotoCraft≈Photoshop, etc.), **not** an Adobe product. See
+  Effects, PhotoCraft≈Photoshop, etc.), **not** an Adobe product. Its `<app>-cli.exe` are built under
+  `<app>/target/release/`; `scripts/assets/polish.js` drives PhotoCraft's. See
   `docs/3D_전환_가능성_검토.md` for what was already investigated there (EffectCraft's 3D features, for
   a possible future 3D treatment of the room/character art — nothing implemented yet).
