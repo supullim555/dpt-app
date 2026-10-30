@@ -15,7 +15,7 @@ export const PANEL_DARK = 'rgba(20,20,20,0.92)';
 export const TEXT_ON_DARK = '#fff';
 export const TEXT_ON_DARK_MUTED = 'rgba(255,255,255,0.7)';
 
-/** A soft floating "HUD" surface over the room scene — CoinBadge, the skip pill. */
+/** A soft floating "HUD" surface over the room scene — the quest toggle, the skip pill. */
 export const OVERLAY_LIGHT = 'rgba(255,255,255,0.92)';
 export const TAB_INACTIVE = '#a8a8a8';
 

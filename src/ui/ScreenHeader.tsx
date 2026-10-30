@@ -5,7 +5,7 @@ import { INK } from './theme';
 
 type Props = {
   title: string;
-  /** e.g. a CoinBadge — rendered at the row's end. */
+  /** Optional element rendered at the row's end. */
   right?: ReactNode;
 };
 

@@ -108,7 +108,7 @@ export default function AiChatScreen({ navigation }: AiChatScreenProps) {
 
       {aiOn === false && (
         <View style={styles.offNotice}>
-          <Text style={styles.offNoticeText}>AI 기능이 꺼져 있어요. "이야기" 탭에서 다시 켤 수 있어요.</Text>
+          <Text style={styles.offNoticeText}>AI 기능이 꺼져 있어요. 홈의 ✨ 버튼에서 켤 수 있어요.</Text>
         </View>
       )}
 

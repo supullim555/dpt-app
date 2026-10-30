@@ -52,12 +52,12 @@ export type RoomLayout = {
   nearScale: number;
 };
 
-/** What's actually in the room: the starting pieces plus anything bought. */
-export function ownedObjects(owned: readonly string[]): RoomObjectDef[] {
-  return ROOM_OBJECTS.filter((o) => !o.shop || owned.includes(o.id));
+/** What's actually in the room: the starting pieces plus any `later` piece in `items`. */
+export function visibleObjects(items: readonly string[]): RoomObjectDef[] {
+  return ROOM_OBJECTS.filter((o) => !o.later || items.includes(o.id));
 }
 
-export function getRoomLayout(stageWidth: number, stageHeight: number, owned: readonly string[]): RoomLayout {
+export function getRoomLayout(stageWidth: number, stageHeight: number, items: readonly string[]): RoomLayout {
   const width = Math.min(stageWidth, stageHeight * ROOM_MAX_ASPECT);
   const height = stageHeight;
   const offsetX = (stageWidth - width) / 2;
@@ -73,7 +73,7 @@ export function getRoomLayout(stageWidth: number, stageHeight: number, owned: re
   const padX = charSize * 0.3;
   const padY = height * 0.012;
 
-  const placed = ownedObjects(owned).map((def) => {
+  const placed = visibleObjects(items).map((def) => {
     const art = ART[def.id];
     const w = def.w * width;
     const h = (w * art.height) / art.width;

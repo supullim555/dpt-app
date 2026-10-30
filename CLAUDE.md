@@ -11,7 +11,7 @@ file doesn't repeat. Since v0.27 the product is a **7-chapter story with an endi
 per visit-day, tap-first, the user's own words woven into a "book" at the end) — §1, §2 and §40
 of the plan; the chapter script draft is `docs/스토리_대본_초안.md`, which the user edits and is
 the source of truth for any dialogue text. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
-(layers, feature folders, "how do I add an exercise / stat / furniture") is in **`src/README.md`**.
+(layers, feature folders, "how do I add an exercise / a tap-choice question / furniture") is in **`src/README.md`**.
 
 ## Ship workflow — follow this for every change, every time
 
@@ -57,7 +57,7 @@ call count and what was generated in the plan doc section for that change.
 
 ### Asset generation pipeline (when Gemini is authorized for art)
 
-Pattern used for character sprites, room furniture, quest icons and stat icons — clone it rather
+Pattern used for character sprites, room furniture and quest icons — clone it rather
 than inventing a new one:
 
 1. `scripts/assets/generate-<name>.js` — a name→description table, a style prompt, and one
@@ -65,11 +65,11 @@ than inventing a new one:
    parsing, skip-existing, no retries; it calls `scripts/lib/gemini.js`'s `generateImage` with the
    reference sheet in `art/`). Writes white-background raw PNGs to `generated/<name>/`. Keep the
    style prompt close to the app's existing pixel-art look (dark-brown outlines, soft pastel
-   palette, simple/bold since most of these render tiny). `generate-stat-icons.js` is the template.
+   palette, simple/bold since most of these render tiny). `generate-quest-icons.js` is the template.
 2. `scripts/assets/extract-<name>.js` — one `cutOutAll({ rawDir, outDir, names, maxSide })` call
    (`scripts/lib/cutout.js`: flood-fill white-background removal + speck removal + halo + crop +
    resize), writing to `src/assets/<name>/*.png`. Paths come from `scripts/lib/paths.js`.
-   `extract-stat-icons.js` is the template.
+   `extract-quest-icons.js` is the template.
 3. **Read the resulting PNGs to visually check them before wiring anything to them.**
 4. Only then write the `src/assets/<name>.ts` barrel file (`Record<Id, ImageSourcePropType>` via
    `require()`) and reference it from components. A barrel file that `require()`s a PNG that
@@ -86,15 +86,18 @@ than inventing a new one:
   imports them. `scripts/check-architecture.js` enforces all of this in `npm run verify`.
   `api/chat.ts` is built by Vercel, not Metro, so it keeps a relative import.
 - **Single-source registries**: an exercise is one entry in `features/exercises/exercises.ts`
-  (its quest label and stat live on the entry); a stat is one entry in `features/game/stats.ts`'s
-  `STATS`; a furniture piece is one entry in `features/room/objects.ts`. Don't add parallel
+  (its quest label lives on the entry); a furniture piece is one entry in
+  `features/room/objects.ts` (`later: true` = appears once granted via `progress`'s `roomItems`). Don't add parallel
   id-keyed maps elsewhere — add a field to the entry.
 
-- **`GameContext.tsx` / `GameState` migration**: loading a saved state goes through
+- **No scoring** (v0.28, plan §40): coins, the shop and stats were removed — don't add rewards,
+  streaks or points back; the reason to return is the story's next chapter.
+- **`ProgressContext.tsx` / `ProgressState` migration** (`features/progress`; storage key still
+  `game-state`): loading a saved state goes through
   `mergeWithDefaults(DEFAULT_STATE, saved)` (`src/core/lib/mergeWithDefaults.ts`) — drops keys the
   current shape doesn't have, falls back on wrongly-typed values, and merges plain-object
-  (`Record<SomeId, number>`, like `stats`) fields key-by-key so a newly-added id still gets its
-  default in an older save. Adding a `GameState` field = adding it to `DEFAULT_STATE`; no
+  (`Record<SomeId, …>`, like `lastCompleted`) fields key-by-key so a newly-added id still gets its
+  default in an older save. Adding a `ProgressState` field = adding it to `DEFAULT_STATE`; no
   per-field load code. Use the same helper for any other persisted object shape.
 - **Storage** (`src/core/storage.ts`): every write is serialized per key. Read-modify-write
   goes through `updateEntry`, never a hand-written load-then-save; an append-only list is
@@ -106,17 +109,17 @@ than inventing a new one:
   event-started timers that clear on unmount — no raw `setTimeout` in components),
   `useBreathPacer(phases, { cycles, running, onDone })` (the breathing-circle animation behind
   the gate and 숨 고르기; reuse it for any new calming routine), `useDialogueCompletion` (record
-  answer → mark done → stat-up toast → close after hold), `useRoomBoxSize` (the room's own
+  answer → mark done → close after hold), `useRoomBoxSize` (the room's own
   `ROOM_MAX_ASPECT`-capped width, computed outside `RoomBackdrop`'s tree for anything — like
   `FloatingPanel` — that needs to match the room's width on a wide desktop window instead of
   stretching edge-to-edge).
 - **Network**: client calls go through `postJson` (`src/core/lib/http.ts`), which has a timeout.
-- **Shared components**: `HudBadge` (the floating pill shell for `CoinBadge`/`StatusBadge`),
-  `IconOrEmoji` (generated-icon-or-emoji-fallback branch used by `QuestWidget`/`StatBar`/
-  `StatUpToast`). Reuse these rather than re-deriving the same shadow/fallback logic.
+- **Shared components**: `IconOrEmoji` (generated-icon-or-emoji-fallback branch, used by
+  `QuestWidget`). Dialogue questions are `DialogueQuestion` (`string` = optional typing,
+  `{ text, choices }` = tap-first) — answers are tap-first and every question can be skipped.
 - **Testing**: `scripts/lib/uitest.js` is a from-scratch headless-Chrome CDP harness (no
   Puppeteer) — `withBrowser(url, fn)`, `clickText`, `tapAnyOf`, `fillTextarea`, `waitText`,
-  `shot`, `passStartupGates()` for the login/intro/onboarding sequence every check needs first.
+  `shot`, `passStartupGates()` for the disclaimer → gate-skip sequence every check needs first.
   `scripts/check-core-flow.js` is the maintained regression suite built on it.
 
 ## This machine's environment (checked, don't re-assume)

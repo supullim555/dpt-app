@@ -5,9 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { HomeScreenProps } from '@/app/navigation/types';
 import { RoomBackdrop, RoomPortrait, RoamingCharacter } from '@/features/room';
 import CrisisFooter from '@/ui/CrisisFooter';
-import { CoinBadge, StatusBadge, StatusOverlay, StatUpToast, useGame, type StatId } from '@/features/game';
+import { useProgress } from '@/features/progress';
 import FloatingPanel from '@/ui/FloatingPanel';
-import { DialogueExercise, useDialogueCompletion } from '@/features/dialogue';
+import { DialogueExercise, useDialogueCompletion, type DialogueQuestion } from '@/features/dialogue';
 import { QuestWidget, EXERCISES, type Exercise } from '@/features/exercises';
 import { useReportBottomPanel } from '@/ui/PanelVisibility';
 import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
@@ -23,9 +23,13 @@ const GREETINGS: { until: number; text: string }[] = [
 
 // Kept as its own list so the exact same questions can be recorded to memory afterward, rather
 // than re-deriving them from whatever lead-in lines DialogueExercise is given.
-const DAILY_QUESTIONS = ['오늘 하루는 어땠나요?', '그중에서 가장 기억에 남는 순간이 있다면요?'];
-// §33: talking about the day each day is what "유대감" stands for.
-const DAILY_CHECKIN_STAT: StatId = 'bond';
+// v0.28: the first is answered with a tap (typing stays one tap away), the second is optional
+// typing — "글은 원할 때만" (§1). These describe the DAY, not the feeling: the gate already asked
+// for the feeling and its weight a moment ago.
+const DAILY_QUESTIONS: DialogueQuestion[] = [
+  { text: '오늘 하루는 어땠나요?', choices: ['정신없었어요', '지쳤어요', '그냥 그랬어요', '괜찮았어요', '잘 모르겠어요'] },
+  '그중에서 가장 기억에 남는 순간이 있다면요?',
+];
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -59,41 +63,32 @@ function ActiveExerciseDialogue({ exercise, onDone }: { exercise: Exercise; onDo
     [exercise.id]
   );
 
-  const { onComplete: handleComplete, toast } = useDialogueCompletion({
-    id: exercise.id,
-    questions: exercise.questions,
-    stat: exercise.stat,
-    onClosed: onDone,
-  });
+  const handleComplete = useDialogueCompletion({ id: exercise.id, questions: exercise.questions, onClosed: onDone });
 
   if (!callbackLoaded) return null;
 
   return (
-    <>
-      <StatUpToast toast={toast} />
-      <DialogueExercise
-        questions={exercise.questions}
-        onComplete={handleComplete}
-        leadIn={callback ? `지난번 여기서 "${quote(callback.answer)}"라고 적었었죠.` : exercise.summary}
-        showPortrait
-      />
-    </>
+    <DialogueExercise
+      questions={exercise.questions}
+      onComplete={handleComplete}
+      leadIn={callback ? `지난번 여기서 "${quote(callback.answer)}"라고 적었었죠.` : exercise.summary}
+      showPortrait
+    />
   );
 }
 
 // The room fills the whole tab, edge to edge — no separate top bar or button row cut out of it
 // anymore. What used to live in a bottom action row (실습/지난 이야기/상점) is now the persistent
 // tab bar (MainTabs); when there's nothing to say, Home is just the room with nothing floating
-// over it but the coin count and the quest widget, which is what "living in a room" actually
+// over it but the quest widget, which is what "living in a room" actually
 // looks like.
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { state, loaded, isCompletedToday } = useGame();
+  const { state, loaded, isCompletedToday } = useProgress();
   const insets = useSafeAreaInsets();
   const [callback, setCallback] = useState<MemoryEntry | null>(null);
   const [callbackLoaded, setCallbackLoaded] = useState(false);
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
   const [aiOn, setAiOn] = useState<boolean | null>(null);
-  const [showStatus, setShowStatus] = useState(false);
 
   // Computed once per mount so the opening line doesn't change while the screen stays open.
   const greeting = useMemo(getGreeting, []);
@@ -136,13 +131,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callbackLoaded]);
 
-  // No popup and no praise: the character's closing line thanks them for talking, and
-  // the coin count simply goes up (§4: rewards accumulate quietly). The only record kept is
-  // memory.ts's log — it's what the memo tab reads and what future callbacks are drawn from.
-  const { onComplete: handleCheckinComplete, toast: checkinToast } = useDialogueCompletion({
+  // No popup and no praise: the character's closing line thanks them for talking. The only record
+  // kept is memory.ts's log — it's what the memo tab reads and what future callbacks are drawn from.
+  const handleCheckinComplete = useDialogueCompletion({
     id: DAILY_CHECKIN_ID,
     questions: DAILY_QUESTIONS,
-    stat: DAILY_CHECKIN_STAT,
     onClosed: () => setCheckinShowing(false),
   });
 
@@ -162,8 +155,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const questExercises = useMemo(
     () => EXERCISES.map((exercise) => ({ exercise, doneToday: isCompletedToday(exercise.id) })),
-    // isCompletedToday is stable per completeExercise/isCompletedToday identity from useGame,
-    // but its RESULT depends on state.lastCompleted — re-derive whenever that changes.
+    // isCompletedToday's identity is stable, but its RESULT depends on state.lastCompleted —
+    // re-derive whenever that changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isCompletedToday, state.lastCompleted]
   );
@@ -172,19 +165,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* wait for the saved state so bought furniture doesn't pop in a moment after the room appears */}
       {loaded && (
-        <RoomBackdrop owned={state.inventory}>
+        <RoomBackdrop items={state.roomItems}>
           {/* Mounted (hidden) even during the dialogue so its sprites are already loaded when she starts to walk */}
           <RoamingCharacter hidden={showCloseUp} />
           {showCloseUp && <RoomPortrait />}
         </RoomBackdrop>
       )}
 
-      <CoinBadge coins={state.coins} style={[styles.coinBadge, { top: insets.top + 10 }]} />
-      <StatusBadge onPress={() => setShowStatus(true)} style={[styles.statusBadge, { top: insets.top + 10 }]} />
-
       {!showPanel && (
         <QuestWidget
-          style={{ top: insets.top + 64 }}
+          style={{ top: insets.top + 14 }}
           exercises={questExercises}
           aiOn={aiOn}
           onSelectExercise={setActiveExercise}
@@ -201,7 +191,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
       {showCheckinPanel && (
         <FloatingPanel>
-          <StatUpToast toast={checkinToast} />
           <DialogueExercise
             questions={DAILY_QUESTIONS}
             onComplete={handleCheckinComplete}
@@ -212,13 +201,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </FloatingPanel>
       )}
 
-      {showStatus && <StatusOverlay onClose={() => setShowStatus(false)} />}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  coinBadge: { position: 'absolute', left: 14, zIndex: 10 },
-  statusBadge: { position: 'absolute', right: 14, zIndex: 10 },
 });

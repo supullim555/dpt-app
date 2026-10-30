@@ -6,9 +6,8 @@ import { RoomBackdrop, RoomStander } from '@/features/room';
 import CrisisFooter from '@/ui/CrisisFooter';
 import FloatingPanel from '@/ui/FloatingPanel';
 import { useBreathPacer, type BreathPhase } from '@/core/anim/useBreathPacer';
-import { useTimeout } from '@/core/hooks/useTimeout';
 import { EMOTION_GRID, EMOTION_UNSURE, QUADRANT_COLOR } from './emotions';
-import { useGame } from '@/features/game';
+import { useProgress } from '@/features/progress';
 import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
 import {
   appendGateEntry,
@@ -17,13 +16,17 @@ import {
   needsSafetyNote,
 } from './history';
 
-// S0 — the gate ("들어오기", plan §6). Each visit: she appears, we breathe together (cyclic
-// sighing), a quiet "a bit more?" that passes on its own, one word for the feeling, one number.
-// Nothing here is required: it's short, every step moves on, and skipping is always possible.
-type Step = 'loading' | 'breath' | 'more' | 'label' | 'scale' | 'care';
+// S0 — the gate ("들어오기", plan §6). Each visit: one word for the feeling, one number for its
+// weight — and only if it's heavy, an offer to breathe together. Nothing here is required; the
+// skip is there from the first moment.
+//
+// v0.28: the breathing used to come FIRST, every visit (~20s before any question), with the skip
+// only appearing after 10s. For "열고 10초 안에 첫 질문" (§2 SG1) the feeling question now comes
+// first, and breathing is offered — not imposed — when the weight is OFFER_BREATH_AT or lower.
+type Step = 'loading' | 'label' | 'scale' | 'offer' | 'breath' | 'care';
 
-const SKIP_APPEARS_AFTER_MS = 10_000; // §6: the skip button shows up, faded, after 10s
-const MORE_AUTO_PASS_MS = 3_000; // "a bit more?" passes by itself if unanswered
+/** At or below this (0 = very heavy, 10 = at ease) the gate offers to breathe together. */
+const OFFER_BREATH_AT = 3;
 
 // One sigh: breathe in, a second short sip on top, then a long breath out.
 const SIGH: BreathPhase[] = [
@@ -33,32 +36,28 @@ const SIGH: BreathPhase[] = [
 ];
 
 export default function GateScreen({ navigation }: GateScreenProps) {
-  const { state, loaded } = useGame();
+  const { state, loaded } = useProgress();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>('loading');
-  const [cycles, setCycles] = useState(0); // sighs to do this visit
+  const [cycles, setCycles] = useState(0); // sighs, if breathing is chosen
   const [label, setLabel] = useState<string | null>(null);
-  const [showSkip, setShowSkip] = useState(false);
+  const [recorded, setRecorded] = useState(false); // this visit's entry is saved
+  const enterApp = () => navigation.replace('Main');
   const { value: circle, cyclesDone: done } = useBreathPacer(SIGH, {
     cycles,
     running: step === 'breath',
-    onDone: () => setStep('more'),
+    onDone: enterApp,
   });
 
   useAsyncEffect(async (isCancelled) => {
     const history = await loadGateHistory();
     if (isCancelled()) return;
     setCycles(breathCyclesFor(history));
-    setStep('breath');
+    setStep('label');
   }, []);
 
-  useTimeout(() => setShowSkip(true), SKIP_APPEARS_AFTER_MS);
-  useTimeout(() => setStep('label'), step === 'more' ? MORE_AUTO_PASS_MS : null);
-
-  const enterApp = () => navigation.replace('Main');
-
   const skip = async () => {
-    await appendGateEntry({ date: new Date().toISOString(), label: null, score: null, skipped: true });
+    if (!recorded) await appendGateEntry({ date: new Date().toISOString(), label: null, score: null, skipped: true });
     enterApp();
   };
 
@@ -69,7 +68,9 @@ export default function GateScreen({ navigation }: GateScreenProps) {
       score,
       skipped: false,
     });
+    setRecorded(true);
     if (needsSafetyNote(history)) setStep('care');
+    else if (score <= OFFER_BREATH_AT) setStep('offer');
     else enterApp();
   };
 
@@ -77,11 +78,11 @@ export default function GateScreen({ navigation }: GateScreenProps) {
     <View style={styles.container}>
       {/* wait for the saved state so bought furniture doesn't pop in after the room appears */}
       {loaded && (
-        <RoomBackdrop owned={state.inventory}>
+        <RoomBackdrop items={state.roomItems}>
           <RoomStander />
         </RoomBackdrop>
       )}
-      {showSkip && step !== 'care' && (
+      {step !== 'loading' && step !== 'care' && (
         <TouchableOpacity
           style={[styles.skip, { top: insets.top + 10 }]}
           onPress={skip}
@@ -94,11 +95,9 @@ export default function GateScreen({ navigation }: GateScreenProps) {
       <FloatingPanel style={styles.panel}>
         {step === 'breath' && (
           <View style={styles.center}>
-            {done === 0 && (
-              <Text style={styles.hint}>
-                코로 들이쉬고, 한 번 더 짧게 들이쉬고, 입으로 길게 내쉬어요.
-              </Text>
-            )}
+            <Text style={styles.hint}>
+              코로 들이쉬고, 한 번 더 짧게 들이쉬고, 입으로 길게 내쉬어요.
+            </Text>
             <View style={styles.circleBox}>
               <Animated.View style={[styles.circle, { transform: [{ scale: circle }] }]} />
             </View>
@@ -111,20 +110,14 @@ export default function GateScreen({ navigation }: GateScreenProps) {
           </View>
         )}
 
-        {step === 'more' && (
+        {step === 'offer' && (
           <View style={styles.center}>
-            <Text style={styles.prompt}>조금 더 있을까?</Text>
+            <Text style={styles.prompt}>마음이 꽤 무겁네요. 잠깐 같이 숨 고를까요?</Text>
             <View style={styles.row}>
-              <TouchableOpacity
-                style={styles.pill}
-                onPress={() => {
-                  setCycles(done + 1); // the pacer keeps its count, so this is one more sigh
-                  setStep('breath');
-                }}
-              >
-                <Text style={styles.pillText}>조금 더</Text>
+              <TouchableOpacity style={styles.pill} onPress={() => setStep('breath')}>
+                <Text style={styles.pillText}>같이 쉬기</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.pill} onPress={() => setStep('label')}>
+              <TouchableOpacity style={styles.pill} onPress={enterApp}>
                 <Text style={styles.pillText}>괜찮아요</Text>
               </TouchableOpacity>
             </View>

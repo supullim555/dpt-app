@@ -30,11 +30,10 @@ export async function loadEntry<T>(key: string): Promise<T | null> {
  * incompatible shape, a storage backend that throws) instead of letting it propagate.
  *
  * For a plain feature, a failed read just means "use the default this once" — not worth a
- * special helper. It mattered enough to extract here because of what src/features/ai/preference.ts and
- * src/features/onboarding/authMode.ts both use this for: a one-time choice read by a *Gate component sitting
- * in front of the entire app (IntroGate, LoginGate) before anything else can render. A real bug
- * once left the app stuck on a permanent blank screen because one of those two read its flag
- * without this safety net (§24) — this makes that failure mode impossible to reintroduce by
+ * special helper. It mattered enough to extract here because of flags read by a gate component
+ * sitting in front of the entire app (IntroGate's disclaimer flag) before anything else can
+ * render. A real bug once left the app stuck on a permanent blank screen because such a flag was
+ * read without this safety net (§24) — this makes that failure mode impossible to reintroduce by
  * forgetting a try/catch the next time someone adds a flag like this.
  */
 export async function loadEntryOr<T>(key: string, fallback: T): Promise<T> {

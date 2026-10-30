@@ -9,7 +9,7 @@ type Props = {
 };
 
 // The "Gemini-generated icon if we have one, emoji if we don't" branch used by every
-// icon-bearing HUD element (QuestWidget's quest buttons, StatBar, StatUpToast) — previously each
+// icon-bearing element (QuestWidget's quest buttons) — previously each
 // wrote out its own identical `source ? <Image/> : <Text>` pair (§38).
 export default function IconOrEmoji({ source, emoji, imageStyle, emojiStyle }: Props) {
   return source ? (

@@ -12,7 +12,7 @@ type Props = {
   onSelectExercise: (exercise: Exercise) => void;
   onOpenAiChat: () => void;
   /** Vertical placement — the safe-area top inset varies per device, so the caller (which
-   * already reads it for CoinBadge) passes it down rather than this component re-reading it. */
+   * already reads it) passes it down rather than this component re-reading it. */
   style?: ViewStyle;
 };
 

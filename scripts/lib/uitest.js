@@ -142,17 +142,12 @@ class Tester {
     await sleep(3000);
   }
 
-  // Runs the "게스트로 시작 → 고지 → AI 선택 → 캐릭터 소개 건너뛰기" sequence (LoginGate →
-  // IntroGate → GateScreen) that sits at the top of nearly every check so far. Pass
-  // `{ ai: false }` to click "AI 없이 시작" instead.
-  async passStartupGates({ ai = true } = {}) {
-    await this.waitText('시작하기', 12000);
-    await this.clickText('게스트로 시작');
-    await sleep(800);
+  // Runs the v0.28 startup sequence (IntroGate's one disclaimer tap → GateScreen's first
+  // question → skip) that sits at the top of nearly every check. AI starts off; a check that
+  // needs it turns it on from Home's ✨ prompt.
+  async passStartupGates() {
     await this.waitText('시작하기 전에', 12000);
-    await this.clickText('알겠어요');
-    await sleep(800);
-    await this.clickText(ai ? 'AI 켜고 시작' : 'AI 없이 시작');
+    await this.clickText('시작하기');
     await sleep(800);
     await this.waitText('건너뛰기', 12000);
     await this.clickText('건너뛰기');

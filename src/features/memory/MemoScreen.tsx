@@ -22,7 +22,12 @@ import { BORDER, MUTED, SCREEN_BG } from '@/ui/theme';
 // this screen (memory.ts already recorded every exercise's answers, not just check-ins), so it
 // was merged here rather than kept as a second, parallel log. Nothing below changed to make that
 // true — LABELS already covered every exercise id.
-const LABELS: Record<string, string> = { [DAILY_CHECKIN_ID]: '오늘 하루 이야기', [AI_CHAT_ID]: 'AI와 자유 대화' };
+// LEGACY: exercises that no longer exist but whose answers may still be in someone's log.
+const LABELS: Record<string, string> = {
+  [DAILY_CHECKIN_ID]: '오늘 하루 이야기',
+  [AI_CHAT_ID]: 'AI와 자유 대화',
+  'thought-check': '생각 점검하기', // removed in v0.28 (§40)
+};
 for (const e of EXERCISES) LABELS[e.id] = e.title;
 const labelFor = (id: string) => LABELS[id] ?? id;
 
@@ -41,10 +46,9 @@ function toSections(log: MemoryEntry[]): Section[] {
   return sections;
 }
 
-export default function MemoScreen(_props: MemoScreenProps) {
+export default function MemoScreen({ navigation }: MemoScreenProps) {
   const [sections, setSections] = useState<Section[] | null>(null);
-  // §29: shown only for a real Supabase session, not for a guest (there's nothing to log out
-  // of). Re-checked on every focus for the same reason memory reloads on every focus — this
+  // §29: the signed-in email, if any. Re-checked on every focus for the same reason memory reloads on every focus — this
   // screen has no other way to learn "someone just signed in/out elsewhere" without it.
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -59,9 +63,9 @@ export default function MemoScreen(_props: MemoScreenProps) {
 
   const handleSignOut = async () => {
     const ok = await confirmDestructive('로그아웃할까요?', '메모 같은 기록은 이 기기에 그대로 남아요. 다시 로그인하면 돌아올 수 있어요.');
-    if (ok) await supabase.auth.signOut();
-    // No need to update local state here — LoginGate's onAuthStateChange listener picks this up
-    // and brings the login screen back on its own (see LoginGate.tsx's header comment).
+    if (!ok) return;
+    await supabase.auth.signOut();
+    setUserEmail(null);
   };
 
   const handleClear = async () => {
@@ -72,12 +76,21 @@ export default function MemoScreen(_props: MemoScreenProps) {
     }
   };
 
-  const accountFooter = userEmail && (
+  // v0.28: the account is optional and lives here, not in front of the app.
+  const accountFooter = (
     <View style={styles.accountFooter}>
-      <Text style={styles.accountEmail}>{userEmail}</Text>
-      <TouchableOpacity onPress={handleSignOut}>
-        <Text style={styles.signOutText}>로그아웃</Text>
-      </TouchableOpacity>
+      {userEmail ? (
+        <>
+          <Text style={styles.accountEmail}>{userEmail}</Text>
+          <TouchableOpacity onPress={handleSignOut}>
+            <Text style={styles.signOutText}>로그아웃</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <TouchableOpacity onPress={() => navigation.navigate('Account')}>
+          <Text style={styles.signOutText}>계정 연결하기 (선택)</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 

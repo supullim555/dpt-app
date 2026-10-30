@@ -9,7 +9,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 export type MainTabParamList = {
   Home: undefined;
   Memo: undefined; // "메모" — now the one place to look back at anything said, exercise or AI chat
-  Shop: undefined;
+  // (Shop was removed in v0.28 along with coins — §40.)
 };
 
 // Gate (first-run gate, no chrome) lives outside the tabs; Main is the tab navigator itself.
@@ -25,15 +25,15 @@ export type RootStackParamList = {
   // §25's free-chat screen (Gemini-backed) — reached from Home's quest widget (§27; used to be
   // a card at the top of the now-removed "이야기" tab), shown there only when AI is turned on.
   AiChat: undefined;
-  // No `Status` entry here (§34 originally pushed one, §35 removed it): the status view is now
-  // StatusOverlay, a conditionally-rendered component inside HomeScreen, not a navigated screen —
-  // the user asked for "살짝 투명한 창" (a slightly transparent floating window), which
-  // React Navigation's transparentModal presentation can't reliably give on Android or web.
+  // Optional email account (v0.28). Was a gate in front of the whole app (§28/§29); now reached
+  // from the 메모 tab only by someone who wants it — accounts don't sync anything yet.
+  Account: undefined;
 };
 
 export type GateScreenProps = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 export type ReliefScreenProps = NativeStackScreenProps<RootStackParamList, 'Relief'>;
 export type AiChatScreenProps = NativeStackScreenProps<RootStackParamList, 'AiChat'>;
+export type AccountScreenProps = NativeStackScreenProps<RootStackParamList, 'Account'>;
 
 // A screen inside a tab whose "navigate" needs to reach a root-stack screen (not one of its own
 // tab siblings — e.g. Home reaching AiChat) needs both navigators' prop types composed — the
@@ -44,4 +44,3 @@ type TabProps<T extends keyof MainTabParamList> = CompositeScreenProps<
 >;
 export type HomeScreenProps = TabProps<'Home'>;
 export type MemoScreenProps = TabProps<'Memo'>;
-export type ShopScreenProps = TabProps<'Shop'>;

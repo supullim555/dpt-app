@@ -8,6 +8,6 @@ const { GENERATED_DIR, ASSETS_DIR } = require('../lib/paths');
 cutOutAll({
   rawDir: path.join(GENERATED_DIR, 'quest-icons'),
   outDir: path.join(ASSETS_DIR, 'quest-icons'),
-  names: ['externalization-interview', 'scaling-exception', 'letter-from-future-self', 'defusion-play', 'thought-check'],
+  names: ['externalization-interview', 'scaling-exception', 'letter-from-future-self', 'defusion-play'],
   maxSide: 120, // plenty for a ~28px on-screen icon at up to 4x pixel density
 });

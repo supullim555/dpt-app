@@ -6,7 +6,7 @@ import { RoomContext } from './RoomContext';
 
 type Props = {
   /** Ids of the furniture the player owns (the starting pieces are always there). */
-  owned: readonly string[];
+  items: readonly string[];
   /** Room content (character, portrait) drawn over the furniture. */
   children?: ReactNode;
 };
@@ -61,7 +61,7 @@ function RoomScene({ room }: { room: RoomLayout }) {
 
 // The room, with whatever's living in it (the character) laid over the top as
 // children. Measures itself and shares the resulting geometry through RoomContext.
-function RoomBackdropBase({ owned, children }: Props) {
+function RoomBackdropBase({ items, children }: Props) {
   const [stage, setStage] = useState({ width: 0, height: 0 });
   const stageRef = useRef<View>(null);
   const applySize = (width: number, height: number) =>
@@ -77,13 +77,13 @@ function RoomBackdropBase({ owned, children }: Props) {
     if (r && r.width > 0 && r.height > 0) applySize(r.width, r.height);
   }, []);
 
-  // Keyed by content, not array identity, so re-renders that don't change what's owned
+  // Keyed by content, not array identity, so re-renders that don't change what's in the room
   // don't rebuild the layout (which would restart the character's walk).
-  const ownedKey = [...owned].sort().join(',');
+  const itemsKey = [...items].sort().join(',');
   const room = useMemo(
-    () => (stage.width > 0 && stage.height > 0 ? getRoomLayout(stage.width, stage.height, owned) : null),
+    () => (stage.width > 0 && stage.height > 0 ? getRoomLayout(stage.width, stage.height, items) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stage.width, stage.height, ownedKey]
+    [stage.width, stage.height, itemsKey]
   );
 
   return (

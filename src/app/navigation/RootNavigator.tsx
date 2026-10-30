@@ -4,6 +4,7 @@ import GateScreen from '@/features/gate/GateScreen';
 import MainTabs from './MainTabs';
 import ReliefScreen from '@/features/relief/ReliefScreen';
 import AiChatScreen from '@/features/ai/AiChatScreen';
+import AccountScreen from '@/features/onboarding/AccountScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -18,6 +19,7 @@ export default function RootNavigator() {
             tab, and dismissing it returns to exactly where the user was. */}
         <Stack.Screen name="Relief" component={ReliefScreen} options={{ presentation: 'modal' }} />
         <Stack.Screen name="AiChat" component={AiChatScreen} />
+        <Stack.Screen name="Account" component={AccountScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

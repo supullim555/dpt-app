@@ -1,10 +1,12 @@
-import type { StatId } from '@/features/game';
-
 // The single place an exercise is defined. Adding one = adding an entry to EXERCISES below (plus,
 // optionally, a generated icon in src/assets/questIcons.ts — without one QuestWidget shows an
-// emoji). Everything else — the quest button and its label, which stat it grows, the 메모 tab's
-// heading for its answers — reads from here.
-export type Track = 'narrative' | 'defusion' | 'restructuring';
+// emoji). Everything else — the quest button and its label, the 메모 tab's heading for its
+// answers — reads from here.
+//
+// 「생각 점검하기」 (thought-check, a CBT thought record) was removed in v0.28: checking whether a
+// thought is true pulls against accepting the feeling, the direction §40 settled on. Its old
+// answers stay in the 메모 tab (memory's LEGACY_LABELS).
+export type Track = 'narrative' | 'defusion';
 
 export type Exercise = {
   id: string;
@@ -13,8 +15,6 @@ export type Exercise = {
   /** 2-4 syllables, shown under the quest button — titles like "척도질문 + 예외 찾기" are too long
    * at that width (§32). Still names the exercise, not just its track. */
   shortLabel: string;
-  /** Which §33 stat completing this grows. */
-  stat: StatId;
   summary: string;
   theory: string;
   goal: string;
@@ -25,14 +25,12 @@ export type Exercise = {
 export const TRACKS: Record<Track, { label: string }> = {
   narrative: { label: '이야기를 바꾸는 트랙' },
   defusion: { label: '생각과 거리 두는 트랙' },
-  restructuring: { label: '생각을 점검하는 트랙' },
 };
 
 export const EXERCISES: Exercise[] = [
   {
     id: 'externalization-interview',
     shortLabel: '외재화 인터뷰',
-    stat: 'courage',
     track: 'narrative',
     title: '문제 외재화 인터뷰',
     summary:
@@ -48,7 +46,6 @@ export const EXERCISES: Exercise[] = [
   {
     id: 'scaling-exception',
     shortLabel: '척도 질문',
-    stat: 'insight',
     track: 'narrative',
     title: '척도질문 + 예외 찾기',
     summary:
@@ -64,7 +61,6 @@ export const EXERCISES: Exercise[] = [
   {
     id: 'letter-from-future-self',
     shortLabel: '미래의 편지',
-    stat: 'hope',
     track: 'narrative',
     title: '미래의 나에게서 온 편지',
     summary: '1년 뒤의 내가 지금의 나에게 쓰는 편지.',
@@ -78,7 +74,6 @@ export const EXERCISES: Exercise[] = [
   {
     id: 'defusion-play',
     shortLabel: '생각 거리두기',
-    stat: 'flexibility',
     track: 'defusion',
     title: '생각 이름 붙이기 / 탈융합 놀이',
     summary:
@@ -89,23 +84,6 @@ export const EXERCISES: Exercise[] = [
       "요즘 자꾸 떠오르는 생각을 한 문장으로 적어볼까요? (예: '나는 망했어')",
       "그 생각에 별명을 붙여볼까요? (예: '망했어병')",
       "이제 '나는 [별명]이라는 생각을 하고 있다'로 바꿔서 다시 적어보세요.",
-    ],
-  },
-  {
-    id: 'thought-check',
-    shortLabel: '생각 점검',
-    stat: 'calm',
-    track: 'restructuring',
-    title: '생각 점검하기',
-    summary:
-      '방금 마음을 힘들게 한 순간을 짚어보고, 그때 스친 생각이 사실인지 증거를 확인한 다음, 조금 더 균형 잡힌 생각으로 다시 적어봅니다.',
-    theory: '인지행동치료(Beck)의 사고 기록(thought record) — 자동적 사고 → 증거 확인 → 균형 잡힌 생각',
-    goal: '생각을 사실로 자동 확정하지 않고, 증거에 비추어 다시 볼 여지를 만들기',
-    questions: [
-      '방금 마음을 힘들게 한 상황이 있다면, 무슨 일이 있었나요?',
-      '그 순간 머릿속에 스친 생각은 뭐였나요? (그대로 적어도 좋아요)',
-      '그 생각이 꼭 사실은 아닐 수도 있다는 증거가 있다면요?',
-      '지금 다시 보면, 조금 더 균형 잡힌 생각은 뭘까요?',
     ],
   },
 ];

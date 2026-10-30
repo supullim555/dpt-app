@@ -15,7 +15,8 @@ at the top of the "이야기" tab, shown only when the user has turned AI on.
 3. §1 and §8's tension with a live model (noted below, and in `systemPrompt.ts`) was resolved by
    explicit user decision, not by this code: §1 was corrected to allow reflection without
    diagnosis (2026-10-01), and §8's "아무도 읽지 않아요" is disclosed as not applying to this one
-   screen, directly in IntroGate's ai-choice step — the user sees that before ever turning AI on.
+   screen, directly in the prompt Home's ✨ button shows before AI can be turned on (QuestWidget;
+   it was IntroGate's ai-choice step until v0.28) — the user sees that before ever turning AI on.
 4. `AiChatScreen` calls `sendChatMessage` — gated per-message on the user's stored AI choice
    (`src/features/ai/preference.ts`), same gate the removed local-model version used.
 

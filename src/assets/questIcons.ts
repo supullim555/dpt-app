@@ -8,5 +8,4 @@ export const QUEST_ICON_SOURCES: Record<string, ImageSourcePropType> = {
   'scaling-exception': require('./quest-icons/scaling-exception.png'),
   'letter-from-future-self': require('./quest-icons/letter-from-future-self.png'),
   'defusion-play': require('./quest-icons/defusion-play.png'),
-  'thought-check': require('./quest-icons/thought-check.png'),
 };

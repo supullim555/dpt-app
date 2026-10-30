@@ -9,7 +9,7 @@
 //   - §4 (achievements aren't praised, absence isn't pointed out) needs to be told explicitly —
 //     most assistant-tuned models do both by default.
 //   - §8's "아무도 읽지 않아요" does not apply to whatever is typed in THIS screen — that's
-//     disclosed on its own in IntroGate's ai-choice step, not hidden here.
+//     disclosed on its own where AI is turned on (QuestWidget's ✨ prompt), not hidden here.
 //
 // 2026-10-08 (same day as the Gemini switch): the user asked specifically for 반영(reflection)
 // and 재진술(restatement) to be the active technique that draws the user's own story out — not

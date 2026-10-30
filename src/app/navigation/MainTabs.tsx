@@ -4,24 +4,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import HomeScreen from '@/features/home/HomeScreen';
 import MemoScreen from '@/features/memory/MemoScreen';
-import ShopScreen from '@/features/shop/ShopScreen';
 import type { MainTabParamList, RootStackParamList } from './types';
 import { PanelVisibilityProvider, useBottomPanelOpen } from '@/ui/PanelVisibility';
 import { BORDER, CHIP_SHADOW, INK, OVERLAY_LIGHT, TAB_INACTIVE } from '@/ui/theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// Plain emoji rather than an icon font: no new asset pipeline or font file for three glyphs,
-// and it already matches how the app shows coins (🪙) elsewhere.
+// Plain emoji rather than an icon font: no new asset pipeline or font file
+// for two glyphs.
 const ICON: Record<keyof MainTabParamList, string> = {
   Home: '🏠',
   Memo: '📝',
-  Shop: '🛍️',
 };
 const LABEL: Record<keyof MainTabParamList, string> = {
   Home: '홈',
   Memo: '메모',
-  Shop: '상점',
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Main'>;
@@ -59,7 +56,6 @@ export default function MainTabs({ navigation }: Props) {
         >
           <Tab.Screen name="Home" component={HomeScreen} />
           <Tab.Screen name="Memo" component={MemoScreen} />
-          <Tab.Screen name="Shop" component={ShopScreen} />
         </Tab.Navigator>
 
         <ReliefButton onPress={() => navigation.navigate('Relief')} tabBarHeight={tabBarHeight} />
@@ -74,7 +70,7 @@ export default function MainTabs({ navigation }: Props) {
 // Deliberately plain text, no red, no siren icon: noticeable, not alarming, matching
 // CrisisFooter's tone.
 //
-// A fixed corner turned out not to be safe everywhere: Memo/Shop are plain scrolling lists
+// A fixed corner turned out not to be safe everywhere: Memo is a plain scrolling list
 // (a bottom-right FAB is the standard, expected place there), but Home docks its own
 // FloatingPanel — dialogue + CrisisFooter — flush to the bottom edge while checking in, and a
 // bottom-right chip ended up sitting right on top of the crisis phone numbers (caught in a

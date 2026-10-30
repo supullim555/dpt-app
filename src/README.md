@@ -9,18 +9,17 @@ src/
 │  ├─ hooks/      useAsyncEffect · useTimeout/useTimer · useSubmitOnEnter
 │  ├─ anim/       nativeDriver · useBreathPacer
 │  └─ storage.ts  saveEntry · loadEntryOr · updateEntry · createLog
-├─ ui/          앱 공통 모양과 틀 — theme, FloatingPanel, HudBadge, IconOrEmoji, ScreenHeader,
+├─ ui/          앱 공통 모양과 틀 — theme, FloatingPanel, IconOrEmoji, ScreenHeader,
 │               CrisisFooter, TapHintChevron, PanelVisibility, useRoomBoxSize
 ├─ features/    기능 하나 = 폴더 하나
-│  ├─ onboarding/  LoginGate · IntroGate · 게스트 모드 · Supabase
-│  ├─ gate/        들어오기(S0): 호흡 · 감정 고르기 · 점수 · 방문 기록
+│  ├─ onboarding/  IntroGate(첫 실행 고지) · AccountScreen(선택 계정) · Supabase
+│  ├─ gate/        들어오기(S0): 감정 고르기 · 마음의 무게 · (무거우면) 같이 숨 고르기 · 방문 기록
 │  ├─ home/        홈 화면 — 하루 체크인, 실습 패널, 퀘스트 위젯을 조립
-│  ├─ dialogue/    "캐릭터가 묻고 내가 답하는" 대화 엔진과 완료 처리
+│  ├─ dialogue/    "캐릭터가 묻고 내가 답하는" 대화 엔진(탭 선택지 + 원할 때 글쓰기)과 완료 처리
 │  ├─ exercises/   실습 정의(EXERCISES)와 퀘스트 위젯
 │  ├─ memory/      답변 기록 · 콜백(지난번에 ~라고 했었죠) · 메모 화면
 │  ├─ ai/          Gemini 자유 대화 (README.md 먼저)
-│  ├─ game/        코인 · 능력치 · 상태 창 · 상점 카탈로그 (GameContext)
-│  ├─ shop/        상점 화면
+│  ├─ progress/    오늘 한 것 · 방에 놓인 소품 (ProgressContext) — 점수·보상은 없음
 │  ├─ room/        방 그리기 · 가구 배치 · 방 안의 캐릭터
 │  ├─ character/   스프라이트 · 초상화 · 대기 동작
 │  └─ relief/      숨 고르기
@@ -36,16 +35,16 @@ src/
 4. **화면(`*Screen.tsx`)은 `app/navigation`만** 직접 가져다 쓴다. 그래서 기능의 `index.ts`에는 화면을 넣지 않는다.
 5. `import type`은 1·2번 방향 규칙에서 예외다. 런타임에 사라지므로 순환 의존을 만들지 않는다. 예: 화면이 `@/app/navigation/types`에서 props 타입을 가져온다.
 
-지금 기능 사이 의존은 한 방향으로만 흐른다. `room`→`character`, `game`→`room`, `dialogue`→`game`·`memory`·`character`, `exercises`→`ai`·`game`(타입), `onboarding`→`ai`. 이 방향을 거스르는 import가 필요해 보이면 공용 부분을 아래 층으로 내리라는 신호다.
+지금 기능 사이 의존은 한 방향으로만 흐른다. `room`→`character`, `dialogue`→`progress`·`memory`·`character`, `exercises`→`ai`, `room`은 `progress`의 `roomItems`를 화면에서 받는다. 이 방향을 거스르는 import가 필요해 보이면 공용 부분을 아래 층으로 내리라는 신호다.
 
 ## 자주 하는 추가 작업
 
 | 하고 싶은 것 | 고칠 곳 |
 | :---- | :---- |
-| **실습 추가** | `features/exercises/exercises.ts`의 `EXERCISES`에 항목 하나 추가(`id`, `shortLabel`, `stat`, `questions` …). 퀘스트 버튼, 능력치 증가, 메모 제목은 자동으로 따라온다. 아이콘은 선택: 없으면 이모지가 나오고, 만들려면 `scripts/assets/generate-quest-icons.js` → `extract-quest-icons.js` → `assets/questIcons.ts` |
-| **능력치 추가** | `features/game/stats.ts`의 `STATS`에 한 줄 추가. 옛 저장은 자동으로 0부터 시작한다 |
-| **가구 추가** | `features/room/objects.ts`의 `ROOM_OBJECTS`에 한 줄(`shop`을 넣으면 상점에도 나온다). 그림은 `scripts/assets/generate-room-objects.js`·`extract-room.js`의 목록에 이름 추가 |
-| **저장할 데이터 추가** | 한 값이면 `saveEntry`/`loadEntryOr`, 쌓이는 목록이면 `createLog(key, { max })`, 읽고 고쳐 쓰면 `updateEntry`. 게임 상태 필드면 `GameContext`의 `DEFAULT_STATE`에만 추가한다(옛 저장 병합은 `mergeWithDefaults`가 처리) |
+| **실습 추가** | `features/exercises/exercises.ts`의 `EXERCISES`에 항목 하나 추가(`id`, `shortLabel`, `questions` …). 퀘스트 버튼과 메모 제목은 자동으로 따라온다. 아이콘은 선택: 없으면 이모지가 나오고, 만들려면 `scripts/assets/generate-quest-icons.js` → `extract-quest-icons.js` → `assets/questIcons.ts` |
+| **질문을 탭 선택지로** | `questions`에 문자열 대신 `{ text, choices: [...] }`. "직접 쓸게요"는 자동으로 붙는다 |
+| **가구 추가** | `features/room/objects.ts`의 `ROOM_OBJECTS`에 한 줄(`later: true`면 처음엔 없고, `progress`의 `grantRoomItem(id)`으로 방에 나타난다). 그림은 `scripts/assets/generate-room-objects.js`·`extract-room.js`의 목록에 이름 추가 |
+| **저장할 데이터 추가** | 한 값이면 `saveEntry`/`loadEntryOr`, 쌓이는 목록이면 `createLog(key, { max })`, 읽고 고쳐 쓰면 `updateEntry`. 진행 상태 필드면 `ProgressContext`의 `DEFAULT_STATE`에만 추가한다(옛 저장 병합은 `mergeWithDefaults`가 처리) |
 | **타이머** | 컴포넌트에서 `setTimeout`을 직접 쓰지 않는다. 렌더 기반이면 `useTimeout(cb, ms \| null)`, 이벤트에서 걸면 `useTimer().schedule` |
 | **호흡·진정 루틴** | `core/anim/useBreathPacer(phases, { cycles, running, onDone })` |
 | **서버 요청** | `core/lib/http.ts`의 `postJson`(시간 제한 포함) |

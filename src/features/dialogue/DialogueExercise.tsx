@@ -1,14 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CharacterPortrait } from '@/features/character';
 import TapHintChevron from '@/ui/TapHintChevron';
 import { useDialogue, type DialogueBeat } from './useDialogue';
+import { questionText, type DialogueQuestion } from './questions';
 import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
 import { useRoomBoxSize } from '@/ui/useRoomBoxSize';
 import { TEXT_ON_DARK, TEXT_ON_DARK_MUTED } from '@/ui/theme';
 
 type Props = {
-  questions: string[];
+  /** A plain string asks for an (optional) typed answer; `{ text, choices }` is answered by a
+   * tap, with typing still available behind "직접 쓸게요". */
+  questions: DialogueQuestion[];
   onComplete: (answers: string[]) => void;
   /** Non-answerable opening line(s) shown before the first question — e.g. a callback to what
    * was said last time (exercises), or a greeting plus an optional callback line (Home's daily
@@ -31,18 +34,28 @@ export default function DialogueExercise({ questions, onComplete, leadIn, showPo
     text,
     answerable: false,
   }));
-  const beats = [...leadInBeats, ...questions.map((text) => ({ text, answerable: true }))];
-  const { current, index, phase, draft, setDraft, advance, done, answered } = useDialogue(beats, onComplete);
+  const beats: DialogueBeat[] = [
+    ...leadInBeats,
+    ...questions.map((q) => ({ text: questionText(q), answerable: true, choices: typeof q === 'string' ? undefined : q.choices })),
+  ];
+  const { current, index, draft, setDraft, advance, answer, done, isAnswerable, answered } = useDialogue(beats, onComplete);
+  // On a choice question, typing is one tap away ("직접 쓸게요") rather than shown up front.
+  const [writing, setWriting] = useState(false);
+  useEffect(() => setWriting(false), [index]);
+  const showChoices = !done && isAnswerable && !!current.choices?.length && !writing;
+  const showInput = !done && isAnswerable && !showChoices;
+  const isLast = questionNumberFor(index, leadInBeats.length, questions.length) === questions.length;
+  const submitLabel = draft.trim() ? (isLast ? '완료' : '다음') : '넘어가기';
   const offset = leadInBeats.length;
   const showProgress = !done && index >= offset;
-  const questionNumber = Math.min(index - offset + 1, questions.length);
+  const questionNumber = questionNumberFor(index, offset, questions.length);
 
   // §36: what's been said so far, shown as a short scrolling transcript above the current line —
   // previously a submitted answer just vanished (the input cleared and the next question took
   // its place), which read as talking into a void rather than a conversation building up. Only
   // the answerable beats among leadInBeats..beats line up 1:1 with `answered`.
   const answerableBeats = beats.filter((b) => b.answerable ?? true);
-  const history = answered.map((answer, i) => ({ question: answerableBeats[i].text, answer }));
+  const history = answered.map((text, i) => ({ question: answerableBeats[i].text, answer: text }));
 
   const historyRef = useRef<ScrollView>(null);
   useEffect(() => {
@@ -82,9 +95,9 @@ export default function DialogueExercise({ questions, onComplete, leadIn, showPo
         </ScrollView>
       )}
 
-      <TouchableOpacity onPress={advance} activeOpacity={0.85} style={styles.bubbleTouchable}>
+      <TouchableOpacity onPress={advance} disabled={done || isAnswerable} activeOpacity={0.85} style={styles.bubbleTouchable}>
         <Text style={styles.bubbleText}>{done ? '오늘 이야기 나눠줘서 고마워요.' : current.text}</Text>
-        {!done && <TapHintChevron />}
+        {!done && !isAnswerable && <TapHintChevron />}
       </TouchableOpacity>
 
       {showProgress && (
@@ -93,20 +106,32 @@ export default function DialogueExercise({ questions, onComplete, leadIn, showPo
         </Text>
       )}
 
-      {!done && phase === 'input' && (
+      {showChoices && (
+        <View style={styles.choices}>
+          {current.choices!.map((choice) => (
+            <TouchableOpacity key={choice} style={styles.choice} onPress={() => answer(choice)}>
+              <Text style={styles.choiceText}>{choice}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={[styles.choice, styles.choiceWrite]} onPress={() => setWriting(true)}>
+            <Text style={styles.choiceWriteText}>직접 쓸게요</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {showInput && (
         <View style={styles.answerBox}>
           <TextInput
             style={styles.input}
             value={draft}
             onChangeText={setDraft}
-            onKeyPress={makeSubmitOnEnterHandler(advance)}
-            placeholder="여기에 적어보세요 (Enter로 제출, Shift+Enter로 줄바꿈)"
+            onKeyPress={makeSubmitOnEnterHandler(() => answer())}
+            placeholder="쓰고 싶은 만큼만 (안 써도 괜찮아요)"
             placeholderTextColor="rgba(255,255,255,0.4)"
             multiline
-            autoFocus
           />
-          <TouchableOpacity style={styles.sendButton} onPress={advance}>
-            <Text style={styles.sendButtonText}>{questionNumber < questions.length ? '다음' : '완료'}</Text>
+          <TouchableOpacity style={[styles.sendButton, !draft.trim() && styles.skipButton]} onPress={() => answer()}>
+            <Text style={[styles.sendButtonText, !draft.trim() && styles.skipButtonText]}>{submitLabel}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -162,4 +187,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sendButtonText: { color: '#111', fontWeight: '700', fontSize: 14 },
+  skipButton: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  skipButtonText: { color: TEXT_ON_DARK },
+  choices: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, alignSelf: 'stretch' },
+  choice: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  choiceText: { color: '#111', fontSize: 14, fontWeight: '600' },
+  choiceWrite: { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
+  choiceWriteText: { color: TEXT_ON_DARK, fontSize: 14 },
 });
+
+function questionNumberFor(index: number, offset: number, total: number) {
+  return Math.min(index - offset + 1, total);
+}

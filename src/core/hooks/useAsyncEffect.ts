@@ -11,7 +11,7 @@ import { useEffect, type DependencyList } from 'react';
  *
  * Not a fit for an effect that needs its OWN cleanup beyond this flag — unsubscribing a listener,
  * stopping an in-flight Animated sequence, clearing a timer. Those stay as plain `useEffect`
- * (see LoginGate's `onAuthStateChange` subscription, or ReliefScreen/RoamingCharacter's
+ * (see AccountScreen's `onAuthStateChange` subscription, or ReliefScreen/RoamingCharacter's
  * animations) rather than being forced through this.
  */
 export function useAsyncEffect(effect: (isCancelled: () => boolean) => void | Promise<void>, deps: DependencyList) {

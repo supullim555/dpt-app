@@ -19,7 +19,6 @@ const ICONS = {
   'scaling-exception': 'a cute short wooden ruler with a few tick marks, tilted slightly, pastel warm-yellow wood tone',
   'letter-from-future-self': 'a cute pastel-pink envelope, sealed with one small heart-shaped wax seal',
   'defusion-play': 'a cute round balloon on a short curly string, pastel sky-blue, floating upward',
-  'thought-check': 'a cute magnifying glass with a round lens, examining a small fluffy thought-bubble cloud beside it',
 };
 
 const STYLE = `Use the attached character reference sheet ONLY as a style guide for the pixel size, dark-brown
