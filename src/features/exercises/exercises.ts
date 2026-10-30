@@ -12,8 +12,8 @@ export type Exercise = {
   id: string;
   track: Track;
   title: string;
-  /** 2-4 syllables, shown under the quest button — titles like "척도질문 + 예외 찾기" are too long
-   * at that width (§32). Still names the exercise, not just its track. */
+  /** Everyday words, at most 5 characters plus a space: shown on one line under the quest button,
+   * where titles like "척도질문 + 예외 찾기" don't fit (§32, §44). */
   shortLabel: string;
   summary: string;
   theory: string;
@@ -30,7 +30,7 @@ export const TRACKS: Record<Track, { label: string }> = {
 export const EXERCISES: Exercise[] = [
   {
     id: 'externalization-interview',
-    shortLabel: '외재화 인터뷰',
+    shortLabel: '이름 붙이기',
     track: 'narrative',
     title: '문제 외재화 인터뷰',
     summary:
@@ -73,7 +73,7 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: 'defusion-play',
-    shortLabel: '생각 거리두기',
+    shortLabel: '거리 두기',
     track: 'defusion',
     title: '생각 이름 붙이기 / 탈융합 놀이',
     summary:

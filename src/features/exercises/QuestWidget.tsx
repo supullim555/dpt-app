@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { Exercise } from './exercises';
 import { setAiOptIn } from '@/features/ai';
 import { QUEST_ICON_SOURCES } from '@/assets/questIcons';
 import IconOrEmoji from '@/ui/IconOrEmoji';
+import { useRoomBoxSize } from '@/ui/useRoomBoxSize';
 import { BORDER, CHIP_SHADOW, INK, MUTED, OVERLAY_LIGHT, SCREEN_BG } from '@/ui/theme';
+
+/** Height above the tab bar, clearing the 숨 고르기 chip that floats just above it. */
+const QUEST_ROW_BOTTOM = 56;
 
 type Props = {
   exercises: { exercise: Exercise; doneToday: boolean }[];
   aiOn: boolean | null; // null while the stored choice hasn't loaded yet
   onSelectExercise: (exercise: Exercise) => void;
   onOpenAiChat: () => void;
-  /** Vertical placement — the safe-area top inset varies per device, so the caller (which
-   * already reads it) passes it down rather than this component re-reading it. */
-  style?: ViewStyle;
 };
 
 // §27's "모바일 게임의 일일 퀘스트 목록" request — a small column of buttons living on Home
@@ -25,14 +26,16 @@ type Props = {
 // permanent column of buttons over it would fight that. Collapsed is a single small toggle;
 // expanded is the full list. Resets to expanded on every mount (not persisted) — a once-per-visit
 // UI preference isn't worth a storage round trip.
-export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenAiChat, style }: Props) {
+export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenAiChat }: Props) {
+  // As wide as the room, so on a wide desktop window the row stays over the room, not the page.
+  const { width: roomWidth } = useRoomBoxSize();
   const [collapsed, setCollapsed] = useState(false);
   const [showAiPrompt, setShowAiPrompt] = useState(false);
 
   if (collapsed) {
     return (
       <TouchableOpacity
-        style={[styles.collapsedToggle, style]}
+        style={styles.collapsedToggle}
         onPress={() => setCollapsed(false)}
         accessibilityLabel="오늘의 이야기 목록 펼치기"
       >
@@ -56,15 +59,20 @@ export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenA
   };
 
   return (
-    <View style={[styles.wrap, style]}>
-      <TouchableOpacity
-        style={styles.collapseButton}
-        onPress={() => setCollapsed(true)}
-        accessibilityLabel="오늘의 이야기 목록 접기"
-      >
-        <Text style={styles.collapseIcon}>⌃</Text>
-      </TouchableOpacity>
-
+    <View style={[styles.wrap, { width: roomWidth }]}>
+      {/* Above the row, so it grows up into the free floor instead of off the screen. */}
+      {showAiPrompt && (
+        <View style={styles.aiPrompt}>
+          <Text style={styles.aiPromptText}>
+            켜면 AI(Google Gemini)와 자유롭게 대화할 수 있어요. 나누는 대화는 이 기기가 아니라
+            Gemini 서버로 전송돼요.
+          </Text>
+          <TouchableOpacity style={styles.aiPromptButton} onPress={turnAiOn}>
+            <Text style={styles.aiPromptButtonText}>켜기</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <View style={styles.row}>
       {exercises.map(({ exercise, doneToday }) => (
         <TouchableOpacity
           key={exercise.id}
@@ -86,7 +94,7 @@ export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenA
               </View>
             )}
           </View>
-          <Text style={styles.itemLabel} numberOfLines={2}>
+          <Text style={styles.itemLabel} numberOfLines={1}>
             {exercise.shortLabel}
           </Text>
         </TouchableOpacity>
@@ -96,32 +104,32 @@ export default function QuestWidget({ exercises, aiOn, onSelectExercise, onOpenA
         <View style={[styles.questButton, styles.aiButton, !aiOn && styles.questButtonOff]}>
           <Text style={styles.questIcon}>✨</Text>
         </View>
-        <Text style={styles.itemLabel} numberOfLines={2}>
+        <Text style={styles.itemLabel} numberOfLines={1}>
           AI와 대화
         </Text>
       </TouchableOpacity>
 
-      {showAiPrompt && (
-        <View style={styles.aiPrompt}>
-          <Text style={styles.aiPromptText}>
-            켜면 AI(Google Gemini)와 자유롭게 대화할 수 있어요. 나누는 대화는 이 기기가 아니라
-            Gemini 서버로 전송돼요.
-          </Text>
-          <TouchableOpacity style={styles.aiPromptButton} onPress={turnAiOn}>
-            <Text style={styles.aiPromptButtonText}>켜기</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <TouchableOpacity
+        style={styles.collapseButton}
+        onPress={() => setCollapsed(true)}
+        accessibilityLabel="오늘의 이야기 목록 접기"
+      >
+        <Text style={styles.collapseIcon}>⌄</Text>
+      </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 14, alignItems: 'center', gap: 10 },
+  // Along the floor (§44): a column down the left edge covered the bed and the picture frames.
+  wrap: { position: 'absolute', bottom: QUEST_ROW_BOTTOM, alignSelf: 'center', alignItems: 'center', gap: 8 },
+  row: { flexDirection: 'row', alignSelf: 'stretch', justifyContent: 'center', alignItems: 'flex-start', paddingHorizontal: 6 },
   collapseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    marginTop: 11,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.6)',
@@ -129,6 +137,7 @@ const styles = StyleSheet.create({
   collapseIcon: { fontSize: 14, color: MUTED },
   collapsedToggle: {
     position: 'absolute',
+    bottom: QUEST_ROW_BOTTOM,
     left: 14,
     width: 44,
     height: 44,
@@ -141,7 +150,7 @@ const styles = StyleSheet.create({
     ...CHIP_SHADOW,
   },
   collapsedIcon: { fontSize: 18 },
-  item: { alignItems: 'center', width: 64 },
+  item: { alignItems: 'center', flex: 1, maxWidth: 76 },
   // A small pill rather than plain text over the room art behind it — the backdrop's color
   // varies by what furniture is bought (§12), so plain text risks low contrast somewhere.
   itemLabel: {

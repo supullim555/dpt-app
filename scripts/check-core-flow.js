@@ -80,8 +80,8 @@ async function main() {
       await t.clickText('건너뛰기');
       await sleep(1200);
 
-      // '외재화 인터뷰' is the label QuestWidget shows under the externalization-interview button.
-      const EXERCISE_LABEL = '외재화 인터뷰';
+      // '이름 붙이기' is the label QuestWidget shows under the externalization-interview button.
+      const EXERCISE_LABEL = '이름 붙이기';
       t.note('하단 탭에 상점·이야기 탭 없음', !(await t.hasText('상점')) && !(await t.hasText('이야기')));
       t.note('홈에 코인·상태 배지 없음', !(await t.hasText('📊 상태')) && !(await t.hasText('🪙')));
       t.note('체크인 대화 중엔 퀘스트 위젯 숨김 (버튼 라벨 안 보임)', !(await t.hasText(EXERCISE_LABEL)));
@@ -102,10 +102,27 @@ async function main() {
       t.note('체크인 완료 후 보상 알림 없음 (+2 토스트 없음)', !(await t.hasText('+2')));
       t.note('체크인 끝난 뒤 퀘스트 위젯 노출 (버튼 라벨 보임)', await t.hasText(EXERCISE_LABEL));
       t.note('퀘스트에 「생각 점검」 없음', !(await t.hasText('생각 점검')));
+      // §44 layout: labels on one line, the row on the floor, tab labels not clipped
+      const rectOf = (text) =>
+        t.evalJs(
+          `(()=>{const e=[...document.querySelectorAll('div,span')].filter(e=>e.children.length===0&&e.textContent.trim()===${JSON.stringify(text)}).pop();if(!e)return null;const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height,scroll:e.scrollWidth,client:e.clientWidth}})()`
+        );
+      let oneLine = true;
+      let onFloor = true;
+      for (const l of ['이름 붙이기', '척도 질문', '미래의 편지', '거리 두기', 'AI와 대화']) {
+        const r = await rectOf(l);
+        oneLine = oneLine && !!r && r.height < 22 && r.scroll <= r.client;
+        onFloor = onFloor && !!r && r.top > 760 * 0.6;
+      }
+      t.note('퀘스트 이름표가 한 줄에 다 보임', oneLine);
+      t.note('퀘스트 버튼이 방 아래쪽에 있음 (침대·액자를 안 가림)', onFloor);
+      const tabHome = await rectOf('홈');
+      const tabMemo = await rectOf('메모');
+      t.note('하단 탭 글자가 화면 안에 다 보임', !!tabHome && !!tabMemo && tabHome.bottom <= 760 && tabMemo.bottom <= 760);
       await t.shot('01_idle_with_widget.png');
 
       // collapse / expand the quest widget
-      await t.clickText('⌃');
+      await t.clickText('⌄');
       await sleep(400);
       t.note('접기 버튼 누르면 퀘스트 아이콘들 숨겨짐', !(await t.hasText(EXERCISE_LABEL)));
       t.note('접힌 토글(📋) 노출', await t.hasText('📋'));
@@ -115,7 +132,7 @@ async function main() {
       t.note('다시 펼치면 퀘스트 아이콘 복귀', await t.hasText(EXERCISE_LABEL));
 
       // start the externalization-interview exercise from the quest widget
-      t.note('퀘스트 버튼(외재화 인터뷰) 클릭됨', await t.clickText(EXERCISE_LABEL));
+      t.note('퀘스트 버튼(이름 붙이기) 클릭됨', await t.clickText(EXERCISE_LABEL));
       await sleep(1000);
       t.note(
         '실습 대화 시작(리드인 또는 첫 질문 노출)',

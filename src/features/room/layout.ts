@@ -57,6 +57,10 @@ export function visibleObjects(items: readonly string[]): RoomObjectDef[] {
   return ROOM_OBJECTS.filter((o) => !o.later || items.includes(o.id));
 }
 
+// Floor kept clear for Home's row of quest buttons (§44), in px from the room's bottom edge, so
+// she never stands behind them.
+const FLOOR_RESERVED_PX = 130;
+
 export function getRoomLayout(stageWidth: number, stageHeight: number, items: readonly string[]): RoomLayout {
   const width = Math.min(stageWidth, stageHeight * ROOM_MAX_ASPECT);
   const height = stageHeight;
@@ -67,7 +71,7 @@ export function getRoomLayout(stageWidth: number, stageHeight: number, items: re
     x: charSize * 0.35,
     y: height * 0.45,
     w: Math.max(0, width - charSize * 0.7),
-    h: height * 0.5,
+    h: Math.max(0, height * 0.55 - FLOOR_RESERVED_PX),
   };
 
   const padX = charSize * 0.3;

@@ -32,7 +32,7 @@ export default function MainTabs({ navigation }: Props) {
   // Tab bar height was a hardcoded 58 with no allowance for the home indicator / gesture bar —
   // fine on the web viewport this was checked in, but would sit the tab bar (and labels) under
   // it on a real notched phone. Folds the bottom inset into the bar instead of guessing a value.
-  const tabBarHeight = 58 + insets.bottom;
+  const tabBarHeight = 64 + insets.bottom;
 
   return (
     <PanelVisibilityProvider>
@@ -46,8 +46,8 @@ export default function MainTabs({ navigation }: Props) {
               borderTopColor: BORDER,
               borderTopWidth: 1,
               height: tabBarHeight,
-              paddingTop: 6,
-              paddingBottom: 6 + insets.bottom,
+              paddingTop: 4,
+              paddingBottom: 4 + insets.bottom,
             },
             tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
             tabBarIcon: () => <Text style={{ fontSize: 20 }}>{ICON[route.name]}</Text>,

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { HomeScreenProps } from '@/app/navigation/types';
 import { RoomBackdrop, RoomPortrait, RoamingCharacter } from '@/features/room';
 import CrisisFooter from '@/ui/CrisisFooter';
@@ -84,7 +83,6 @@ function ActiveExerciseDialogue({ exercise, onDone }: { exercise: Exercise; onDo
 // looks like.
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { state, loaded, isCompletedToday } = useProgress();
-  const insets = useSafeAreaInsets();
   const [callback, setCallback] = useState<MemoryEntry | null>(null);
   const [callbackLoaded, setCallbackLoaded] = useState(false);
   const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
@@ -174,7 +172,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
       {!showPanel && (
         <QuestWidget
-          style={{ top: insets.top + 14 }}
           exercises={questExercises}
           aiOn={aiOn}
           onSelectExercise={setActiveExercise}
