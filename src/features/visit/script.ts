@@ -3,6 +3,10 @@ import type { EndingId } from './progress';
 // PLACEHOLDER lines, written to test the flow — the real script comes with the girl's settled name,
 // story and wish (docs/병문안_기획서.md §9), and needs expert review before anyone sees it.
 //
+// Who she is (§7-1): dry and a little playful, because she has accepted that she's dying and is sad
+// about it. Acceptance is not peace: she still wants more time, and her jokes never make light of the
+// player's pain. Her name stays unsaid until the end.
+//
 // Rules these already keep to (§8): death is never named or shown as peace or relief, and nothing
 // blames the player for staying away. Keep to them when replacing the text.
 
@@ -70,7 +74,9 @@ export const ENDINGS: Record<EndingId, EndingScript> = {
   },
 };
 
-export const RECALL_TITLE = '그동안 나눈 이야기';
+// The ending opens her notebook, which sat by the window all week: she wrote down what you told her.
+export const RECALL_TITLE = '창가에 있던 수첩';
+export const RECALL_EMPTY = '몇 장 넘겨 봐도 아직 적힌 것이 많지 않다.';
 export const FAIRY_LINES = [
   '어디선가 작은 빛이 나타나 말을 건다.',
   '"그 아이를 도울 방법이 있을지도 몰라. 한 번 더 찾아가 볼래?"',

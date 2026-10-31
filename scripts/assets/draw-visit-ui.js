@@ -2,7 +2,7 @@
 // source images, no cost. Fixed seeds, so re-running gives the same files.
 //   node scripts/assets/draw-visit-ui.js
 // The look follows docs/병문안_모티브와_아트_구상.md: monochrome ink and paper, with the amber of the
-// window as the only colour. room.png has a transparent window; the screen puts the day's light behind it.
+// window and her hairpin as the only colours. room.png has a transparent window; the screen puts the day's light behind it.
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
@@ -56,14 +56,17 @@ function roomSvg() {
     <path d="M168 610 Q360 575 552 610 L570 700 H150 Z" fill="#9a9a9a" stroke="#f2f2f2" stroke-width="5"/>
     ${line(620, 560, 620, 830, 6, '#dcdcdc')}
     <rect x="580" y="540" width="84" height="60" fill="#3a3a3a" stroke="#f2f2f2" stroke-width="5"/>
+    <path d="M596 540 L606 524 H652 L644 540 Z" fill="#efefef" stroke="#222" stroke-width="3"/>
   </g></svg>`;
 }
 
-// The girl lying with her back to the player: dark hair on the pillow, a shape under the blanket.
+// The girl lying with her back to the player: dark hair on the pillow, her cranberry hairpin (the only
+// colour besides the window), a shape under the blanket.
 function girlSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900"><defs>${INK}</defs><g filter="url(#ink)">
     <path d="M262 545 C295 500 345 462 395 472 C455 485 470 545 452 590 C470 640 455 665 430 690 C400 640 370 620 345 612 C305 600 270 590 262 545Z" fill="#101010" stroke="#f2f2f2" stroke-width="4"/>
     <path d="M300 540 C330 505 365 490 400 498 M330 570 C360 530 400 520 435 535 M360 600 C385 565 415 560 440 575" stroke="#5a5a5a" stroke-width="4" fill="none"/>
+    <rect x="372" y="500" width="30" height="11" rx="3" fill="#b9505a" stroke="#f2f2f2" stroke-width="2" transform="rotate(-18 387 505)"/>
     <path d="M225 690 C240 625 310 595 380 600 C460 605 515 635 530 690 L545 700 H190 Z" fill="#b5b5b5" stroke="#f2f2f2" stroke-width="5"/>
     <path d="M280 640 C330 620 410 620 470 650" stroke="#6a6a6a" stroke-width="4" fill="none"/>
   </g></svg>`;

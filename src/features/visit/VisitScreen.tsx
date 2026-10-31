@@ -25,6 +25,7 @@ import {
   FAIRY_LINES,
   FIRST_GREETING,
   keywordLine,
+  RECALL_EMPTY,
   RECALL_TITLE,
   RETURN_GREETING,
   TELL_QUESTION,
@@ -265,15 +266,17 @@ export default function VisitScreen(_props: VisitScreenProps) {
               {phase === 'recall' && (
                 <View style={styles.center}>
                   <Text style={styles.prompt}>{RECALL_TITLE}</Text>
-                  <ScrollView style={styles.recall}>
-                    {state.told.length === 0 && <Text style={styles.recallLine}>아직 나눈 이야기가 많지 않았다.</Text>}
-                    {state.told.map((t, i) => (
-                      <Text key={i} style={styles.recallLine}>
-                        {t.day}일째{t.label ? ` · ${t.label}` : ''}
-                        {t.text ? `\n${t.text}` : ''}
-                      </Text>
-                    ))}
-                  </ScrollView>
+                  <ImageBackground source={VISIT_CARDS[1]} resizeMode="stretch" imageStyle={styles.fillImage} style={styles.notebook}>
+                    <ScrollView style={styles.recall}>
+                      {state.told.length === 0 && <Text style={styles.recallLine}>{RECALL_EMPTY}</Text>}
+                      {state.told.map((t, i) => (
+                        <Text key={i} style={styles.recallLine}>
+                          {t.day}일째{t.label ? ` · ${t.label}` : ''}
+                          {t.text ? `\n${t.text}` : ''}
+                        </Text>
+                      ))}
+                    </ScrollView>
+                  </ImageBackground>
                   <PaperButton label="병원을 나서기" onPress={() => setPhase('fairy')} />
                 </View>
               )}
@@ -314,7 +317,8 @@ const styles = StyleSheet.create({
   titleText: { color: '#fff', fontSize: 24, fontFamily: 'serif' },
   titleLine: { color: 'rgba(255,255,255,0.65)', fontSize: 14, marginBottom: 18, fontFamily: 'serif' },
   recall: { alignSelf: 'stretch', maxHeight: 200 },
-  recallLine: { color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 19, marginBottom: 10, fontFamily: 'serif' },
+  notebook: { alignSelf: 'stretch', padding: 16 },
+  recallLine: { color: '#222', fontSize: 14, lineHeight: 21, marginBottom: 10, fontFamily: 'serif' },
   dev: { position: 'absolute', left: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.75)', padding: 8, borderRadius: 4 },
   devText: { flex: 1, color: '#fff', fontSize: 11 },
   devButton: { color: '#ffd76a', fontSize: 12, fontWeight: '700' },
