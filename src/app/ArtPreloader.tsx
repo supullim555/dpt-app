@@ -2,7 +2,9 @@ import React from 'react';
 import { Image, View, type ImageSourcePropType } from 'react-native';
 import { CHARACTER_CLIPS, PORTRAIT_FRONT } from '@/assets/character';
 import { QUEST_ICON_SOURCES } from '@/assets/questIcons';
+import { VISIT_CARDS, VISIT_GIRL, VISIT_PANEL, VISIT_ROOM, VISIT_TORN } from '@/assets/visitUi';
 import { FLOOR_SOURCE, ROOM_OBJECTS, WALLPAPER_SOURCE } from '@/features/room';
+import { VISIT_ENABLED } from '@/features/visit';
 
 const SOURCES: ImageSourcePropType[] = [
   PORTRAIT_FRONT,
@@ -11,6 +13,7 @@ const SOURCES: ImageSourcePropType[] = [
   FLOOR_SOURCE,
   WALLPAPER_SOURCE,
   ...Object.values(QUEST_ICON_SOURCES),
+  ...(VISIT_ENABLED ? [VISIT_ROOM, VISIT_GIRL, VISIT_TORN, VISIT_PANEL, ...VISIT_CARDS] : []),
 ];
 
 // Loads every character and room image the moment the app starts, so the first time a clip,

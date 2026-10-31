@@ -16,6 +16,17 @@ export const DAY_LINES: Record<number, string[]> = {
   7: ['오늘은 네 얘기를 좀 더 오래 듣고 싶었어.', '와 줘서 고마워.'],
 };
 
+// Day title cards. Placeholders too; the real ones should read differently once the week is over.
+export const DAY_TITLES: Record<number, string> = {
+  1: '처음 보는 사람',
+  2: '바깥 냄새',
+  3: '묶은 머리',
+  4: '복도의 불빛',
+  5: '떨어진 잎',
+  6: '내일이면',
+  7: '오늘은',
+};
+
 export const TELL_QUESTION = {
   text: '오늘은 무슨 일 있었어?',
   choices: ['별일 없었어', '말하기 어려워', '잘 모르겠어'],

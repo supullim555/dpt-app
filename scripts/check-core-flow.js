@@ -245,11 +245,13 @@ async function main() {
       await t.clickText('시작하기');
       t.note('병문안: 시작 전에 어떤 이야기인지 안내', await t.waitText('아픔과 이별을 다뤄요', 6000));
       await t.clickText('들어가 볼게요');
-      t.note('병문안: 1일째 병실 문 앞', await t.waitText('1일째. 병실 문 앞에 서 있다.', 3000));
+      t.note('병문안: 1일째 병실 문 앞', (await t.waitText('병실 문 앞에 서 있다.', 3000)) && (await t.hasText('1일째')));
+      await t.shot('visit_00_title.png');
       await t.clickText('들어가기');
       await sleep(400);
       await t.clickText('안녕. 들어와.');
       t.note('병문안: 감정 고르기', await t.waitText('지금 마음에 가까운 말이 있다면?', 3000));
+      await t.shot('visit_00b_emotion.png');
       await t.clickText('슬픔');
       await sleep(300);
       await t.clickText('서운함');
@@ -274,7 +276,7 @@ async function main() {
 
       // Next day: what sounds like a crisis gets the fixed lines, not the keyword or the script
       await t.clickText('다음 날');
-      t.note('병문안: 다음 날이면 2일째', await t.waitText('2일째. 병실 문 앞에 서 있다.', 3000));
+      t.note('병문안: 다음 날이면 2일째', (await t.waitText('병실 문 앞에 서 있다.', 3000)) && (await t.hasText('2일째')));
       await t.clickText('들어가기');
       await sleep(400);
       await t.clickText('왔구나.');
@@ -311,7 +313,7 @@ async function main() {
       await t.clickText('병원을 나서기');
       t.note('병문안: 어떤 엔딩이든 요정 등장', await t.waitText('한 번 더 찾아가 볼래?', 3000));
       await t.clickText('다시 찾아가기');
-      t.note('병문안: 2회차는 1일째부터', await t.waitText('1일째. 병실 문 앞에 서 있다.', 3000));
+      t.note('병문안: 2회차는 1일째부터', (await t.waitText('병실 문 앞에 서 있다.', 3000)) && (await t.hasText('1일째')));
       t.note('병문안: 화면에 2회차 표시', await t.hasText('2회차'));
     },
     { shotDir: SHOT_DIR }
