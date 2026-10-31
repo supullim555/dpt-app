@@ -3,7 +3,7 @@ import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { USE_NATIVE_DRIVER } from '@/core/anim/nativeDriver';
 import PaperButton from './PaperButton';
 import { clueOn, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, GIFTS, HINT_TITLE, hintLines, SOLD_TODAY } from './script';
+import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, HINT_TITLE, hintLines, SOLD_TODAY } from './script';
 
 const FLOOR_ORDER = [4, 3, 2, 1];
 
@@ -15,13 +15,14 @@ type Props = {
   found: readonly ClueId[];
   onBuy: (gift: string) => void;
   onFind: (clue: ClueId) => void;
+  onNextDay: () => void;
   onTitle: () => void;
 };
 
 // Where you're sent when the nurse puts you out. Only the hospital: four floors, a shop on the first
 // (one of the day's three gifts), and on some days a clue lying about. Going anywhere moves you forward
 // into it: the placeholder for the staging in docs/계획서.md.
-export default function Hospital({ day, run, fontScale, boughtToday, found, onBuy, onFind, onTitle }: Props) {
+export default function Hospital({ day, run, fontScale, boughtToday, found, onBuy, onFind, onNextDay, onTitle }: Props) {
   const [floor, setFloor] = useState(4);
   const [inShop, setInShop] = useState(false);
   const [note, setNote] = useState('');
@@ -103,6 +104,8 @@ export default function Hospital({ day, run, fontScale, boughtToday, found, onBu
           </TouchableOpacity>
         ))}
       </View>
+
+      {run >= 2 && <PaperButton label={FOLLOW_LIGHT} onPress={onNextDay} />}
 
       {run >= 2 && (
         <TouchableOpacity style={styles.link} onPress={() => setHintOpen(!hintOpen)}>

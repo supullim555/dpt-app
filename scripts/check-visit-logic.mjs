@@ -1,7 +1,7 @@
 // Plain assertions on the 병문안 rules: the ending table, keyword finding, the crisis check. Runs the
 // TypeScript directly (Node strips types); first step of `npm run verify` after the architecture check.
 import assert from 'node:assert/strict';
-import { CLUES, clueOn, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
+import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 
@@ -22,6 +22,11 @@ assert.equal(girlAppearsIn('normal'), true);
 assert.equal(dayNumber(0), 1);
 assert.equal(dayNumber(6), 7);
 assert.equal(dayNumber(-3), 1);
+
+assert.equal(dayInRun(1, 3, 0), 4); // first run: the calendar
+assert.equal(dayInRun(1, 3, 1), 5);
+assert.equal(dayInRun(2, 30, 0), 1); // later runs: real days away change nothing
+assert.equal(dayInRun(2, 30, 2), 3);
 
 // One clue per floor, at most one a day, and the last early enough to show her on a later visit.
 assert.equal(new Set(CLUES.map((c) => c.floor)).size, 4);

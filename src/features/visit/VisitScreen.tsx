@@ -19,7 +19,7 @@ import { findKeyword } from './keyword';
 import Notebook, { type Told } from './Notebook';
 import Opening from './Opening';
 import PaperButton from './PaperButton';
-import { dayNumber, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
+import { dayInRun, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
 import { soundsLikeCrisis } from './safety';
 import {
   CLUE_TEXT,
@@ -75,19 +75,16 @@ type VisitState = {
   shown: ClueId[];
   /** Setting. Survives starting over. */
   fontScale: number;
-  /** Days added to the real date by the &dev=1 buttons. */
-  devOffset: number;
+  /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
+  skippedDays: number;
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], fontScale: 1, devOffset: 0 };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], fontScale: 1, skippedDays: 0 };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
 function currentDay(s: VisitState) {
-  if (!s.startDate) return 1;
-  const now = new Date();
-  now.setDate(now.getDate() + s.devOffset);
-  return dayNumber(daysBetween(s.startDate, localDateKey(now)));
+  return dayInRun(s.run, s.startDate ? daysBetween(s.startDate, localDateKey()) : 0, s.skippedDays);
 }
 
 /** Where the game picks up, given what's saved. A week that ran out resolves its ending here. */
@@ -254,10 +251,10 @@ export default function VisitScreen(_props: VisitScreenProps) {
       <Text style={styles.devText}>
         {state.run}회차 · {day}일째 · 온 날 [{state.visited.join(',')}]
       </Text>
-      <TouchableOpacity onPress={() => go({ ...state, devOffset: state.devOffset + 1 })}>
+      <TouchableOpacity onPress={() => go({ ...state, skippedDays: state.skippedDays + 1 })}>
         <Text style={styles.devButton}>다음 날</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => go({ ...state, devOffset: state.devOffset + TOTAL_DAYS })}>
+      <TouchableOpacity onPress={() => go({ ...state, skippedDays: state.skippedDays + TOTAL_DAYS })}>
         <Text style={styles.devButton}>7일 뒤</Text>
       </TouchableOpacity>
     </View>
@@ -398,6 +395,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
             found={state.clues}
             onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
             onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
+            onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
             onTitle={() => setPhase('title')}
           />
           <CrisisFooter tone="dark" />

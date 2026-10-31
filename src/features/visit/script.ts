@@ -179,6 +179,7 @@ export const CLUE_TEXT: Record<ClueId, { name: string; found: string; memory: st
 
 // What the fairy tells after an ending, and keeps in the hallway on later runs.
 export const HINT_TITLE = '요정의 쪽지';
+export const FOLLOW_LIGHT = '빛을 따라 다음 날로';
 export const hintLines = () => CLUES.map((c) => `${c.day}일째 · ${c.floor}층 · ${CLUE_TEXT[c.id].name}`);
 
 // Asked only from the second day, after she's listened, and because she's curious.
@@ -243,6 +244,7 @@ export const FAIRY_LINES = [
   '어디선가 작은 빛이 나타나 말을 건다.',
   '"그 아이가 못 하게 된 일들이 병원 곳곳에 떨어져 있어. 날마다 다른 층에."',
   '"주워서 그 아이에게 보여 줘. 전부 보여 주면 무슨 일이 생길지도 몰라."',
+  '"이제 내 빛을 따라가면 기다리지 않고 다음 날로 갈 수 있어."',
   '"한 번 더 찾아가 볼래?"',
 ];
 

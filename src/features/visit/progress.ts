@@ -26,6 +26,14 @@ export function dayNumber(daysSinceStart: number): number {
   return Math.max(1, daysSinceStart + 1);
 }
 
+/**
+ * Which day it is. The first run follows the calendar. After an ending the fairy's light moves the days
+ * instead, so a missed real day can't cost the happy ending: the calendar no longer counts.
+ */
+export function dayInRun(run: number, daysSinceStart: number, skippedDays: number): number {
+  return run >= 2 ? 1 + skippedDays : dayNumber(daysSinceStart + skippedDays);
+}
+
 export type ClueId = 'collar' | 'snack' | 'laces' | 'coupon';
 
 /** One clue per floor, each lying there on one day only. The fairy tells this table after an ending. */

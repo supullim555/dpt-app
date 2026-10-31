@@ -305,6 +305,7 @@ async function main() {
       await t.clickText('이제 치료 시간이에요. 보호자분 아니시죠? 오늘은 나가 주셔야 해요.');
       t.note('병문안: 나가면 병실 앞 복도', await t.waitText('병실 앞 복도', 3000));
       t.note('병문안: 복도에선 다시 들어갈 수 없음', !(await t.hasText('들어가기')));
+      t.note('병문안: 1회차엔 빛으로 날을 넘길 수 없음', !(await t.hasText('빛을 따라')));
       await t.shot('visit_outside.png');
 
       // day 2: after listening, she asks how the day felt
@@ -404,7 +405,7 @@ async function main() {
         }
       };
       const nextDay = async () => {
-        await t.clickText('다음 날');
+        await t.clickText('빛을 따라 다음 날로');
         await t.waitText('병실 문 앞에 서 있다.', 3000);
       };
       const showMemory = async (name, title, thenText) => {
@@ -432,6 +433,7 @@ async function main() {
       await t.clickText('나가기');
 
       await nextDay();
+      t.note('병문안: 2회차는 빛을 따라 기다리지 않고 다음 날', await t.hasText('2일째'));
       await talk();
       t.note('병문안: 다음 날 선물과 단서를 고를 수 있음', (await t.hasText('귤')) && (await t.hasText('개목걸이')));
       await t.shot('visit_give.png');
