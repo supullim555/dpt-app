@@ -12,8 +12,9 @@ hospital room over 7 real days, branching endings, a fairy-led second run. Dialo
 picks one keyword from the player's text, verified by code, never writes sentences. **`docs/병문안_기획서.md` is the source of truth**, including its safety section
 (§8). A skeleton with placeholder lines is in `src/features/visit/`, reachable only at `?visit=1`
 (`&dev=1` adds day-skipping) because pushing deploys publicly and the script needs expert review
-first; the default address is still the room version. `docs/스토리_대본_초안.md`
-is superseded. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
+first; the default address is still the room version. ALTER EGO and 저주소녀 아틀리에 are the top-priority references for direction, structure and art
+(learn structure and mood, copy nothing) — see `docs/병문안_모티브와_아트_구상.md`.
+`docs/스토리_대본_초안.md` is superseded. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
 (layers, feature folders, "how do I add an exercise / a tap-choice question / furniture") is in **`src/README.md`**.
 
 ## Ship workflow — follow this for every change, every time
