@@ -9,6 +9,8 @@ type Props = {
   onPick: (label: string | null, family: EmotionFamilyId | null) => void;
   /** Crumpled-paper word cards (the hospital visit) instead of the gate's coloured chips. */
   paper?: boolean;
+  /** The first question; null when the caller asks it itself (the girl's speech bubble). */
+  question?: string | null;
 };
 
 function PaperCard({ onPress, index, children }: { onPress: () => void; index: number; children: ReactNode }) {
@@ -23,13 +25,13 @@ function PaperCard({ onPress, index, children }: { onPress: () => void; index: n
 
 // 일차정서 first — six broad families (Willcox's Feeling Wheel, emotions.ts) — then, on the next
 // tap, the 이차정서 inside the chosen one. Shared by the gate and the hospital visit.
-export default function EmotionPicker({ onPick, paper = false }: Props) {
+export default function EmotionPicker({ onPick, paper = false, question = '지금 마음에 가까운 말이 있다면?' }: Props) {
   const [family, setFamily] = useState<EmotionFamily | null>(null);
 
   if (!family) {
     return (
       <View style={styles.center}>
-        <Text style={styles.prompt}>지금 마음에 가까운 말이 있다면?</Text>
+        {question !== null && <Text style={styles.prompt}>{question}</Text>}
         <View style={styles.familyGrid}>
           {EMOTION_FAMILIES.map((f, i) =>
             paper ? (

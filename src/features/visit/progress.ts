@@ -1,4 +1,4 @@
-// The seven days and which ending they lead to (docs/병문안_기획서.md §4). No imports, so
+// The seven days and which ending they lead to (docs/계획서.md). No imports, so
 // scripts/check-visit-logic.mjs can run this file directly.
 
 export const TOTAL_DAYS = 7;

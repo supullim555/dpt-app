@@ -4,18 +4,16 @@
 
 Korean-language self-help psychology Expo/React Native Web app. Repo `supullim555/dpt-app`,
 deployed to Vercel at production alias `dpt-app-green.vercel.app` (auto-deploys on push to
-`master`). The living project log/plan is **`docs/심리지원_프로그램_계획서.md`** — read its header
-blurb and the last few numbered sections before starting any new work; it has the actual
-product philosophy (§1, "요구하지 않는다"), decision history and "다음 단계" backlog that this
-file doesn't repeat. Since v0.34 the product direction is **병문안**: first-person visits to a terminally ill girl's
-hospital room over 7 real days, branching endings, a fairy-led second run. Dialogue is human-written; on-device AI only
-picks one keyword from the player's text, verified by code, never writes sentences. **`docs/병문안_기획서.md` is the source of truth**, including its safety section
-(§8). A skeleton with placeholder lines is in `src/features/visit/`, reachable only at `?visit=1`
-(`&dev=1` adds day-skipping) because pushing deploys publicly and the script needs expert review
-first; the default address is still the room version. ALTER EGO and 저주소녀 아틀리에 are the top-priority references for direction, structure and art
-(learn structure and mood, copy nothing) — see `docs/병문안_모티브와_아트_구상.md`.
-`docs/스토리_대본_초안.md` is superseded. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
-(layers, feature folders, "how do I add an exercise / a tap-choice question / furniture") is in **`src/README.md`**.
+`master`). **The plan is `docs/계획서.md`, rewritten from scratch on 2026-11-01 — read it before any new
+work.** The product is **병문안**: first-person visits to a terminally ill girl over 7 real days,
+branching endings, a fairy-led second run. Dialogue is human-written (`src/features/visit/script.ts`);
+on-device AI only ever picks one keyword from the player's text, verified by code, never writes
+sentences. It's built in `src/features/visit/`, reachable only at `?visit=1` (`&dev=1` adds
+day-skipping) because pushing deploys publicly and the script needs expert review first; the default
+address is still the old room version. ALTER EGO and 저주소녀 아틀리에 are the top-priority references
+for direction and art (learn structure and mood, copy nothing): `docs/병문안_모티브와_아트_구상.md`.
+The old plan and planning docs are in `docs/archive/`, for history only. Where code goes is in
+**`src/README.md`**.
 
 ## Ship workflow — follow this for every change, every time
 
@@ -26,7 +24,7 @@ first; the default address is still the room version. ALTER EGO and 저주소녀
    regression suite (`scripts/check-core-flow.js`, built on `scripts/lib/uitest.js`). If a UI
    change altered visible text/DOM structure the suite depends on, update the suite in the same
    change — don't ship with a stale regression script.
-4. Update `docs/심리지원_프로그램_계획서.md` (see below) — **before** committing, not after.
+4. Update `docs/계획서.md` (see below) — **before** committing, not after.
 5. `git add` the specific files (never `-A`), commit, `git push`.
 6. Poll the new Vercel deployment (`npx vercel ls`, then `npx vercel inspect <url>` until
    `Ready`), confirm `npx vercel inspect dpt-app-green.vercel.app` now points at it.
@@ -38,26 +36,15 @@ can skip steps 2–3 and 6–7's regression re-run, but still get pushed and Ver
 
 ## Updating the plan doc
 
-Every shipped feature gets its own numbered `## N. Title (vX.Y)` section, inserted **immediately
-before** the `## N. 다음 단계` section, with subsections roughly: 요청 (what was asked, quoted),
-what changed, what was verified. Each time you insert a new section:
-
-- Renumber the "다음 단계" section to N+1, and fix **every other section's own trailing
-  "§N 다음 단계 → §N+1로 재번호" note** that the insertion just made stale — not just the one in
-  the section you're adding next to. This is the single most common mistake made in this file so
-  far (a section number got skipped entirely once from missing this) — after editing, run
-  `grep -n "^## "` and `grep -n "다음 단계 →"` over the whole file and check the sequence is
-  consecutive with no gaps before moving on.
-- Update the header blurb (version bump, one-line summary of the new section, and the "§1~§11은
-  기획… §12~§N은…" range in "읽는 법").
-- Add a new row at the **top** of the 변경 이력 table (also carries its own
-  "§N 다음 단계 → §N+1로 재번호" note).
+`docs/계획서.md` describes the game as it is meant to be, not a log. When a decision changes, change
+the section it belongs in, mark unconfirmed ideas "(제안)", and add one row at the top of its 변경 이력
+table. Keep it short.
 
 ## Gemini API
 
 **Never call it without an explicit, in-the-moment instruction from the user for that specific
 call** — not implied by "make it better" or similar. When the user does authorize it, log the
-call count and what was generated in the plan doc section for that change.
+call count and what was generated in `docs/병문안_모티브와_아트_구상.md`.
 
 ### Asset generation pipeline (when Gemini is authorized for art)
 
@@ -142,5 +129,5 @@ than inventing a new one:
   Crafting Apps (clean-room Rust reimplementations of the Adobe product line — EffectCraft≈After
   Effects, PhotoCraft≈Photoshop, etc.), **not** an Adobe product. Its `<app>-cli.exe` are built under
   `<app>/target/release/`; `scripts/assets/polish.js` drives PhotoCraft's. See
-  `docs/3D_전환_가능성_검토.md` for what was already investigated there (EffectCraft's 3D features, for
+  `docs/archive/3D_전환_가능성_검토.md` for what was already investigated there (EffectCraft's 3D features, for
   a possible future 3D treatment of the room/character art — nothing implemented yet).

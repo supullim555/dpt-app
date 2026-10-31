@@ -28,7 +28,7 @@ export type RootStackParamList = {
   // Optional email account (v0.28). Was a gate in front of the whole app (§28/§29); now reached
   // from the 메모 tab only by someone who wants it — accounts don't sync anything yet.
   Account: undefined;
-  // 병문안 (docs/병문안_기획서.md). The first screen only at ?visit=1 (features/visit/flag.ts).
+  // 병문안 (docs/계획서.md). The first screen only at ?visit=1 (features/visit/flag.ts).
   Visit: undefined;
 };
 

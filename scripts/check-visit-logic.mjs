@@ -5,7 +5,7 @@ import { endingFor, girlAppearsIn, dayNumber } from '../src/features/visit/progr
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 
-// docs/병문안_기획서.md §4
+// docs/계획서.md
 assert.equal(endingFor([]), 'bad');
 assert.equal(endingFor([1, 2, 3]), 'bad'); // away 4 days, missed the last
 assert.equal(endingFor([1, 7]), 'withGirl'); // away 5 days, came on the last

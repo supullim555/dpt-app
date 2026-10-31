@@ -1,7 +1,7 @@
 // Used by api/chat.ts (as `system_instruction`) for the free-chat screen reached from the
 // "이야기" tab when the user has turned AI on (§24's IntroGate choice, §25 for the Gemini switch).
 //
-// How this sits against the plan's principles (심리지원_프로그램_계획서.md):
+// How this sits against the plan's principles (docs/archive/심리지원_프로그램_계획서.md):
 //   - §1 ("상담사 자격으로 진단하거나 결론을 대신 내려주지 않는다" — corrected 2026-10-01, it no
 //     longer claims interpretation never happens) allows a live model to reflect back what it
 //     hears, same as a real counselor would. What it still may NOT do: diagnose, name causes as

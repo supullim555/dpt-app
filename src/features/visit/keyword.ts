@@ -1,5 +1,5 @@
 // Finds the one word the girl mentions back ("보고서 얘기구나."). This is the no-AI rule version; an
-// on-device model can later suggest the word instead (docs/병문안_기획서.md §7), through the same
+// on-device model can later suggest the word instead (docs/계획서.md), through the same
 // validateKeyword gate. Nothing here ever writes a sentence. No imports, for check-visit-logic.mjs.
 
 const JOSA = /(에서는|에서|에게|한테|으로|이랑|랑|하고|까지|부터|보다|처럼|마다|은|는|이|가|을|를|에|의|도|만|와|과|로)$/;

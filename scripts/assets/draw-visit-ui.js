@@ -152,6 +152,28 @@ function opHospitalSvg() {
     <path d="M260 1000 L330 860 H390 L460 1000 Z" fill="#2c2c2c" stroke="#d8d8d8" stroke-width="4"/>`);
 }
 
+// Ballpoint scribbles laid over the later notebook pages: tangles of pen strokes, more of them each time.
+function scribbleSvg(seed, strokes) {
+  const r = seeded(seed);
+  const W = 600;
+  const H = 800;
+  let paths = '';
+  for (let i = 0; i < strokes; i++) {
+    let x = r() * W;
+    let y = r() * H;
+    let d = `M${x} ${y}`;
+    for (let j = 0; j < 14; j++) {
+      const nx = x + (r() - 0.5) * 220;
+      const ny = y + (r() - 0.5) * 90;
+      d += `Q${x + (r() - 0.5) * 160} ${y + (r() - 0.5) * 160} ${nx} ${ny}`;
+      x = nx;
+      y = ny;
+    }
+    paths += `<path d="${d}" fill="none" stroke="#14141c" stroke-width="${1.6 + r() * 1.6}" stroke-opacity="${0.55 + r() * 0.4}" stroke-linecap="round"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${paths}</svg>`;
+}
+
 // Dark, faintly textured panel behind the text.
 function panelSvg() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360"><defs>
@@ -161,7 +183,7 @@ function panelSvg() {
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  const files = { room: roomSvg(), girl: girlSvg(), torn: tornSvg(), 'card-a': cardSvg(11), 'card-b': cardSvg(29), panel: panelSvg(), 'op-hand': opHandSvg(), 'op-desk': opDeskSvg(), 'op-hospital': opHospitalSvg() };
+  const files = { room: roomSvg(), girl: girlSvg(), torn: tornSvg(), 'card-a': cardSvg(11), 'card-b': cardSvg(29), panel: panelSvg(), 'op-hand': opHandSvg(), 'op-desk': opDeskSvg(), 'op-hospital': opHospitalSvg(), 'scribble-a': scribbleSvg(101, 3), 'scribble-b': scribbleSvg(202, 8), 'scribble-c': scribbleSvg(303, 18) };
   for (const [name, svg] of Object.entries(files)) {
     const f = path.join(OUT, `${name}.png`);
     await sharp(Buffer.from(svg)).png({ palette: name !== 'room' && name !== 'girl' ? false : false }).toFile(f);
