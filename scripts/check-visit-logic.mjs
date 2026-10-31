@@ -1,7 +1,7 @@
 // Plain assertions on the 병문안 rules: the ending table, keyword finding, the crisis check. Runs the
 // TypeScript directly (Node strips types); first step of `npm run verify` after the architecture check.
 import assert from 'node:assert/strict';
-import { endingFor, girlAppearsIn, dayNumber } from '../src/features/visit/progress.ts';
+import { CLUES, clueOn, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 
@@ -22,6 +22,19 @@ assert.equal(girlAppearsIn('normal'), true);
 assert.equal(dayNumber(0), 1);
 assert.equal(dayNumber(6), 7);
 assert.equal(dayNumber(-3), 1);
+
+// One clue per floor, at most one a day, and the last early enough to show her on a later visit.
+assert.equal(new Set(CLUES.map((c) => c.floor)).size, 4);
+assert.equal(new Set(CLUES.map((c) => c.day)).size, CLUES.length);
+assert.ok(CLUES.every((c) => c.day <= 6));
+assert.equal(clueOn(1, 1)?.id, 'collar');
+assert.equal(clueOn(3, 3)?.id, 'snack');
+assert.equal(clueOn(2, 3), null);
+const allClues = CLUES.map((c) => c.id);
+assert.equal(happyUnlocked(1, allClues), false); // not before a first ending
+assert.equal(happyUnlocked(2, allClues), true);
+assert.equal(happyUnlocked(2, allClues.slice(1)), false);
+assert.equal(girlAppearsIn('happy'), true);
 
 for (const [text, want] of [
   ['오늘 회사에서 팀장님이 지적했어', '회사'],

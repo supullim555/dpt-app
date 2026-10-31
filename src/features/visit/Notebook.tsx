@@ -8,7 +8,7 @@ export type Told = { day: number; label: string | null; text: string };
 // Her notebook, opened at the end. Each page starts with what the player told her that day, in their
 // own words, and under it what she wrote for herself: tidy at first, then crossed out and scribbled
 // over, until the last page has only "살고싶어" left on it.
-export default function Notebook({ told, fontScale, onDone }: { told: Told[]; fontScale: number; onDone: () => void }) {
+export default function Notebook({ told, fontScale, doneLabel = '병원을 나서기', onDone }: { told: Told[]; fontScale: number; doneLabel?: string; onDone: () => void }) {
   const [index, setIndex] = useState(0);
   const page = NOTEBOOK_PAGES[index];
   const heard = told.find((t) => t.day === page.day);
@@ -45,7 +45,7 @@ export default function Notebook({ told, fontScale, onDone }: { told: Told[]; fo
         {page.scribble !== null && <Image source={VISIT_SCRIBBLES[page.scribble]} resizeMode="stretch" style={styles.scribble} />}
       </ImageBackground>
       <TouchableOpacity style={styles.turn} onPress={() => (last ? onDone() : setIndex(index + 1))}>
-        <Text style={styles.turnText}>{last ? '병원을 나서기' : '다음 장 ›'}</Text>
+        <Text style={styles.turnText}>{last ? doneLabel : '다음 장 ›'}</Text>
       </TouchableOpacity>
     </View>
   );

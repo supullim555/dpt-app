@@ -1,4 +1,4 @@
-import type { EndingId } from './progress';
+import { CLUES, type ClueId, type EndingId } from './progress';
 
 // First draft by Claude, for the user to rewrite (docs/계획서.md). Needs expert review
 // before anyone but the user sees it.
@@ -76,6 +76,111 @@ export const STAFF_CALLS: Record<number, StaffCall> = {
 // After the crisis lines being ordered out would read as a dismissal, so this one only sees you off.
 export const STAFF_CALL_GENTLE: StaffCall = { who: '간호사', line: '치료 시간이 됐어요. 오늘은 여기까지예요. 조심히 들어가세요.' };
 
+// The hospital. She's at the top; the higher the floor, the heavier. No one else's suffering is shown.
+export const FLOORS: Record<number, { name: string; lines: string[] }> = {
+  4: { name: '병실 앞 복도', lines: ['문은 닫혀 있다. 치료가 끝날 때까지 들어갈 수 없다.', '오늘은 병원을 둘러보다 돌아가고, 내일 다시 오자.'] },
+  3: { name: '3층 중증 병동', lines: ['보호자들이 복도 의자에서 말없이 앉아 있다.'] },
+  2: { name: '2층 일반 병동', lines: ['링거대를 끌고 천천히 걷는 사람들이 있다. 내일 퇴원한다는 말소리가 들린다.'] },
+  1: { name: '1층 로비', lines: ['사람이 가장 많다. 유리문 너머 안뜰에 은행나무가 서 있다.'] },
+};
+
+// Six days of shop stock (the seventh day goes straight to the ending). One a day, given on a later visit.
+export const GIFTS: Record<number, { name: string; line: string }[]> = {
+  1: [
+    { name: '귤', line: '못 먹는데 왜 사 왔어. 냄새는 맡아도 되지? …아, 이거 좋다. 머리맡에 둘게.' },
+    { name: '볼펜', line: '볼펜이네. 잘 나오는데? 뭐 쓸 건지는 비밀.' },
+    { name: '머리끈', line: '머리 묶어 줄 사람은 많아. 그래도 이건 내 거 할게.' },
+  ],
+  2: [
+    { name: '초콜릿', line: '먹으면 혼나. 그러니까 네가 내 앞에서 먹어. 맛 설명 자세히 해.' },
+    { name: '손거울', line: '거울은 좀 그런데. …그래도 핀은 잘 어울리네. 고마워.' },
+    { name: '낱말 퍼즐', line: '이거 어려운 거 맞지? 나 시간 많아. 아, 많진 않구나. 빨리 풀게.' },
+  ],
+  3: [
+    { name: '곰 젤리', line: '곰을 어떻게 먹어. 못 먹어서 하는 말 아니야. 창가에 세워 둘게.' },
+    { name: '수면 양말', line: '발이 제일 시렸는데 어떻게 알았어. 오늘 밤은 조금 덜 길겠다.' },
+    { name: '엽서', line: '나한테 편지 쓰라는 거야? 그럼 네 주소 적어 줘. 이번엔 아무 주소 말고.' },
+  ],
+  4: [
+    { name: '풍선', line: '병실에 풍선이라니, 애 취급이야? 창가에 묶어 줘. …조금 더 왼쪽.' },
+    { name: '손수건', line: '울 일 있을 때 쓰라고? 없어. 없는데, 받아 둘게.' },
+    { name: '스티커', line: '링거대에 붙일래. 이제 이 병원에서 제일 귀여운 링거대야.' },
+  ],
+  5: [
+    { name: '핫팩', line: '따뜻하다. 잠깐만 이러고 있을게.' },
+    { name: '립밤', line: '입술 튼 거 봤구나. 눈치 빠르네. 고마워.' },
+    { name: '만화책', line: '1권만 사 오면 어떡해. 뒷이야기 궁금하잖아. …책임져.' },
+  ],
+  6: [
+    { name: '사탕', line: '이건 입에 잠깐 물고 있어도 된대. 딸기 맛이다. 오랜만이네.' },
+    { name: '은행잎 책갈피', line: '저 나무 거야? 아니어도 저 나무 걸로 할게.' },
+    { name: '슬리퍼', line: '나 걸어 다니지도 않는데. …그래도 침대 밑에 둬 줘. 혹시 모르니까.' },
+  ],
+};
+export const giftLine = (name: string) => Object.values(GIFTS).flat().find((g) => g.name === name)?.line ?? '';
+export const boughtLine = (name: string) => `${name} 하나를 샀다. 다음에 갈 때 건네자.`;
+export const SOLD_TODAY = '오늘은 이미 하나 샀다.';
+export const GIVE_QUESTION = '뭐 들고 있어? 아까부터 궁금했어.';
+export const GIVE_NOTHING = '오늘은 그냥 둘래';
+
+// Clues aren't hers: strangers' things, left about the hospital, each close to something she could do
+// before she got this sick. Picked up one day, shown to her on a later visit.
+export const CLUE_SPOT = '무언가 떨어져 있다';
+export const CLUE_TEXT: Record<ClueId, { name: string; found: string; memory: string; lines: string[] }> = {
+  collar: {
+    name: '개목걸이',
+    found: '구석에 버려진 낡은 개목걸이를 주웠다. 그 아이에게 보여 줄까.',
+    memory: '아침 산책',
+    lines: [
+      '이거 어디서 났어? 내 건 아니야.',
+      '우리 집에도 강아지가 있었어. 아침마다 나보다 먼저 일어나서 줄을 물고 왔어.',
+      '동네 한 바퀴를 둘이서 뛰었어. 그땐 그게 귀찮았어. 웃기지.',
+      '내가 입원하고 나서 죽었대. 마지막은 못 봤어.',
+      '아직도 아침이면 발소리가 들리는 것 같아. 그 동네, 한 번 더 뛰어 보고 싶다.',
+    ],
+  },
+  snack: {
+    name: '과자봉지',
+    found: '휴게실 의자 밑에 끼어 있던 빈 과자봉지를 주웠다. 그 아이에게 보여 줄까.',
+    memory: '마지막 한 개',
+    lines: [
+      '아, 이 과자. 나 이거 진짜 좋아했어.',
+      '학교 끝나면 친구랑 편의점 앞에 앉아서 하나를 나눠 먹었어. 마지막 한 개로 매번 싸웠어.',
+      '지금은 뭘 먹어도 되는지 먼저 물어봐야 해. 대부분은 안 된대.',
+      '봉지 냄새만 맡아 봐도 돼? …그래, 이 맛이었어.',
+      '한 번만 더, 마지막 한 개로 싸워 보고 싶어.',
+    ],
+  },
+  laces: {
+    name: '운동화 끈',
+    found: '누가 떨어뜨린 운동화 끈을 주웠다. 그 아이에게 보여 줄까.',
+    memory: '꼴찌',
+    lines: [
+      '운동화 끈이네. 나 달리기 꼴찌였어. 진짜로.',
+      '운동회 날 끝까지 뛰고 나면 목이 막 타고, 심장이 귀까지 올라와서 쿵쿵거렸어.',
+      '그때는 그게 힘든 건 줄 알았어.',
+      '지금은 복도 끝까지도 못 가.',
+      '꼴찌여도 좋으니까, 숨차게 뛰어 보고 싶다.',
+    ],
+  },
+  coupon: {
+    name: '노래방 쿠폰',
+    found: '보호자 휴게실 책 사이에 꽂힌 노래방 쿠폰을 주웠다. 그 아이에게 보여 줄까.',
+    memory: '소리 지르기',
+    lines: [
+      '풉. 병원에서 노래방 쿠폰이 왜 나와.',
+      '시험 끝나면 애들이랑 갔어. 노래는 다들 못했어. 소리만 질렀지.',
+      '이제는 크게 말하면 숨이 차.',
+      '있잖아. 다 받아들였다고 계속 말했는데, 요즘 자꾸 하고 싶은 게 생겨.',
+      '저 나무 아래까지만, 가 볼 수 있을까.',
+    ],
+  },
+};
+
+// What the fairy tells after an ending, and keeps in the hallway on later runs.
+export const HINT_TITLE = '요정의 쪽지';
+export const hintLines = () => CLUES.map((c) => `${c.day}일째 · ${c.floor}층 · ${CLUE_TEXT[c.id].name}`);
+
 // Asked only from the second day, after she's listened, and because she's curious.
 export const EMOTION_QUESTION = '오늘 하루는 어떤 감정으로 지냈어? 궁금하네.';
 
@@ -107,6 +212,11 @@ export const ENDINGS: Record<EndingId, EndingScript> = {
     title: '오늘은 왔구나',
     lines: ['왔구나. 마침 네 얘기가 듣고 싶었어.', '오늘 네가 들려준 얘기, 잘 가지고 있을게.', '와 줘서 고마워. 잘 가.'],
   },
+  // She decides to go down herself; nothing here says wanting it is what heals her (docs/계획서.md).
+  happy: {
+    title: '나무 아래',
+    lines: ['네가 들고 온 것들 때문에 자꾸 옛날 생각이 났어.', '다 받아들인 줄 알았는데, 아니었나 봐.', '나무까지 가 볼래. 같이 내려가 줘.'],
+  },
   normal: {
     title: '인사',
     lines: ['일주일 동안 네 얘기 많이 들었어.', '덕분에 내가 모르는 세상이 꽤 넓어졌어.', '사실 좀 더 듣고 싶었어. 이건 농담 아니야.', '고마워. 잘 가.'],
@@ -131,6 +241,22 @@ export const NOTEBOOK_PAGES: { day: number; tilt: number; scribble: number | nul
 
 export const FAIRY_LINES = [
   '어디선가 작은 빛이 나타나 말을 건다.',
-  '"그 아이는 창으로만 나무를 봤어. 그 아래 서 보는 게 소원이래."',
-  '"도울 방법이 있을지도 몰라. 한 번 더 찾아가 볼래?"',
+  '"그 아이가 못 하게 된 일들이 병원 곳곳에 떨어져 있어. 날마다 다른 층에."',
+  '"주워서 그 아이에게 보여 줘. 전부 보여 주면 무슨 일이 생길지도 몰라."',
+  '"한 번 더 찾아가 볼래?"',
+];
+
+// The way down, floor by floor, and the light. A fairy tale, and it says so.
+const AMBER_WORLD = '#e3b64f';
+export const HAPPY_BEATS: { text: string; bg?: string; ink?: string }[] = [
+  { text: '소녀는 침대에서 내려와 바닥에 발을 댔다. 한참이 걸렸다.' },
+  { text: '4층. 복도 불빛을 하나씩 지나간다.' },
+  { text: '3층. 의자에 앉아 오래 쉰다. "괜찮아. 가."' },
+  { text: '2층. "숨차다." 소녀가 웃는다.' },
+  { text: '1층. 사람들 사이를 지나 안뜰로 나간다.' },
+  { text: '은행나무 아래에서 소녀가 돌아서서 나를 본다.' },
+  { text: '그때, 알 수 없는 빛이 눈앞을 가렸다.', bg: '#ffffff', ink: '#111111' },
+  { text: '빛이 걷히자 세상에 색이 돌아와 있었다.', bg: AMBER_WORLD, ink: '#1a1200' },
+  { text: '소녀는 두 발로 서 있다. 아무도 이유를 설명하지 못했다.', bg: AMBER_WORLD, ink: '#1a1200' },
+  { text: '이건 그런 동화다.', bg: AMBER_WORLD, ink: '#1a1200' },
 ];

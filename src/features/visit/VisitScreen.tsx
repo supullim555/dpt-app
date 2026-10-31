@@ -11,14 +11,18 @@ import { loadEntryOr, saveEntry } from '@/core/storage';
 import { EmotionPicker } from '@/features/gate';
 import CrisisFooter from '@/ui/CrisisFooter';
 import RoomColumn from '@/ui/RoomColumn';
-import { VISIT_CARDS, VISIT_GIRL, VISIT_OPENING, VISIT_PANEL, VISIT_ROOM, VISIT_TORN } from '@/assets/visitUi';
+import { VISIT_GIRL, VISIT_OPENING, VISIT_PANEL, VISIT_ROOM, VISIT_TORN } from '@/assets/visitUi';
+import CardScene from './CardScene';
 import { VISIT_DEV } from './flag';
+import Hospital from './Hospital';
 import { findKeyword } from './keyword';
 import Notebook, { type Told } from './Notebook';
 import Opening from './Opening';
-import { dayNumber, endingFor, girlAppearsIn, TOTAL_DAYS, type EndingId } from './progress';
+import PaperButton from './PaperButton';
+import { dayNumber, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
 import { soundsLikeCrisis } from './safety';
 import {
+  CLUE_TEXT,
   CRISIS_LINES,
   DAY_LINES,
   DAY_TITLES,
@@ -28,7 +32,12 @@ import {
   FAIRY_LINES,
   FIRST_GREETING,
   GAME_TITLE,
+  giftLine,
+  GIVE_NOTHING,
+  GIVE_QUESTION,
   GOODBYE,
+  HAPPY_BEATS,
+  hintLines,
   keywordLine,
   RETURN_GREETING,
   STAFF_CALL_GENTLE,
@@ -57,15 +66,22 @@ type VisitState = {
   done: number[];
   told: Told[];
   ending: EndingId | '';
+  /** The day a gift was last bought: one a day. */
+  boughtDay: number;
+  /** Gifts bought and not yet given. */
+  gifts: string[];
+  /** Clues picked up, and the ones already shown to her. */
+  clues: ClueId[];
+  shown: ClueId[];
   /** Setting. Survives starting over. */
   fontScale: number;
   /** Days added to the real date by the &dev=1 buttons. */
   devOffset: number;
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', fontScale: 1, devOffset: 0 };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], fontScale: 1, devOffset: 0 };
 
-type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
+type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
 function currentDay(s: VisitState) {
   if (!s.startDate) return 1;
@@ -83,16 +99,6 @@ function resume(s: VisitState): { state: VisitState; phase: Phase } {
   return { state: s, phase: s.done.includes(day) ? 'outside' : 'door' };
 }
 
-function PaperButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <TouchableOpacity onPress={onPress} style={styles.paperButton}>
-      <ImageBackground source={VISIT_CARDS[0]} resizeMode="stretch" imageStyle={styles.fillImage} style={styles.paperFill}>
-        <Text style={styles.paperText}>{label}</Text>
-      </ImageBackground>
-    </TouchableOpacity>
-  );
-}
-
 // 병문안 (docs/계획서.md): first person, into the room, tell her about today, hear a little of hers. She
 // speaks in a bubble beside her. The player's words only ever come back verbatim: one checked keyword,
 // and her notebook at the end. Everything else she says is human-written (script.ts).
@@ -104,6 +110,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const [replyLines, setReplyLines] = useState<string[]>([]);
   const [askEmotion, setAskEmotion] = useState(false);
   const [ackLine, setAckLine] = useState('');
+  const [memory, setMemory] = useState<ClueId>('collar');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -141,7 +148,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const finishDay = () => {
     const done = state.done.includes(day) ? state.done : [...state.done, day];
     if (day >= TOTAL_DAYS) {
-      setState({ ...state, done, ending: endingFor(state.visited) });
+      setState({ ...state, done, ending: happyUnlocked(state.run, state.shown) ? 'happy' : endingFor(state.visited) });
       setPhase('ending');
     } else {
       setState({ ...state, done });
@@ -173,6 +180,32 @@ export default function VisitScreen(_props: VisitScreenProps) {
     setPhase('ack');
   };
 
+  const toShow = state.clues.filter((c) => !state.shown.includes(c));
+  const hasThings = state.gifts.length > 0 || toShow.length > 0;
+
+  // After she's listened: whatever you brought, then goodbye. Not on a day that sounded like a crisis.
+  const afterTalk = () => {
+    if (hasThings && replyLines !== CRISIS_LINES) setPhase('give');
+    else finishDay();
+  };
+
+  const giveGift = (name: string) => {
+    setState({ ...state, gifts: state.gifts.filter((g) => g !== name) });
+    setAckLine(giftLine(name));
+    setPhase('gift');
+  };
+
+  const showClue = (clue: ClueId) => {
+    setState({ ...state, shown: [...state.shown, clue] });
+    setMemory(clue);
+    setPhase('memory');
+  };
+
+  const afterGiving = () => {
+    if (hasThings) setPhase('give');
+    else finishDay();
+  };
+
   const startOver = () => {
     setState({ ...INITIAL, noticeSeen: true, openingSeen: true, fontScale: state.fontScale, run: state.run + 1 });
     setPhase('door');
@@ -189,7 +222,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
       ? [state.visited.length <= 1 ? FIRST_GREETING : RETURN_GREETING]
       : phase === 'reply'
         ? replyLines
-        : phase === 'ack'
+        : phase === 'ack' || phase === 'gift'
           ? [ackLine]
           : phase === 'ending' && ending
             ? ENDINGS[ending].lines
@@ -203,8 +236,9 @@ export default function VisitScreen(_props: VisitScreenProps) {
     if (phase === 'greet') setPhase('tell');
     else if (phase === 'reply') {
       if (askEmotion) setPhase('emotion');
-      else finishDay();
-    } else if (phase === 'ack') finishDay();
+      else afterTalk();
+    } else if (phase === 'ack') afterTalk();
+    else if (phase === 'gift') afterGiving();
     else if (phase === 'bye') setPhase('staff');
     else if (phase === 'staff') setPhase('outside');
     else if (phase === 'ending') setPhase('notebook');
@@ -350,21 +384,50 @@ export default function VisitScreen(_props: VisitScreenProps) {
     );
   }
 
-  // Sent out for her treatment. Nothing to do here yet; the other places open from this door later.
+  // Sent out for her treatment: the rest of the day is the hospital.
   if (phase === 'outside') {
     return (
       <View style={styles.screen}>
         <RoomColumn>
           {devBar}
-          <View style={styles.titleCard}>
-            <Text style={[styles.titleText, { fontSize: 24 * scale }]}>병실 앞 복도</Text>
-            <Text style={[styles.titleLine, { fontSize: 14 * scale }]}>문은 닫혀 있다. 치료가 끝날 때까지 들어갈 수 없다.</Text>
-            <Text style={[styles.titleLine, { fontSize: 14 * scale }]}>오늘은 이만 돌아가고, 내일 다시 오자.</Text>
-            <TouchableOpacity style={styles.settingsLink} onPress={() => setPhase('title')}>
-              <Text style={[styles.settingsLinkText, { fontSize: 14 * scale }]}>타이틀로</Text>
-            </TouchableOpacity>
-          </View>
+          <Hospital
+            day={day}
+            run={state.run}
+            fontScale={scale}
+            boughtToday={state.boughtDay === day}
+            found={state.clues}
+            onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
+            onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
+            onTitle={() => setPhase('title')}
+          />
           <CrisisFooter tone="dark" />
+        </RoomColumn>
+      </View>
+    );
+  }
+
+  if (phase === 'memory') {
+    return (
+      <View style={styles.screen}>
+        <RoomColumn>
+          <CardScene title={CLUE_TEXT[memory].memory} beats={CLUE_TEXT[memory].lines.map((text) => ({ text }))} fontScale={scale} onDone={afterGiving} />
+        </RoomColumn>
+      </View>
+    );
+  }
+
+  if (phase === 'descent') {
+    return (
+      <View style={styles.screen}>
+        <RoomColumn>
+          <CardScene
+            beats={HAPPY_BEATS}
+            fontScale={scale}
+            onDone={() => {
+              setState({ ...INITIAL, noticeSeen: true, openingSeen: true, fontScale: state.fontScale });
+              setPhase('title');
+            }}
+          />
         </RoomColumn>
       </View>
     );
@@ -375,7 +438,12 @@ export default function VisitScreen(_props: VisitScreenProps) {
       <View style={styles.screen}>
         <RoomColumn>
           {devBar}
-          <Notebook told={state.told} fontScale={scale} onDone={() => setPhase('fairy')} />
+          <Notebook
+            told={state.told}
+            fontScale={scale}
+            doneLabel={ending === 'happy' ? '같이 내려가기' : undefined}
+            onDone={() => setPhase(ending === 'happy' ? 'descent' : 'fairy')}
+          />
           <CrisisFooter tone="dark" />
         </RoomColumn>
       </View>
@@ -384,7 +452,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
 
   // What she's saying now, in a bubble beside her. With no girl in the room the same lines are
   // narration and sit in the box below instead, as does whoever comes in to send you out.
-  const spoken = phase === 'tell' ? TELL_QUESTION.text : phase === 'emotion' ? EMOTION_QUESTION : lines[lineIndex];
+  const spoken = phase === 'tell' ? TELL_QUESTION.text : phase === 'emotion' ? EMOTION_QUESTION : phase === 'give' ? GIVE_QUESTION : lines[lineIndex];
   const inBubble = showGirl && !!spoken && phase !== 'staff';
   const canTapThrough = lines.length > 0;
 
@@ -410,6 +478,18 @@ export default function VisitScreen(_props: VisitScreenProps) {
 
         <ImageBackground source={VISIT_PANEL} resizeMode="repeat" imageStyle={styles.fillImage} style={styles.panel}>
           {phase === 'emotion' && <EmotionPicker paper question={null} onPick={(word) => pickEmotion(word)} />}
+
+          {phase === 'give' && (
+            <View style={styles.choices}>
+              {state.gifts.map((g) => (
+                <PaperButton key={g} label={g} onPress={() => giveGift(g)} />
+              ))}
+              {toShow.map((c) => (
+                <PaperButton key={c} label={CLUE_TEXT[c].name} onPress={() => showClue(c)} />
+              ))}
+              <PaperButton label={GIVE_NOTHING} onPress={finishDay} />
+            </View>
+          )}
 
           {phase === 'tell' &&
             (writing ? (
@@ -446,7 +526,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
           {phase === 'fairy' && (
             <View style={styles.textBox}>
               <View style={styles.center}>
-                <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{FAIRY_LINES.join('\n')}</Text>
+                <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{[...FAIRY_LINES, ...hintLines()].join('\n')}</Text>
                 <PaperButton label="다시 찾아가기" onPress={startOver} />
               </View>
             </View>
@@ -482,11 +562,8 @@ const styles = StyleSheet.create({
   answer: { gap: 10, alignItems: 'center' },
   input: { alignSelf: 'stretch', minHeight: 84, color: '#fff', borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000', padding: 12, lineHeight: 22, textAlignVertical: 'top', fontFamily: 'serif' },
   prompt: { color: '#fff', textAlign: 'center', fontFamily: 'serif' },
-  paperButton: { width: 164, height: 50 },
   // ImageBackground's image otherwise keeps the file's own size on web and overflows.
   fillImage: { width: '100%', height: '100%' },
-  paperFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  paperText: { color: '#111', fontSize: 15, fontWeight: '700', fontFamily: 'serif' },
   titleCard: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
   titleShade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
   // In the dark sky above the hospital, clear of its one lit window.
