@@ -249,6 +249,10 @@ async function main() {
       await sleep(800);
       await t.shot('visit_op1.png');
       await t.clickText('하나의 편지가 나를 찾아왔다.');
+      t.note('병문안: 편지 본문에 7일이 분명히 적힘', await t.waitText('7일밖에 시간이 없대', 3000));
+      await sleep(800);
+      await t.shot('visit_op_letter.png');
+      await t.click(195, 380);
       t.note('병문안: 컷씬 둘째 문장', await t.waitText('밖에 나가지 못하는 시한부의 소녀', 3000));
       await sleep(800);
       await t.shot('visit_op2.png');
@@ -262,7 +266,7 @@ async function main() {
       await t.shot('visit_00_title.png');
       await t.clickText('들어가기');
       await sleep(400);
-      await t.clickText('안녕. 들어와.');
+      await t.clickText('진짜 왔네. 당첨자.');
       t.note('병문안: 감정 고르기', await t.waitText('지금 마음에 가까운 말이 있다면?', 3000));
       await t.shot('visit_00b_emotion.png');
       await t.clickText('슬픔');
@@ -280,10 +284,10 @@ async function main() {
       await t.shot('visit_01_keyword.png');
       await t.clickText('팀장님 얘기구나.');
       await sleep(300);
-      t.note('병문안: 이어서 대본', await t.hasText('여기 오는 사람 별로 없는데. 와 줘서 신기해.'));
-      await t.clickText('여기 오는 사람 별로 없는데. 와 줘서 신기해.');
+      t.note('병문안: 이어서 대본', await t.hasText('편지를 꽤 많이 보냈거든. 답이 온 건 처음이야.'));
+      await t.clickText('편지를 꽤 많이 보냈거든. 답이 온 건 처음이야.');
       await sleep(300);
-      await t.clickText('창밖에 은행나무가 보여. 난 요즘 저걸 보는 게 일이야.');
+      await t.clickText('창밖에 은행나무가 보여. 난 요즘 저걸 보는 게 일이야. 퇴근은 없고.');
       t.note('병문안: 하루를 마치면 병실을 나옴', await t.waitText('오늘 얘기 잘 들었어', 3000));
       t.note('병문안: 상담 전화 안내 항상 보임', await t.hasText('109'));
 
@@ -305,7 +309,7 @@ async function main() {
       await t.clickText('완료');
       t.note('병문안: 위기 표현엔 고정 대사', await t.waitText('그 말, 그냥 넘기고 싶지 않아.', 3000));
       await t.shot('visit_02_crisis.png');
-      t.note('병문안: 위기 표현엔 대본·키워드 없음', !(await t.hasText('얘기구나')) && !(await t.hasText('자기 전에 또 생각났어')));
+      t.note('병문안: 위기 표현엔 대본·키워드 없음', !(await t.hasText('얘기구나')) && !(await t.hasText('네 얘기, 자기 전에 또 생각났어.')));
       await t.clickText('그 말, 그냥 넘기고 싶지 않아.');
       await sleep(300);
       await t.clickText('혼자 견디지 않아도 돼. 아래 번호는 24시간 받아 줘.');
@@ -317,7 +321,9 @@ async function main() {
       await t.shot('visit_03_bad_ending.png');
       await t.clickText('병실에 소녀는 없고, 머리맡에 편지 한 장이 놓여 있다.');
       await sleep(300);
-      await t.clickText('"못 와도 괜찮았어. 네가 와 줬던 날들만 생각하고 있었어."');
+      await t.clickText('"그렇게 많이 보냈는데 와 준 사람이 있었어. 그걸로 충분히 좋은 기록이야."');
+      await sleep(300);
+      await t.clickText('"못 온 날은 네 하루가 있었던 날이겠지. 그 얘기도 궁금했어."');
       await sleep(300);
       await t.clickText('"너도 네 하루를 잘 지내 줘."');
       t.note('병문안: 엔딩 뒤 나눈 이야기를 돌아봄 (쓴 말 그대로)', await t.waitText('오늘 팀장님이 보고서를 지적했어', 3000));
