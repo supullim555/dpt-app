@@ -16,16 +16,18 @@ function loadApiKey() {
 
 // One image-generation call. Sends the prompt plus a reference image (default:
 // the whole character sheet, shrunk to keep the upload small) as the style guide.
+// Pass null to send no reference at all.
 // NOT retried on failure: every call is billed.
 async function generateImage(prompt, refPath = REF_SHEET) {
-  const ref = await sharp(refPath).resize({ width: 1280, withoutEnlargement: true }).png().toBuffer();
+  const requestParts = [{ text: prompt }];
+  if (refPath) {
+    const ref = await sharp(refPath).resize({ width: 1280, withoutEnlargement: true }).png().toBuffer();
+    requestParts.push({ inline_data: { mime_type: 'image/png', data: ref.toString('base64') } });
+  }
   const body = {
     contents: [
       {
-        parts: [
-          { text: prompt },
-          { inline_data: { mime_type: 'image/png', data: ref.toString('base64') } },
-        ],
+        parts: requestParts,
       },
     ],
   };
