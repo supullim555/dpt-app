@@ -19,7 +19,6 @@ import Opening from './Opening';
 import { dayNumber, endingFor, girlAppearsIn, TOTAL_DAYS, type EndingId } from './progress';
 import { soundsLikeCrisis } from './safety';
 import {
-  ALREADY_TOLD,
   CRISIS_LINES,
   DAY_LINES,
   DAY_TITLES,
@@ -29,8 +28,11 @@ import {
   FAIRY_LINES,
   FIRST_GREETING,
   GAME_TITLE,
+  GOODBYE,
   keywordLine,
   RETURN_GREETING,
+  STAFF_CALL_GENTLE,
+  STAFF_CALLS,
   TELL_QUESTION,
 } from './script';
 
@@ -63,7 +65,7 @@ type VisitState = {
 
 const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', fontScale: 1, devOffset: 0 };
 
-type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'left' | 'ending' | 'notebook' | 'fairy';
+type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
 function currentDay(s: VisitState) {
   if (!s.startDate) return 1;
@@ -78,7 +80,7 @@ function resume(s: VisitState): { state: VisitState; phase: Phase } {
   if (s.ending) return { state: s, phase: 'ending' };
   const day = currentDay(s);
   if (day > TOTAL_DAYS) return { state: { ...s, ending: endingFor(s.visited) }, phase: 'ending' };
-  return { state: s, phase: s.done.includes(day) ? 'left' : 'door' };
+  return { state: s, phase: s.done.includes(day) ? 'outside' : 'door' };
 }
 
 function PaperButton({ label, onPress }: { label: string; onPress: () => void }) {
@@ -143,7 +145,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
       setPhase('ending');
     } else {
       setState({ ...state, done });
-      setPhase('left');
+      setPhase('bye');
     }
   };
 
@@ -180,6 +182,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const showGirl = ending ? girlAppearsIn(ending) : true;
   const light = showGirl ? (ending ? AMBER : DAY_LIGHT[Math.min(day, TOTAL_DAYS) - 1]) : NO_ONE_LIGHT;
 
+  const staffCall = replyLines === CRISIS_LINES ? STAFF_CALL_GENTLE : STAFF_CALLS[day];
+
   const lines: string[] =
     phase === 'greet'
       ? [state.visited.length <= 1 ? FIRST_GREETING : RETURN_GREETING]
@@ -189,9 +193,11 @@ export default function VisitScreen(_props: VisitScreenProps) {
           ? [ackLine]
           : phase === 'ending' && ending
             ? ENDINGS[ending].lines
-            : phase === 'left'
-              ? [ALREADY_TOLD]
-              : [];
+            : phase === 'bye'
+              ? [GOODBYE]
+              : phase === 'staff' && staffCall
+                ? [staffCall.line]
+                : [];
 
   const afterLines = () => {
     if (phase === 'greet') setPhase('tell');
@@ -199,6 +205,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
       if (askEmotion) setPhase('emotion');
       else finishDay();
     } else if (phase === 'ack') finishDay();
+    else if (phase === 'bye') setPhase('staff');
+    else if (phase === 'staff') setPhase('outside');
     else if (phase === 'ending') setPhase('notebook');
   };
 
@@ -342,6 +350,26 @@ export default function VisitScreen(_props: VisitScreenProps) {
     );
   }
 
+  // Sent out for her treatment. Nothing to do here yet; the other places open from this door later.
+  if (phase === 'outside') {
+    return (
+      <View style={styles.screen}>
+        <RoomColumn>
+          {devBar}
+          <View style={styles.titleCard}>
+            <Text style={[styles.titleText, { fontSize: 24 * scale }]}>병실 앞 복도</Text>
+            <Text style={[styles.titleLine, { fontSize: 14 * scale }]}>문은 닫혀 있다. 치료가 끝날 때까지 들어갈 수 없다.</Text>
+            <Text style={[styles.titleLine, { fontSize: 14 * scale }]}>오늘은 이만 돌아가고, 내일 다시 오자.</Text>
+            <TouchableOpacity style={styles.settingsLink} onPress={() => setPhase('title')}>
+              <Text style={[styles.settingsLinkText, { fontSize: 14 * scale }]}>타이틀로</Text>
+            </TouchableOpacity>
+          </View>
+          <CrisisFooter tone="dark" />
+        </RoomColumn>
+      </View>
+    );
+  }
+
   if (phase === 'notebook') {
     return (
       <View style={styles.screen}>
@@ -355,10 +383,10 @@ export default function VisitScreen(_props: VisitScreenProps) {
   }
 
   // What she's saying now, in a bubble beside her. With no girl in the room the same lines are
-  // narration and sit in the box below instead.
+  // narration and sit in the box below instead, as does whoever comes in to send you out.
   const spoken = phase === 'tell' ? TELL_QUESTION.text : phase === 'emotion' ? EMOTION_QUESTION : lines[lineIndex];
-  const inBubble = showGirl && !!spoken;
-  const canTapThrough = lines.length > 0 && phase !== 'left';
+  const inBubble = showGirl && !!spoken && phase !== 'staff';
+  const canTapThrough = lines.length > 0;
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -406,9 +434,10 @@ export default function VisitScreen(_props: VisitScreenProps) {
               </View>
             ))}
 
-          {/* Narration, when she isn't in the room. */}
+          {/* Narration when she isn't in the room, and the nurse or doctor. */}
           {!inBubble && phase !== 'fairy' && lines.length > 0 && (
             <TouchableOpacity activeOpacity={0.85} onPress={advance} disabled={!canTapThrough} style={styles.textBox}>
+              {phase === 'staff' && staffCall && <Text style={styles.speaker}>{staffCall.who}</Text>}
               <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{lines[lineIndex]}</Text>
               {canTapThrough && <Text style={styles.moreLight}>▼</Text>}
             </TouchableOpacity>
@@ -447,6 +476,7 @@ const styles = StyleSheet.create({
   hint: { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', paddingVertical: 6 },
   panel: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 4, gap: 10 },
   textBox: { borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000', padding: 14, minHeight: 96, justifyContent: 'center' },
+  speaker: { color: AMBER, fontSize: 13, fontFamily: 'serif', marginBottom: 6 },
   center: { alignItems: 'center', gap: 12 },
   choices: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   answer: { gap: 10, alignItems: 'center' },

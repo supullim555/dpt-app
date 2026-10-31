@@ -60,8 +60,21 @@ export const GAME_TITLE = '병문안'; // working title
 
 export const FIRST_GREETING = '진짜 왔네. 당첨자.';
 export const RETURN_GREETING = '왔구나.';
-export const ALREADY_TOLD = '오늘 얘기 잘 들었어. 내일 또 와도 되고, 천천히 와도 돼.';
+export const GOODBYE = '오늘 얘기 잘 들었어. 내일 또 와도 되고, 천천히 와도 돼.';
 export const CRISIS_LINES = ['그 말, 그냥 넘기고 싶지 않아.', '혼자 견디지 않아도 돼. 아래 번호는 24시간 받아 줘.'];
+
+// The end of each visit but the last: someone comes in and sends you out for her treatment.
+export type StaffCall = { who: '간호사' | '의사'; line: string };
+export const STAFF_CALLS: Record<number, StaffCall> = {
+  1: { who: '간호사', line: '이제 치료 시간이에요. 보호자분 아니시죠? 오늘은 나가 주셔야 해요.' },
+  2: { who: '간호사', line: '죄송해요, 치료 시작해야 해서요. 밖으로 나가 주세요.' },
+  3: { who: '의사', line: '검사 들어갑니다. 오늘은 여기까지 해 주세요.' },
+  4: { who: '간호사', line: '오늘은 치료가 길어질 거예요. 나가 주세요.' },
+  5: { who: '의사', line: '치료해야 하니 이제 나가 주시겠어요?' },
+  6: { who: '간호사', line: '치료 시간이에요. 내일 또 오세요.' },
+};
+// After the crisis lines being ordered out would read as a dismissal, so this one only sees you off.
+export const STAFF_CALL_GENTLE: StaffCall = { who: '간호사', line: '치료 시간이 됐어요. 오늘은 여기까지예요. 조심히 들어가세요.' };
 
 // Asked only from the second day, after she's listened, and because she's curious.
 export const EMOTION_QUESTION = '오늘 하루는 어떤 감정으로 지냈어? 궁금하네.';

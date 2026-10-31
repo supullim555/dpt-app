@@ -299,6 +299,13 @@ async function main() {
       await t.clickText('창밖에 은행나무가 보여. 난 요즘 저걸 보는 게 일이야. 퇴근은 없고.');
       t.note('병문안: 1일째는 감정 질문 없이 끝남', await t.waitText('오늘 얘기 잘 들었어', 3000));
       t.note('병문안: 상담 전화 안내 항상 보임', await t.hasText('109'));
+      await t.clickText('오늘 얘기 잘 들었어. 내일 또 와도 되고, 천천히 와도 돼.');
+      t.note('병문안: 하루가 끝나면 간호사가 나가 달라고 함', (await t.waitText('이제 치료 시간이에요', 3000)) && (await t.hasText('간호사')));
+      await t.shot('visit_staff.png');
+      await t.clickText('이제 치료 시간이에요. 보호자분 아니시죠? 오늘은 나가 주셔야 해요.');
+      t.note('병문안: 나가면 병실 앞 복도', await t.waitText('병실 앞 복도', 3000));
+      t.note('병문안: 복도에선 다시 들어갈 수 없음', !(await t.hasText('들어가기')));
+      await t.shot('visit_outside.png');
 
       // day 2: after listening, she asks how the day felt
       await t.clickText('다음 날');
@@ -339,6 +346,8 @@ async function main() {
       await sleep(300);
       await t.clickText('혼자 견디지 않아도 돼. 아래 번호는 24시간 받아 줘.');
       await t.waitText('오늘 얘기 잘 들었어', 3000);
+      await t.clickText('오늘 얘기 잘 들었어. 내일 또 와도 되고, 천천히 와도 돼.');
+      t.note('병문안: 위기 표현 뒤엔 내보내는 말 대신 배웅', (await t.waitText('조심히 들어가세요', 3000)) && !(await t.hasText('나가 주')));
 
       // the week runs out: the empty bed
       await t.clickText('7일 뒤');
