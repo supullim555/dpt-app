@@ -13,6 +13,12 @@ export function localDateKey(date: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Whole days from one yyyy-mm-dd key to a later one (negative if earlier). Compares the keys as
+ * UTC dates so a daylight-saving change can't make a day 23 hours long. */
+export function daysBetween(fromKey: string, toKey: string): number {
+  return Math.round((Date.parse(toKey) - Date.parse(fromKey)) / 86_400_000);
+}
+
 /** Today's local day key — shorthand for `localDateKey()`. */
 export function today(): string {
   return localDateKey();

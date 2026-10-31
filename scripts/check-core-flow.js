@@ -236,7 +236,87 @@ async function main() {
     },
     { shotDir: SHOT_DIR, width: WIDE.width, height: WIDE.height }
   );
-  process.exit(passed && widePassed ? 0 : 1);
+
+  // 병문안, behind ?visit=1 (features/visit/flag.ts). &dev=1 gives the day-skipping buttons.
+  const { passed: visitPassed } = await withBrowser(
+    `${BASE}/?visit=1&dev=1`,
+    async (t) => {
+      await t.waitText('시작하기 전에', 12000);
+      await t.clickText('시작하기');
+      t.note('병문안: 시작 전에 어떤 이야기인지 안내', await t.waitText('아픔과 이별을 다뤄요', 6000));
+      await t.clickText('들어가 볼게요');
+      t.note('병문안: 1일째 병실 문 앞', await t.waitText('1일째. 병실 문 앞에 서 있다.', 3000));
+      await t.clickText('들어가기');
+      await sleep(400);
+      await t.clickText('안녕. 들어와.');
+      t.note('병문안: 감정 고르기', await t.waitText('지금 마음에 가까운 말이 있다면?', 3000));
+      await t.clickText('슬픔');
+      await sleep(300);
+      await t.clickText('서운함');
+      await sleep(400);
+      await t.clickText('서운함… 그랬구나.');
+      await sleep(400);
+      await t.clickText('직접 쓸게요');
+      await sleep(300);
+      await t.fillTextarea('오늘 팀장님이 보고서를 지적했어');
+      await sleep(200);
+      await t.clickText('완료');
+      t.note('병문안: 쓴 글의 키워드를 한 번 언급', await t.waitText('팀장님 얘기구나.', 3000));
+      await t.shot('visit_01_keyword.png');
+      await t.clickText('팀장님 얘기구나.');
+      await sleep(300);
+      t.note('병문안: 이어서 대본', await t.hasText('여기 오는 사람 별로 없는데. 와 줘서 신기해.'));
+      await t.clickText('여기 오는 사람 별로 없는데. 와 줘서 신기해.');
+      await sleep(300);
+      await t.clickText('창밖에 은행나무가 보여. 난 요즘 저걸 보는 게 일이야.');
+      t.note('병문안: 하루를 마치면 병실을 나옴', await t.waitText('오늘 얘기 잘 들었어', 3000));
+      t.note('병문안: 상담 전화 안내 항상 보임', await t.hasText('109'));
+
+      // Next day: what sounds like a crisis gets the fixed lines, not the keyword or the script
+      await t.clickText('다음 날');
+      t.note('병문안: 다음 날이면 2일째', await t.waitText('2일째. 병실 문 앞에 서 있다.', 3000));
+      await t.clickText('들어가기');
+      await sleep(400);
+      await t.clickText('왔구나.');
+      await sleep(300);
+      await t.clickText('잘 모르겠어요');
+      await sleep(400);
+      await t.clickText('잘 모르겠는 날도 있지.');
+      await sleep(400);
+      await t.clickText('직접 쓸게요');
+      await sleep(300);
+      await t.fillTextarea('요즘 죽고 싶어');
+      await sleep(200);
+      await t.clickText('완료');
+      t.note('병문안: 위기 표현엔 고정 대사', await t.waitText('그 말, 그냥 넘기고 싶지 않아.', 3000));
+      await t.shot('visit_02_crisis.png');
+      t.note('병문안: 위기 표현엔 대본·키워드 없음', !(await t.hasText('얘기구나')) && !(await t.hasText('자기 전에 또 생각났어')));
+      await t.clickText('그 말, 그냥 넘기고 싶지 않아.');
+      await sleep(300);
+      await t.clickText('혼자 견디지 않아도 돼. 아래 번호는 24시간 받아 줘.');
+      await sleep(400);
+
+      // 2 of 7 days, then the week runs out without coming on the last: the empty bed
+      await t.clickText('7일 뒤');
+      t.note('병문안: 4일 이상 안 오고 마지막 날도 안 오면 빈 침대와 편지', await t.waitText('병실에 소녀는 없고', 3000));
+      await t.shot('visit_03_bad_ending.png');
+      await t.clickText('병실에 소녀는 없고, 머리맡에 편지 한 장이 놓여 있다.');
+      await sleep(300);
+      await t.clickText('"못 와도 괜찮았어. 네가 와 줬던 날들만 생각하고 있었어."');
+      await sleep(300);
+      await t.clickText('"너도 네 하루를 잘 지내 줘."');
+      t.note('병문안: 엔딩 뒤 나눈 이야기를 돌아봄 (쓴 말 그대로)', await t.waitText('오늘 팀장님이 보고서를 지적했어', 3000));
+      t.note('병문안: 위기 표현은 돌아보기에 나오지 않음', !(await t.hasText('요즘 죽고 싶어')));
+      await t.shot('visit_04_recall.png');
+      await t.clickText('병원을 나서기');
+      t.note('병문안: 어떤 엔딩이든 요정 등장', await t.waitText('한 번 더 찾아가 볼래?', 3000));
+      await t.clickText('다시 찾아가기');
+      t.note('병문안: 2회차는 1일째부터', await t.waitText('1일째. 병실 문 앞에 서 있다.', 3000));
+      t.note('병문안: 화면에 2회차 표시', await t.hasText('2회차'));
+    },
+    { shotDir: SHOT_DIR }
+  );
+  process.exit(passed && widePassed && visitPassed ? 0 : 1);
 }
 
 main().catch((e) => {

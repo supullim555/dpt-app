@@ -10,7 +10,9 @@ product philosophy (§1, "요구하지 않는다"), decision history and "다음
 file doesn't repeat. Since v0.34 the product direction is **병문안**: first-person visits to a terminally ill girl's
 hospital room over 7 real days, branching endings, a fairy-led second run. Dialogue is human-written; on-device AI only
 picks one keyword from the player's text, verified by code, never writes sentences. **`docs/병문안_기획서.md` is the source of truth**, including its safety section
-(§8) — it is not built yet; the deployed app is still the room version. `docs/스토리_대본_초안.md`
+(§8). A skeleton with placeholder lines is in `src/features/visit/`, reachable only at `?visit=1`
+(`&dev=1` adds day-skipping) because pushing deploys publicly and the script needs expert review
+first; the default address is still the room version. `docs/스토리_대본_초안.md`
 is superseded. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
 (layers, feature folders, "how do I add an exercise / a tap-choice question / furniture") is in **`src/README.md`**.
 

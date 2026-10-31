@@ -64,6 +64,7 @@ async function main() {
   }
 
   run('architecture (layers / feature boundaries)', 'node', ['scripts/check-architecture.js']);
+  run('visit logic (endings, keywords, crisis check)', 'node', ['--disable-warning=ExperimentalWarning', 'scripts/check-visit-logic.mjs']);
   run('tsc --noEmit', 'npx', ['tsc', '--noEmit']);
   if (!skipBuild) run('web build', 'npm', ['run', 'build']);
 

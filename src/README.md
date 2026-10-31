@@ -22,7 +22,8 @@ src/
 │  ├─ progress/    오늘 한 것 · 방에 놓인 소품 (ProgressContext) — 점수·보상은 없음
 │  ├─ room/        방 그리기 · 가구 배치 · 방 안의 캐릭터
 │  ├─ character/   스프라이트 · 초상화 · 대기 동작
-│  └─ relief/      숨 고르기
+│  ├─ relief/      숨 고르기
+│  └─ visit/       병문안: 7일 진행과 엔딩, 키워드, 위험 표현 검사, 임시 대사 (?visit=1에서만)
 ├─ app/         조립 — 내비게이션, 에셋 미리 불러오기
 └─ assets/      이미지와 그 목록(registry) 파일
 ```

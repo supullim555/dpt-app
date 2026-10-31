@@ -28,12 +28,15 @@ export type RootStackParamList = {
   // Optional email account (v0.28). Was a gate in front of the whole app (§28/§29); now reached
   // from the 메모 tab only by someone who wants it — accounts don't sync anything yet.
   Account: undefined;
+  // 병문안 (docs/병문안_기획서.md). The first screen only at ?visit=1 (features/visit/flag.ts).
+  Visit: undefined;
 };
 
 export type GateScreenProps = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 export type ReliefScreenProps = NativeStackScreenProps<RootStackParamList, 'Relief'>;
 export type AiChatScreenProps = NativeStackScreenProps<RootStackParamList, 'AiChat'>;
 export type AccountScreenProps = NativeStackScreenProps<RootStackParamList, 'Account'>;
+export type VisitScreenProps = NativeStackScreenProps<RootStackParamList, 'Visit'>;
 
 // A screen inside a tab whose "navigate" needs to reach a root-stack screen (not one of its own
 // tab siblings — e.g. Home reaching AiChat) needs both navigators' prop types composed — the
