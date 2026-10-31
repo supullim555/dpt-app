@@ -8,8 +8,8 @@ deployed to Vercel at production alias `dpt-app-green.vercel.app` (auto-deploys 
 blurb and the last few numbered sections before starting any new work; it has the actual
 product philosophy (§1, "요구하지 않는다"), decision history and "다음 단계" backlog that this
 file doesn't repeat. Since v0.34 the product direction is **병문안**: first-person visits to a terminally ill girl's
-hospital room over 7 real days, branching endings, a fairy-led second run, on-device AI with fixed
-lines as fallback. **`docs/병문안_기획서.md` is the source of truth**, including its safety section
+hospital room over 7 real days, branching endings, a fairy-led second run. Dialogue is human-written; on-device AI only
+picks one keyword from the player's text, verified by code, never writes sentences. **`docs/병문안_기획서.md` is the source of truth**, including its safety section
 (§8) — it is not built yet; the deployed app is still the room version. `docs/스토리_대본_초안.md`
 is superseded. Open planning questions live in `docs/기획_질문_목록.md`. Where code goes
 (layers, feature folders, "how do I add an exercise / a tap-choice question / furniture") is in **`src/README.md`**.
