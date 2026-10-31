@@ -74,8 +74,8 @@ export const ENDINGS: Record<EndingId, EndingScript> = {
   },
 };
 
-// The ending opens her notebook, which sat by the window all week: she wrote down what you told her.
-export const RECALL_TITLE = '창가에 있던 수첩';
+// The ending opens her notebook, which sat in the room all week: she wrote down what you told her.
+export const RECALL_TITLE = '그 아이의 수첩';
 export const RECALL_EMPTY = '몇 장 넘겨 봐도 아직 적힌 것이 많지 않다.';
 export const FAIRY_LINES = [
   '어디선가 작은 빛이 나타나 말을 건다.',
