@@ -13,6 +13,7 @@ import RoomColumn from '@/ui/RoomColumn';
 import { VISIT_DEV } from './flag';
 import { VISIT_CARDS, VISIT_GIRL, VISIT_PANEL, VISIT_ROOM, VISIT_TORN } from '@/assets/visitUi';
 import { findKeyword } from './keyword';
+import Opening from './Opening';
 import { dayNumber, endingFor, girlAppearsIn, TOTAL_DAYS, type EndingId } from './progress';
 import { soundsLikeCrisis } from './safety';
 import {
@@ -53,6 +54,7 @@ type Told = { day: number; label: string | null; text: string };
 
 type VisitState = {
   noticeSeen: boolean;
+  openingSeen: boolean;
   run: number;
   /** Local day key of the first visit; '' until then. */
   startDate: string;
@@ -66,9 +68,9 @@ type VisitState = {
   devOffset: number;
 };
 
-const INITIAL: VisitState = { noticeSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', devOffset: 0 };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', devOffset: 0 };
 
-type Phase = 'notice' | 'door' | 'greet' | 'emotion' | 'tell' | 'reply' | 'left' | 'ending' | 'recall' | 'fairy';
+type Phase = 'notice' | 'opening' | 'door' | 'greet' | 'emotion' | 'tell' | 'reply' | 'left' | 'ending' | 'recall' | 'fairy';
 
 function currentDay(s: VisitState) {
   if (!s.startDate) return 1;
@@ -80,6 +82,7 @@ function currentDay(s: VisitState) {
 /** Where opening the app lands, given what's saved. A week that ran out resolves its ending here. */
 function settle(s: VisitState): { state: VisitState; phase: Phase } {
   if (!s.noticeSeen) return { state: s, phase: 'notice' };
+  if (!s.openingSeen) return { state: s, phase: 'opening' };
   if (s.ending) return { state: s, phase: 'ending' };
   const day = currentDay(s);
   if (day > TOTAL_DAYS) return { state: { ...s, ending: endingFor(s.visited) }, phase: 'ending' };
@@ -141,7 +144,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   };
 
   const startOver = () => {
-    setState({ ...INITIAL, noticeSeen: true, run: state.run + 1 });
+    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, run: state.run + 1 });
     setPhase('door');
   };
 
@@ -169,6 +172,22 @@ export default function VisitScreen(_props: VisitScreenProps) {
       </TouchableOpacity>
     </View>
   );
+
+  if (phase === 'opening') {
+    return (
+      <View style={styles.screen}>
+        <RoomColumn>
+          <Opening
+            onDone={() => {
+              const next = settle({ ...state, openingSeen: true });
+              setState(next.state);
+              setPhase(next.phase);
+            }}
+          />
+        </RoomColumn>
+      </View>
+    );
+  }
 
   // A black title card, the way each day opens. Nothing of the room yet.
   if (phase === 'door') {

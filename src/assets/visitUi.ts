@@ -5,3 +5,5 @@ export const VISIT_GIRL = require('./visit/girl.png');
 export const VISIT_TORN = require('./visit/torn.png');
 export const VISIT_PANEL = require('./visit/panel.png');
 export const VISIT_CARDS = [require('./visit/card-a.png'), require('./visit/card-b.png')];
+// Opening cutscene placeholders, in the order they play.
+export const VISIT_OPENING = [require('./visit/op-hand.png'), require('./visit/op-desk.png'), require('./visit/op-hospital.png')];

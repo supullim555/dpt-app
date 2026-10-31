@@ -36,6 +36,9 @@ export const TELL_QUESTION = {
   choices: ['별일 없었어', '말하기 어려워', '잘 모르겠어'],
 };
 
+// The opening, one line per image in VISIT_OPENING. Worded by the user.
+export const OPENING_LINES = ['하나의 편지가 나를 찾아왔다.', '밖에 나가지 못하는 시한부의 소녀', '나는 그 아이에게 이야기를 하려 간다.'];
+
 export const FIRST_GREETING = '안녕. 들어와.';
 export const RETURN_GREETING = '왔구나.';
 export const ALREADY_TOLD = '오늘 얘기 잘 들었어. 내일 또 와도 되고, 천천히 와도 돼.';
