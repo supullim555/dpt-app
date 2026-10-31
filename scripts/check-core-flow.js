@@ -483,9 +483,10 @@ async function main() {
       t.note('병문안: 해피엔딩의 수첩 뒤엔 같이 내려감', await t.clickText('같이 내려가기'));
       t.note('병문안: 내려가서 알 수 없는 빛', await tapUntil('알 수 없는 빛'));
       await t.shot('visit_light.png');
-      t.note('병문안: 세상에 색이 돌아옴', await tapUntil('세상에 색이 돌아와'));
+      t.note('병문안: 소녀의 세상에 색이 돌아옴', await tapUntil('소녀의 세상에 색이 돌아왔다.'));
       await sleep(700);
       await t.shot('visit_color.png');
+      t.note('병문안: 회색은 소녀의 시선이었음을 알려 줌', await tapUntil('그 아이의 눈에 비친 세상이었다.'));
       t.note('병문안: 동화임을 밝힘', await tapUntil('이건 그런 동화다.'));
       await t.click(195, 170);
       t.note('병문안: 해피엔딩 뒤 타이틀', await t.waitText('이야기 시작', 3000));

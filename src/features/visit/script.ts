@@ -246,7 +246,8 @@ export const FAIRY_LINES = [
   '"한 번 더 찾아가 볼래?"',
 ];
 
-// The way down, floor by floor, and the light. A fairy tale, and it says so.
+// The way down, floor by floor, and the light. The turn: the grey we've watched all week was her sight.
+// A fairy tale, and it says so.
 const AMBER_WORLD = '#e3b64f';
 export const HAPPY_BEATS: { text: string; bg?: string; ink?: string }[] = [
   { text: '소녀는 침대에서 내려와 바닥에 발을 댔다. 한참이 걸렸다.' },
@@ -256,7 +257,8 @@ export const HAPPY_BEATS: { text: string; bg?: string; ink?: string }[] = [
   { text: '1층. 사람들 사이를 지나 안뜰로 나간다.' },
   { text: '은행나무 아래에서 소녀가 돌아서서 나를 본다.' },
   { text: '그때, 알 수 없는 빛이 눈앞을 가렸다.', bg: '#ffffff', ink: '#111111' },
-  { text: '빛이 걷히자 세상에 색이 돌아와 있었다.', bg: AMBER_WORLD, ink: '#1a1200' },
+  { text: '빛이 걷히자 소녀의 세상에 색이 돌아왔다.', bg: AMBER_WORLD, ink: '#1a1200' },
+  { text: '내가 보던 회색 병실은, 그 아이의 눈에 비친 세상이었다.', bg: AMBER_WORLD, ink: '#1a1200' },
   { text: '소녀는 두 발로 서 있다. 아무도 이유를 설명하지 못했다.', bg: AMBER_WORLD, ink: '#1a1200' },
   { text: '이건 그런 동화다.', bg: AMBER_WORLD, ink: '#1a1200' },
 ];
