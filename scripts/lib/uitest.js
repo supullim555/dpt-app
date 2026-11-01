@@ -14,6 +14,7 @@
 //   process.exit(passed ? 0 : 1);
 const { spawn } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -169,6 +170,8 @@ class Tester {
 // `__dirname`, not this library's — pass it explicitly.
 async function withBrowser(baseUrl, fn, { shotDir = process.cwd(), width = 390, height = 760 } = {}) {
   const port = 9333 + Math.floor(Math.random() * 2000);
+  // A new profile every run: one shared by port number could bring back a saved game on a fixed address.
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cdp-'));
   const chrome = spawn(
     findChrome(),
     [
@@ -177,7 +180,7 @@ async function withBrowser(baseUrl, fn, { shotDir = process.cwd(), width = 390, 
       '--use-angle=swiftshader',
       '--enable-unsafe-swiftshader',
       `--remote-debugging-port=${port}`,
-      `--user-data-dir=${process.env.TEMP}/cdp-${port}`,
+      `--user-data-dir=${profile}`,
       '--hide-scrollbars',
       'about:blank',
     ],
@@ -206,6 +209,12 @@ async function withBrowser(baseUrl, fn, { shotDir = process.cwd(), width = 390, 
     return { passed, tester: t };
   } finally {
     chrome.kill();
+    await sleep(500);
+    try {
+      fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    } catch {
+      /* Chrome can hold a file a moment longer; a leftover temp folder is harmless */
+    }
   }
 }
 

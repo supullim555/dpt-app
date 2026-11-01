@@ -50,7 +50,7 @@ void main() {
   float v = texture2D(uMap, vUv).r;
   if (uCutout > 0.5 && v < 0.05) discard;
   vec3 c = mix(uInk, uPaper, v) * vShade * uFloorLight;
-  if (vLit > 0.5 && v > 0.75) c = mix(uPaper, uDayLight, smoothstep(0.75, 1.0, v));
+  if (vLit > 0.5 && v > 0.75) c = uDayLight * v;
   float fog = smoothstep(1.2, 6.5, vDist);
   gl_FragColor = vec4(mix(c, uFog, fog), 1.0);
 }`;
