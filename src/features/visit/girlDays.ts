@@ -3,7 +3,7 @@
 // date alone: come back after days away and you see the change you missed. No imports, so
 // scripts/check-visit-logic.mjs can run it directly.
 
-export type GirlHead = 'headBack' | 'headSide' | 'headThree' | 'headSideTied' | 'headThreeTied' | 'headFront' | 'headTired';
+export type GirlHead = 'headBack' | 'headSide' | 'headThree' | 'headSideTied' | 'headFront' | 'headTired';
 export type GirlBody = 'torsoBack' | 'torso';
 
 export type GirlDay = {
@@ -33,8 +33,8 @@ const lying = { ...sitting, up: 0.2, lean: -0.55, drip: true, leaves: true } as 
 export const GIRL_DAYS: Record<number, GirlDay> = {
   1: { ...sitting, body: 'torsoBack', headFrom: 'headBack', headTo: 'headSide', away: 1.28, height: 0.68 },
   2: { ...sitting, headFrom: 'headSide', headTo: 'headThree', notebook: true, away: 1.14, height: 0.68 },
-  3: { ...sitting, headFrom: 'headSideTied', headTo: 'headThreeTied', away: 1.02, height: 0.68 },
-  4: { ...propped, headFrom: 'headThreeTied', headTo: 'headFront', away: 0.92, height: 0.62 },
+  3: { ...sitting, headFrom: 'headSideTied', headTo: 'headFront', away: 1.02, height: 0.68 },
+  4: { ...propped, headFrom: 'headFront', headTo: 'headFront', away: 0.92, height: 0.62 },
   5: { ...propped, up: 0.22, lean: -0.32, headFrom: 'headSideTied', headTo: 'headTired', leaves: true, away: 0.84, height: 0.6 },
   6: { ...lying, headFrom: 'headSideTied', headTo: 'headTired', cover: 0.09, away: 0.62, height: 0.56, eye: 0.72 },
   7: { ...lying, up: 0.18, lean: -0.62, headFrom: 'headTired', headTo: 'headTired', hand: true, cover: 0.05, away: 0.52, height: 0.52, eye: 0.72 },
@@ -42,10 +42,9 @@ export const GIRL_DAYS: Record<number, GirlDay> = {
 
 export const girlOn = (day: number): GirlDay => GIRL_DAYS[Math.min(Math.max(day, 1), 7)];
 
-/** Where her hairpin sits on the heads that have it, across and up from the head's own middle. */
+/** Where her hairpin sits on the heads that have it, across and up from the bottom middle of the drawing. */
 export const PIN_ON: Partial<Record<GirlHead, [number, number]>> = {
-  headSideTied: [0.012, 0.045],
-  headThreeTied: [0.04, 0.04],
-  headFront: [0.05, 0.04],
-  headTired: [0.05, 0.04],
+  headSideTied: [0.03, 0.462],
+  headFront: [0.061, 0.457],
+  headTired: [0.063, 0.457],
 };

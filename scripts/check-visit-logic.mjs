@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
-import { GIRL_DAYS, girlOn } from '../src/features/visit/girlDays.ts';
+import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
 import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
@@ -113,7 +113,7 @@ for (let d = 2; d <= 7; d++) {
   assert.ok(GIRL_DAYS[d].up <= GIRL_DAYS[d - 1].up, `${d}일째 자세`);
 }
 assert.equal(girlOn(8), GIRL_DAYS[7]); // an ending after the week
-assert.ok(!GIRL_DAYS[2].headTo.endsWith('Tied') && GIRL_DAYS[3].headTo.endsWith('Tied')); // the pin comes with the third day's hair
+assert.ok(!PIN_ON[GIRL_DAYS[2].headTo] && PIN_ON[GIRL_DAYS[3].headTo]); // the pin comes with the third day's hair
 assert.equal(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 7 }), 1); // the gurney: the long way round
 assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null }).text, '1층 매점에서 선물 고르기');
 assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }), null);

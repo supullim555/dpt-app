@@ -1,7 +1,7 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { GIRL_PART, paintSheets, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type GirlPart, type PersonLook } from './hospitalArt';
+import { GIRL_PART, loadSheets, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type GirlPart, type PersonLook } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -107,32 +107,33 @@ export type HospitalScene = {
   dispose: () => void;
 };
 
+// Each the shape of its cell on the sheet, or the drawing comes out stretched.
+const BUST = { w: 0.42, h: 0.558 };
 const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
-  tree: { w: 3, h: 3.4 },
+  tree: { w: 3, h: 3 },
   gurney: { w: 0.9, h: 0.9 },
-  cart: { w: 0.8, h: 0.9 },
-  vending: { w: 0.55, h: 0.98 },
+  cart: { w: 0.85, h: 0.85 },
+  vending: { w: 0.6, h: 0.966 },
   collar: { w: 0.24, h: 0.24 },
   snack: { w: 0.24, h: 0.24 },
   laces: { w: 0.24, h: 0.24 },
   coupon: { w: 0.24, h: 0.24 },
   bed: { w: 1.16, h: 0.58 },
-  bedFront: { w: 1.16, h: 0.46 },
+  bedFront: { w: 1.16, h: 0.58 },
   pin: { w: 0.05, h: 0.05 },
-  headBack: { w: 0.3, h: 0.3 },
-  headSide: { w: 0.3, h: 0.3 },
-  headThree: { w: 0.3, h: 0.3 },
-  headSideTied: { w: 0.3, h: 0.3 },
-  headThreeTied: { w: 0.3, h: 0.3 },
-  headFront: { w: 0.3, h: 0.3 },
-  headTired: { w: 0.3, h: 0.3 },
-  torso: { w: 0.42, h: 0.42 },
-  torsoBack: { w: 0.42, h: 0.42 },
-  hand: { w: 0.16, h: 0.16 },
-  notebook: { w: 0.2, h: 0.2 },
-  leaves: { w: 0.18, h: 0.18 },
-  drip: { w: 0.42, h: 0.84 },
-  blanket: { w: 1.1, h: 0.55 },
+  headBack: BUST,
+  headSide: BUST,
+  headThree: BUST,
+  headSideTied: BUST,
+  headFront: BUST,
+  headTired: BUST,
+  torso: { w: 0.42, h: 0.295 },
+  torsoBack: { w: 0.42, h: 0.295 },
+  hand: { w: 0.13, h: 0.173 },
+  notebook: { w: 0.2, h: 0.134 },
+  leaves: { w: 0.2, h: 0.134 },
+  drip: { w: 0.337, h: 0.9 },
+  blanket: { w: 1.1, h: 0.352 },
 };
 const PERSON_SIZE = { w: 0.46, h: 0.92 };
 
@@ -145,7 +146,7 @@ const hash = (x: number, y: number, d: number) => {
 export async function createHospitalScene(host: HTMLElement, dayLight: string): Promise<HospitalScene | null> {
   const probe = document.createElement('canvas');
   if (!probe.getContext('webgl2')) return null;
-  const THREE = await import('three');
+  const [THREE, sheets] = await Promise.all([import('three'), loadSheets()]);
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -158,7 +159,6 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   canvas.style.display = 'block';
   host.appendChild(canvas);
 
-  const sheets = paintSheets();
   const texture = (data: Uint8Array) => {
     const t = new THREE.DataTexture(data, SHEET, SHEET, THREE.RedFormat, THREE.UnsignedByteType);
     t.minFilter = THREE.LinearMipmapLinearFilter;

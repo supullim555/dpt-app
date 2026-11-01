@@ -18,9 +18,8 @@ const GIRL_CELL = { x: GIRL_FRONT.x, y: GIRL_FRONT.y + 1 };
 const ENTER_MS = 2200;
 const TURN_AFTER_MS = 1150;
 const BAR_H = 54;
-// On her paper: how far up her neck is, and how far above that her hair.
-const NECK = 0.34;
-const HAIR = 0.15;
+// How far above her waist the drawing of her head and shoulders starts.
+const BUST_UP = 0.06;
 // Further back, so whoever came in to send you out is in the picture too.
 const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
 const PERSON_FOCUS = { height: 0.72, away: 0.86 };
@@ -107,23 +106,23 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, 0.46, 0], fixed: true });
       out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, -0.2, 0], fixed: true });
       const g = girlOn(now.day);
-      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: [0.3, 0.42, 0.42], fixed: true });
+      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: [0.36, 0.36, 0.3], fixed: true });
       if (now.bedside?.girlHere !== false) {
         const look = turned.current ? g.headTo : g.headFrom;
-        // Up the tipped paper: from her waist to her neck, and from there to her hair.
+        // Up the tipped paper, from her waist.
         const along = (from: number, by: number): [number, number] => [from + by * Math.cos(g.lean), -by * Math.sin(g.lean)];
-        const [neckUp, neckBack] = along(g.up, NECK);
-        out.push({ cell: GIRL_CELL, look: g.body, shift: [0, 0.02, g.up], lean: g.lean, fixed: true });
-        out.push({ cell: GIRL_CELL, look, id: 'head', shift: [0, 0.02 + neckBack - 0.012, neckUp], lean: g.lean, fixed: true });
+        const [bustUp, bustBack] = along(g.up, BUST_UP);
+        out.push({ cell: GIRL_CELL, look: g.body, shift: [0, 0.02, g.up - 0.04], lean: g.lean, fixed: true });
+        out.push({ cell: GIRL_CELL, look, id: 'head', shift: [0, 0.02 + bustBack - 0.012, bustUp], lean: g.lean, fixed: true });
         const pin = PIN_ON[look];
         if (pin) {
-          const [pinUp, pinBack] = along(neckUp, HAIR + pin[1]);
-          out.push({ cell: GIRL_CELL, look: 'pin', id: 'pin', shift: [pin[0], 0.02 + neckBack + pinBack - 0.024, pinUp], fixed: true });
+          const [pinUp, pinBack] = along(bustUp, pin[1]);
+          out.push({ cell: GIRL_CELL, look: 'pin', id: 'pin', shift: [pin[0], 0.02 + bustBack + pinBack - 0.024, pinUp], fixed: true });
         }
         if (g.cover !== undefined) out.push({ cell: GIRL_CELL, look: 'blanket', shift: [0, -0.04, g.cover], fixed: true });
         if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [-0.3, 0.3, 0], fixed: true });
-        if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [0.06, -0.3, 0.14], fixed: true });
-        if (g.hand) out.push({ cell: GIRL_CELL, look: 'hand', shift: [0.13, -0.07, (g.cover ?? 0) + 0.27], fixed: true });
+        if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [0.06, -0.14, 0.33], fixed: true });
+        if (g.hand) out.push({ cell: GIRL_CELL, look: 'hand', shift: [0.16, -0.02, (g.cover ?? 0) + 0.25], fixed: true });
       }
       if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.5, -0.32, 0] });
     }
