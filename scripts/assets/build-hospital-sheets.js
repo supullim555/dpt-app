@@ -160,7 +160,7 @@ async function cut({ src, box, solid, keep, tone }) {
 }
 
 /** A white paper margin round everything in one cell, the way scissors would leave it. */
-function cutEdge(sheet, cell, radius) {
+function cutEdge(sheet, cell, radius, paper = 244) {
   const { x, y, w, h } = cell;
   const far = 255;
   const dist = new Uint8Array(w * h);
@@ -175,7 +175,7 @@ function cutEdge(sheet, cell, radius) {
       const k = j * w + i;
       if (dist[k] === 0) continue;
       dist[k] = Math.min(dist[k], Math.min(j < h - 1 ? dist[k + w] : far, i < w - 1 ? dist[k + 1] : far) + 1);
-      if (dist[k] <= radius) sheet[(y + j) * SHEET + x + i] = 244;
+      if (dist[k] <= radius) sheet[(y + j) * SHEET + x + i] = paper;
     }
   }
 }
@@ -203,7 +203,8 @@ async function buildSheet(name) {
         if (data[i + info.channels - 1] >= 128) sheet[(oy + y) * SHEET + ox + x] = Math.max(INK_FLOOR, data[i]);
       }
     }
-    cutEdge(sheet, item.cell, item.solid ? edge * 2 : edge);
+    // The tree takes the window's light on whatever is bright: its margin stays under that, or it turns the colour of the day.
+    cutEdge(sheet, item.cell, edge, item.solid ? 180 : 244);
   }
   if (name === 'props') {
     // her hairpin, the one thing on her with a colour of its own (the shader's)
