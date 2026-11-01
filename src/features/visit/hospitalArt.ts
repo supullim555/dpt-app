@@ -1,4 +1,4 @@
-// The hospital's four sheets, one channel of ink each and 1024 square: about 5MB of GPU memory in all
+// The hospital's five sheets, one channel of ink each and 1024 square: about 7MB of GPU memory in all
 // (docs/병원_지도.md). Colour comes later, in the shader. The walls and floors are painted here on a canvas, since they
 // have to tile. People, props and the girl are drawings, cut out of paper by scripts/assets/build-hospital-sheets.js,
 // whose cells must match these; on those three sheets exactly black means nothing is there.
@@ -259,6 +259,8 @@ export const PROP = {
   laces: { x: 768, y: 512, w: 256, h: 256 },
   coupon: { x: 768, y: 768, w: 256, h: 256 },
   pin: { x: 512, y: 940, w: 64, h: 64 },
+  // the same one, on a head further off
+  pinSmall: { x: 512, y: 940, w: 64, h: 64 },
 } as const;
 
 /** Parts of her on their own sheet (girlDays.ts says which go together on which day). Each head has her shoulders with it. */
@@ -270,15 +272,21 @@ export const GIRL_PART = {
   headSideTied: bust(3, 0),
   headFront: bust(0, 1),
   headTired: bust(1, 1),
-  hand: bust(2, 1),
   torso: { x: 0, y: 680, w: 256, h: 180 },
   torsoBack: { x: 256, y: 680, w: 256, h: 180 },
   notebook: { x: 512, y: 680, w: 256, h: 172 },
   leaves: { x: 512, y: 852, w: 256, h: 172 },
   drip: { x: 768, y: 340, w: 256, h: 684 },
-  blanket: { x: 0, y: 860, w: 512, h: 164 },
 } as const;
 export type GirlPart = keyof typeof GIRL_PART;
+
+/** The whole of her lying down, on a sheet of their own: the last two days. */
+export const LYING_PART = {
+  lyingWindow: { x: 0, y: 0, w: 512, h: 512 },
+  lyingTurned: { x: 512, y: 0, w: 512, h: 512 },
+  lyingHand: { x: 0, y: 512, w: 512, h: 512 },
+} as const;
+export type LyingPart = keyof typeof LYING_PART;
 
 function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   const canvas = document.createElement('canvas');
@@ -292,7 +300,7 @@ function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   return out;
 }
 
-const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png' };
+const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png' };
 
 /** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
 function loadChannel(url: string): Promise<Uint8Array> {
@@ -305,6 +313,6 @@ function loadChannel(url: string): Promise<Uint8Array> {
 }
 
 export const loadSheets = async () => {
-  const [people, props, girl] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl)]);
-  return { structure: toChannel(paintStructure), people, props, girl };
+  const [people, props, girl, lying] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying)]);
+  return { structure: toChannel(paintStructure), people, props, girl, lying };
 };

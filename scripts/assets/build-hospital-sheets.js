@@ -51,14 +51,18 @@ const ITEMS = {
     bust('heads-tied', [60, 275, 345, 765], 768, 0),
     bust('heads-tied', [680, 280, 1015, 765], 0, 340),
     bust('heads-tied-2', [655, 265, 985, 750], 256, 340),
-    { src: 'body', box: [830, 460, 955, 735], cell: { x: 512, y: 340, w: 256, h: 340 } },
     { src: 'body', box: [30, 465, 370, 745], cell: { x: 0, y: 680, w: 256, h: 180 }, scale: 0.64 },
     // below her hair: the head on top of it is sometimes turned another way
     { src: 'body', box: [405, 500, 730, 752], cell: { x: 256, y: 680, w: 256, h: 180 }, scale: 0.64 },
     { src: 'things', box: [130, 110, 290, 325], cell: { x: 512, y: 680, w: 256, h: 172 } },
     { src: 'things', box: [640, 120, 895, 335], cell: { x: 512, y: 852, w: 256, h: 172 } },
     { src: 'things', box: [100, 400, 280, 925], cell: { x: 768, y: 340, w: 256, h: 684 } },
-    { src: 'blanket', box: [10, 345, 1010, 765], cell: { x: 0, y: 860, w: 512, h: 164 }, keep: blanketOnly },
+  ],
+  // The whole of her lying down, each to the same size of shoulders. The foot of each goes under the bed's rail.
+  lying: [
+    { src: 'lying-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
+    { src: 'lying-turned', box: [125, 115, 895, 1024], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.547 },
+    { src: 'lying-hand', box: [205, 45, 825, 1024], cell: { x: 0, y: 512, w: 512, h: 512 }, scale: 0.505 },
   ],
 };
 
@@ -71,19 +75,7 @@ function tree(v, y) {
   return y < CROWN_ENDS ? Math.min(255, v * 1.5) : v * 0.55;
 }
 
-// A pillow came with it, which would sit in front of her: only what's below the blanket's top edge.
-function blanketOnly(x, y) {
-  const edge = [[0, 760], [20, 740], [190, 492], [270, 440], [360, 418], [500, 395], [660, 425], [760, 445], [830, 495], [1024, 760]];
-  for (let i = 1; i < edge.length; i++) {
-    if (x > edge[i][0]) continue;
-    const [x0, y0] = edge[i - 1];
-    const [x1, y1] = edge[i];
-    return y >= y0 + ((y1 - y0) * (x - x0)) / (x1 - x0) - 4;
-  }
-  return false;
-}
-
-async function cut({ src, box, solid, keep, tone }) {
+async function cut({ src, box, solid, tone }) {
   const { data, info } = await sharp(path.join(RAW, `${src}-raw.png`)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const [x0, y0, x1, y1] = box;
   const w = x1 - x0;
@@ -118,7 +110,7 @@ async function cut({ src, box, solid, keep, tone }) {
     // Only the crown is shaded that green: below it the green simply goes, or the trunk gets a dark rim.
     for (let y = Math.max(0, CROWN_ENDS - y0); y < h; y++) for (let x = 0; x < w; x++) if (isGreen(at(x, y))) on[y * w + x] = 0;
   } else {
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) on[y * w + x] = isGreen(at(x, y)) || (keep && !keep(x0 + x, y0 + y)) ? 0 : 1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) on[y * w + x] = isGreen(at(x, y)) ? 0 : 1;
   }
   // Specks left in the green, which would stretch the box and get a paper margin of their own.
   const seen = new Uint8Array(w * h);

@@ -1,7 +1,7 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { GIRL_PART, loadSheets, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type GirlPart, type PersonLook } from './hospitalArt';
+import { GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type GirlPart, type LyingPart, type PersonLook } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -73,7 +73,7 @@ void main() {
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
-export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart;
+export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart;
 export type HospitalSprite = {
   cell: Cell;
   look: SpriteLook;
@@ -109,6 +109,7 @@ export type HospitalScene = {
 
 // Each the shape of its cell on the sheet, or the drawing comes out stretched.
 const BUST = { w: 0.42, h: 0.558 };
+const LYING = { w: 0.8, h: 0.8 };
 const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   tree: { w: 3, h: 3 },
   gurney: { w: 0.9, h: 0.9 },
@@ -121,6 +122,7 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   bed: { w: 1.16, h: 0.58 },
   bedFront: { w: 1.16, h: 0.58 },
   pin: { w: 0.05, h: 0.05 },
+  pinSmall: { w: 0.03, h: 0.03 },
   headBack: BUST,
   headSide: BUST,
   headThree: BUST,
@@ -129,11 +131,12 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   headTired: BUST,
   torso: { w: 0.42, h: 0.295 },
   torsoBack: { w: 0.42, h: 0.295 },
-  hand: { w: 0.13, h: 0.173 },
   notebook: { w: 0.2, h: 0.134 },
   leaves: { w: 0.2, h: 0.134 },
   drip: { w: 0.337, h: 0.9 },
-  blanket: { w: 1.1, h: 0.352 },
+  lyingWindow: LYING,
+  lyingTurned: LYING,
+  lyingHand: LYING,
 };
 const PERSON_SIZE = { w: 0.46, h: 0.92 };
 
@@ -167,7 +170,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -180,7 +183,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const buildingDim = { value: 1 };
   const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }) =>
     new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }) };
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }) };
   // A soft dark spot on the floor under each cutout, so they stand on it instead of floating over it.
   const shadowMaterial = new THREE.ShaderMaterial({
     transparent: true,
@@ -385,7 +388,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const size = SPRITE_SIZE[look] ?? PERSON_SIZE;
     const slot = PERSON_SLOT[look as PersonLook];
     const part = GIRL_PART[look as GirlPart];
-    const px = prop ?? part ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
+    const lying = LYING_PART[look as LyingPart];
+    const px = prop ?? part ?? lying ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
     // In from the cell's edge, or the next drawing on the sheet shows as a line along this one's.
     const u0 = (px.x + UV_INSET) / SHEET;
     const u1 = (px.x + px.w - UV_INSET) / SHEET;
@@ -396,10 +400,10 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([-hw, 0, 0, hw, 0, 0, hw, size.h, 0, -hw, size.h, 0], 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute([u0, v1, u1, v1, u1, v0, u0, v0], 2));
     geometry.setAttribute('aShade', new THREE.Float32BufferAttribute([1, 1, 1, 1], 1));
-    const lit = look === 'tree' ? 1 : look === 'pin' ? 2 : 0;
+    const lit = look === 'tree' ? 1 : look === 'pin' || look === 'pinSmall' ? 2 : 0;
     geometry.setAttribute('aLit', new THREE.Float32BufferAttribute([lit, lit, lit, lit], 1));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : materials.people);
+    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : materials.people);
     mesh.frustumCulled = false;
     mesh.rotation.order = 'YXZ';
     return mesh;

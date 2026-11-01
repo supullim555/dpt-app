@@ -22,6 +22,13 @@ the faintest playful hint at the corner of her mouth, in plain loose modest hosp
 const SAME = 'The same girl as in the attached image, same face, same hair, same pajamas, in exactly the same drawing style.';
 const SAME_STYLE = 'In exactly the same drawing style as the attached image, but do not draw the girl from it.';
 
+const LYING = `The same girl as in the attached image, same face, same tied-back hair, same pajamas,
+in exactly the same drawing style. No hairpin. She lies on her back in bed on one
+pillow, seen from the foot of the bed and slightly above, whole figure in frame. A
+plain blanket covers her from the chest down, her pajamas buttoned to the neck. No
+bed frame. Perfectly flat pure green background (#00FF00), no shadows on it. No text,
+no signature, no border, no blood, no medical equipment.`;
+
 const ART = {
   'heads-loose': `${GIRL} Three drawings of her head and neck only, side by side at the same size, her hair down: from
 directly behind so no face shows, in left profile, and in three-quarter view looking left.`,
@@ -65,16 +72,21 @@ low soft hill much wider than it is tall, its top edge turned down, a few soft f
 and no pillow anywhere in the image.`,
   'op-desk-2': `${SAME_STYLE} A first-person view looking down at a small plain desk at night under the light of one lamp. Two
 hands unfolding a letter, the writing not visible. Only the hands and forearms show: no face, no head, no hair, no body.`,
+  // The last two days: the whole of her lying down, in one drawing. These carry their own full prompt.
+  'lying-window': `${LYING} Her head is turned away toward her left, looking out of a window. Calm.`,
+  'lying-turned': `${LYING} Her head is turned slowly toward the viewer. Tired half-closed eyes, a faint gentle smile.`,
+  'lying-hand': `${LYING} She looks straight at the viewer, tired and gentle. One hand rests on top of the blanket, palm down, relaxed.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
-const REFS = { 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png') };
+const TIRED = path.join(OUT_DIR, 'heads-tied-2-raw.png');
+const REFS = { 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED };
 const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 
 runGenerateCli({
   outDir: OUT_DIR,
   names: Object.keys(ART),
-  promptFor: (name) => `Generate this image: ${ART[name]}\n\n${FULL_SCREEN.has(name) ? FULL : CUTOUT}`,
+  promptFor: (name) => (name.startsWith('lying-') ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
   // Null, not undefined: undefined would send the old room's character sheet.
   refFor: (name) => (name === 'heads-loose' ? null : REFS[name] ?? FIRST),
 });
