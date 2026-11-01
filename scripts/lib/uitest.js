@@ -43,7 +43,7 @@ class Tester {
         this.pending.delete(m.id);
       }
       if (m.method === 'Runtime.exceptionThrown') {
-        this.consoleErrors.push(JSON.stringify(m.params.exceptionDetails).slice(0, 300));
+        this.consoleErrors.push((m.params.exceptionDetails.exception?.description || JSON.stringify(m.params.exceptionDetails)).slice(0, 700));
       }
     };
   }

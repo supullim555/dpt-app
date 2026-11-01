@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { VISIT_DEV } from './flag';
+import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
 import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, type FloorNo, type Pose, type Thing } from './hospitalMap';
 import PaperButton from './PaperButton';
@@ -13,7 +14,13 @@ const STAIRS_MS = 700;
 const ARROWS = ['↑', '→', '↓', '←'];
 const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
 const GIRL_CELL = { x: GIRL_FRONT.x, y: GIRL_FRONT.y + 1 };
-const GIRL_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.68, away: 0.82 };
+// However long the camera takes to come in from the door, and how far in she turns to you.
+const ENTER_MS = 2200;
+const TURN_AFTER_MS = 1150;
+const BAR_H = 54;
+// On her paper: how far up her neck is, and how far above that her hair.
+const NECK = 0.34;
+const HAIR = 0.15;
 // Further back, so whoever came in to send you out is in the picture too.
 const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
 const PERSON_FOCUS = { height: 0.72, away: 0.86 };
@@ -29,14 +36,14 @@ type Props = {
   found: readonly ClueId[];
   floorsSeen: readonly number[];
   onSeeFloor: (floor: number) => void;
-  /** You spoke to her. */
-  onTalkToGirl: () => void;
+  /** You came through her door. */
+  onEnterRoom: () => void;
   onBuy: (gift: string) => void;
   onFind: (clue: ClueId) => void;
   onNextDay: () => void;
   onTitle: () => void;
   /** Set while the story has you at her bedside: no walking, and the panel below takes the controls' place. */
-  bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean };
+  bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean; arriving?: string };
 };
 
 type Panel = 'none' | 'map' | 'lift' | 'stairs';
@@ -60,7 +67,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onTalkToGirl, onBuy, onFind, onNextDay, onTitle, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, onTitle, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -73,8 +80,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const host = useRef<View>(null);
   const scene = useRef<HospitalScene | null>(null);
   const busy = useRef(false);
+  // Has she turned to you yet? Walking up the corridor she hasn't; come in and she does.
+  const turned = useRef(bedside !== undefined);
   const latest = useRef({ pose, bedside, doneToday, found, day });
   latest.current = { pose, bedside, doneToday, found, day };
+  const bars = useRef(new Animated.Value(0)).current;
 
   const clue = clueOn(day, pose.floor);
   const clueHere = clue !== null && !found.includes(clue.id);
@@ -87,23 +97,44 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     HOSPITAL[floor].map.forEach((row, y) =>
       [...row].forEach((c, x) => {
         const person = PEOPLE[`${floor}${c}`];
-        if (person && c !== 'N' && c !== 'g') out.push({ cell: { x, y }, look: person.look });
+        if (person && c !== 'N') out.push({ cell: { x, y }, look: person.look });
         if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
       })
     );
     if (floor === 4) {
-      out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, 0.16, 0] });
-      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, -0.2, 0] });
+      // far enough back that she can tip onto the pillows without going through it
+      out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, 0.46, 0], fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, -0.2, 0], fixed: true });
+      const g = girlOn(now.day);
+      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: [0.3, 0.42, 0.42], fixed: true });
       if (now.bedside?.girlHere !== false) {
-        out.push({ cell: GIRL_CELL, look: 'girl', shift: [0, 0, 0.27] });
-        out.push({ cell: GIRL_CELL, look: 'pin', shift: [0.055, -0.01, 0.76] });
+        const look = turned.current ? g.headTo : g.headFrom;
+        // Up the tipped paper: from her waist to her neck, and from there to her hair.
+        const along = (from: number, by: number): [number, number] => [from + by * Math.cos(g.lean), -by * Math.sin(g.lean)];
+        const [neckUp, neckBack] = along(g.up, NECK);
+        out.push({ cell: GIRL_CELL, look: g.body, shift: [0, 0.02, g.up], lean: g.lean, fixed: true });
+        out.push({ cell: GIRL_CELL, look, id: 'head', shift: [0, 0.02 + neckBack - 0.012, neckUp], lean: g.lean, fixed: true });
+        const pin = PIN_ON[look];
+        if (pin) {
+          const [pinUp, pinBack] = along(neckUp, HAIR + pin[1]);
+          out.push({ cell: GIRL_CELL, look: 'pin', id: 'pin', shift: [pin[0], 0.02 + neckBack + pinBack - 0.024, pinUp], fixed: true });
+        }
+        if (g.cover !== undefined) out.push({ cell: GIRL_CELL, look: 'blanket', shift: [0, -0.04, g.cover], fixed: true });
+        if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [-0.3, 0.3, 0], fixed: true });
+        if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [0.06, -0.3, 0.14], fixed: true });
+        if (g.hand) out.push({ cell: GIRL_CELL, look: 'hand', shift: [0.13, -0.07, (g.cover ?? 0) + 0.27], fixed: true });
       }
       if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.5, -0.32, 0] });
     }
     const lying = clueOn(now.day, floor);
     if (lying && !now.found.includes(lying.id)) out.push({ cell: CLUE_CELLS[floor], look: lying.id });
     return out;
+  };
+
+  const herFocus = (): FocusTarget => {
+    const g = girlOn(latest.current.day);
+    return { cell: GIRL_CELL, height: g.height, away: g.away, eye: g.eye };
   };
 
   useEffect(() => {
@@ -120,7 +151,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           scene.current = made;
           const now = latest.current;
           made.showFloor(now.pose.floor, spritesFor(now.pose.floor), now.pose, now.doneToday);
-          if (now.bedside) made.focus(now.bedside.staffIn ? STAFF_FOCUS : GIRL_FOCUS, true);
+          if (now.bedside) made.focus(now.bedside.staffIn ? STAFF_FOCUS : herFocus(), 0);
         } else setNoView(true);
       } catch {
         if (!gone) setNoView(true);
@@ -140,6 +171,12 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [found.length, bedside?.girlHere, bedside?.staffIn]);
 
+  // The black bars of a scene, sliding in over the view while you come in and away once she speaks.
+  const inScene = bedside?.arriving !== undefined;
+  useEffect(() => {
+    Animated.timing(bars, { toValue: inScene ? 1 : 0, duration: 380, useNativeDriver: false }).start();
+  }, [inScene, bars]);
+
   useEffect(() => {
     scene.current?.setLight(light);
   }, [light]);
@@ -150,10 +187,23 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (atBedside && !wasAtBedside.current) {
       setFocused(null);
       setPose(BEDSIDE);
-      scene.current?.focus(GIRL_FOCUS);
+      scene.current?.focus(herFocus(), ENTER_MS);
+      // She turns toward the door partway through, once you're close enough to see it.
+      const g = girlOn(day);
+      const timer = setTimeout(() => {
+        turned.current = true;
+        if (g.headFrom === g.headTo) return;
+        // the pin belongs to a head, so it goes while the head turns and comes back with the new one
+        scene.current?.setSprites(spritesFor(4).filter((s) => s.id !== 'pin').map((s) => (s.id === 'head' ? { ...s, look: g.headFrom } : s)));
+        scene.current?.flip('head', g.headTo);
+        setTimeout(() => scene.current?.setSprites(spritesFor(4)), 360);
+      }, TURN_AFTER_MS);
+      wasAtBedside.current = true;
+      return () => clearTimeout(timer);
     } else if (!atBedside && wasAtBedside.current) {
       setPose(OUTSIDE_ROOM);
       setNote(FLOORS[4].line);
+      turned.current = false;
       scene.current?.showFloor(4, spritesFor(4), OUTSIDE_ROOM, true);
     }
     wasAtBedside.current = atBedside;
@@ -161,7 +211,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   }, [atBedside]);
 
   useEffect(() => {
-    if (atBedside) scene.current?.focus(bedside?.staffIn ? STAFF_FOCUS : GIRL_FOCUS);
+    // Her own focus is set by the way in; only someone coming in to send you out moves the view from here.
+    if (atBedside && bedside?.staffIn) scene.current?.focus(STAFF_FOCUS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bedside?.staffIn]);
 
@@ -169,8 +220,13 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     busy.current = true;
     setNote('');
     setPose(next);
-    if (scene.current) scene.current.moveTo(next, () => (busy.current = false));
-    else busy.current = false;
+    // Through her door: from here on the view comes in on her without being asked.
+    const arrived = () => {
+      busy.current = false;
+      if (next.floor === 4 && next.x === ROOM_ENTRY.x && next.y === ROOM_ENTRY.y && !doneToday) onEnterRoom();
+    };
+    if (scene.current) scene.current.moveTo(next, arrived);
+    else arrived();
   };
 
   const blocked = () => busy.current || atBedside || focused !== null || panel !== 'none' || transit !== '';
@@ -188,7 +244,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     setTransit(label);
     setTimeout(() => {
       setPose(next);
-      setNote(next.floor === 4 && doneToday ? '' : FLOORS[next.floor].line);
+      setNote(next.floor === 4 && !doneToday ? FLOORS[4].open ?? '' : FLOORS[next.floor].line);
       scene.current?.showFloor(next.floor, spritesFor(next.floor), next, roomShut);
       onSeeFloor(next.floor);
       setTransit('');
@@ -197,7 +253,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   // The front door is only a way home once she's been seen.
   const near = thingAt(pose, clueHere);
-  const thing: Thing | null = facingShutDoor ? { kind: 'look', text: ROOM_SHUT, wall: true } : near?.kind === 'leave' && !doneToday ? null : near;
+  // She isn't someone you walk up to: her door starts the scene. For one render after you're sent out you
+  // still stand at her bed, so she's left out by name rather than by phase.
+  const thing: Thing | null = near?.kind === 'person' && !PEOPLE[near.id] ? null : facingShutDoor ? { kind: 'look', text: ROOM_SHUT, wall: true } : near?.kind === 'leave' && !doneToday ? null : near;
 
   const goBack = () => {
     if (!focused) return;
@@ -223,10 +281,6 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       setFocused({ kind: 'thing', text: thing.text });
       scene.current?.focus({ cell: ahead(pose), height: thing.up ? 2.4 : 0.56, away: thing.wall ? 1.05 : 0.95 });
     } else if (thing.kind === 'person') {
-      if (thing.id === '4g') {
-        onTalkToGirl();
-        return;
-      }
       const person = PEOPLE[thing.id];
       setNote('');
       setFocused({ kind: 'person', name: person.name, lines: person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
@@ -327,6 +381,15 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           </View>
         )}
 
+        {bedside && (
+          <>
+            <Animated.View pointerEvents="none" style={[styles.barTop, { height: bars.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H] }) }]} />
+            <Animated.View pointerEvents="none" style={[styles.barBottom, { height: bars.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H * 1.5] }) }]}>
+              {inScene && <Text style={[styles.sceneLine, { fontSize: 14 * fontScale, lineHeight: 21 * fontScale }]}>{bedside.arriving}</Text>}
+            </Animated.View>
+          </>
+        )}
+
         {bedside?.bubble ? <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none"><Bubble text={bedside.bubble} more={bedside.more} fontScale={fontScale} /></View> : null}
         {focused?.kind === 'person' && (
           <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none">
@@ -407,8 +470,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             {VISIT_DEV && (
               <View style={styles.floors}>
                 {!doneToday && (
-                  <TouchableOpacity onPress={() => devJump(BEDSIDE)}>
-                    <Text style={styles.devLink}>(시험) 소녀 앞</Text>
+                  <TouchableOpacity onPress={() => devJump({ floor: 4, x: ROOM_ENTRY.x, y: ROOM_ENTRY.y - 1, dir: 2 })}>
+                    <Text style={styles.devLink}>(시험) 병실 문 앞</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity onPress={() => devJump({ floor: 1, ...SHOP_FRONT, dir: 0 })}>
@@ -534,6 +597,9 @@ const styles = StyleSheet.create({
   bubbleText: { color: '#111', textAlign: 'center', fontFamily: 'serif' },
   bubbleTail: { width: 18, height: 18, marginTop: -11, backgroundColor: '#f7f7f4', borderRightWidth: 2.5, borderBottomWidth: 2.5, borderColor: '#111', transform: [{ rotate: '45deg' }] },
   more: { color: '#555', fontSize: 10, textAlign: 'right', marginTop: 2 },
+  barTop: { position: 'absolute', left: 0, right: 0, top: 0, backgroundColor: '#000' },
+  barBottom: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#000', justifyContent: 'center', paddingHorizontal: 18, overflow: 'hidden' },
+  sceneLine: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },
   transit: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
   transitText: { color: '#fff', fontSize: 30, fontFamily: 'serif', letterSpacing: 4 },
   panel: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 18 },

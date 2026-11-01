@@ -22,6 +22,7 @@ import PaperButton from './PaperButton';
 import { dayInRun, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
 import { soundsLikeCrisis } from './safety';
 import {
+  ARRIVAL_LINES,
   CLUE_TEXT,
   CRISIS_LINES,
   DAY_LINES,
@@ -83,7 +84,7 @@ type VisitState = {
 
 const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], fontScale: 1, skippedDays: 0 };
 
-type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
+type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
 function currentDay(s: VisitState) {
   return dayInRun(s.run, s.startDate ? daysBetween(s.startDate, localDateKey()) : 0, s.skippedDays);
@@ -141,7 +142,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const enterRoom = () => {
     const startDate = state.startDate || localDateKey();
     setState({ ...state, startDate, visited: state.visited.includes(day) ? state.visited : [...state.visited, day] });
-    setPhase('greet');
+    setPhase('arrive');
   };
 
   const finishDay = () => {
@@ -217,7 +218,9 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const staffCall = replyLines === CRISIS_LINES ? STAFF_CALL_GENTLE : STAFF_CALLS[day];
 
   const lines: string[] =
-    phase === 'greet'
+    phase === 'arrive'
+      ? [ARRIVAL_LINES[Math.min(day, TOTAL_DAYS)]]
+      : phase === 'greet'
       ? [state.visited.length <= 1 ? FIRST_GREETING : RETURN_GREETING]
       : phase === 'reply'
         ? replyLines
@@ -232,7 +235,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
                 : [];
 
   const afterLines = () => {
-    if (phase === 'greet') setPhase('tell');
+    if (phase === 'arrive') setPhase('greet');
+    else if (phase === 'greet') setPhase('tell');
     else if (phase === 'reply') {
       if (askEmotion) setPhase('emotion');
       else afterTalk();
@@ -430,7 +434,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   // What she's saying now, in a bubble beside her. With no girl in the room the same lines are
   // narration and sit in the box below instead, as does whoever comes in to send you out.
   const spoken = phase === 'tell' ? TELL_QUESTION.text : phase === 'emotion' ? EMOTION_QUESTION : phase === 'give' ? GIVE_QUESTION : lines[lineIndex];
-  const inBubble = showGirl && !!spoken && phase !== 'staff';
+  const inBubble = showGirl && !!spoken && phase !== 'staff' && phase !== 'arrive';
   const canTapThrough = lines.length > 0;
 
   const walking = phase === 'walk' || phase === 'outside';
@@ -477,7 +481,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
         ))}
 
       {/* Narration when she isn't in the room, and the nurse or doctor. */}
-      {!inBubble && phase !== 'fairy' && lines.length > 0 && (
+      {!inBubble && phase !== 'fairy' && phase !== 'arrive' && lines.length > 0 && (
         <TouchableOpacity activeOpacity={0.85} onPress={advance} disabled={!canTapThrough} style={styles.textBox}>
           {phase === 'staff' && staffCall && <Text style={styles.speaker}>{staffCall.who}</Text>}
           <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{lines[lineIndex]}</Text>
@@ -494,7 +498,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
         </View>
       )}
 
-      {inBubble && canTapThrough && <Text style={styles.hint}>화면을 눌러 넘기기</Text>}
+      {(inBubble || phase === 'arrive') && canTapThrough && <Text style={styles.hint}>화면을 눌러 넘기기</Text>}
     </ImageBackground>
   );
 
@@ -511,12 +515,12 @@ export default function VisitScreen(_props: VisitScreenProps) {
           found={state.clues}
           floorsSeen={state.floorsSeen}
           onSeeFloor={(floor) => setState((s) => (s && !s.floorsSeen.includes(floor) ? { ...s, floorsSeen: [...s.floorsSeen, floor] } : s))}
-          onTalkToGirl={enterRoom}
+          onEnterRoom={enterRoom}
           onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
           onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
           onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
           onTitle={() => setPhase('title')}
-          bedside={walking ? undefined : { below, bubble: inBubble ? spoken : undefined, more: canTapThrough, onPress: canTapThrough ? advance : undefined, girlHere: showGirl, staffIn: phase === 'staff' }}
+          bedside={walking ? undefined : { below, bubble: inBubble ? spoken : undefined, more: canTapThrough, onPress: canTapThrough ? advance : undefined, girlHere: showGirl, staffIn: phase === 'staff', arriving: phase === 'arrive' ? lines[0] : undefined }}
         />
         {devBar}
         <CrisisFooter tone="dark" />

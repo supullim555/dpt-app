@@ -1,7 +1,7 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { paintSheets, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type PersonLook } from './hospitalArt';
+import { GIRL_PART, paintSheets, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type GirlPart, type PersonLook } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -14,6 +14,16 @@ const STAND_BACK = 0.36;
 const FOCUS_DIM = 0.42;
 const HOLD_AWAY = 0.5;
 const HOLD_SIZE = 1.5;
+// Paper: everyone is a cutout. They fold up off the floor when you arrive, lag behind as you turn, and
+// flip edge-on to change which way they face.
+const POP_MS = 460;
+const POP_STAGGER_MS = 34;
+const POP_DELAY_LIMIT_MS = 260;
+const FLIP_MS = 340;
+const SWING = 0.34;
+const WOBBLE = 0.012;
+const SHADOW_OPACITY = 0.34;
+const UV_INSET = 3;
 const INK = [0.09, 0.08, 0.06];
 const PAPER = [0.93, 0.9, 0.84];
 const FLOOR_LIGHT: Record<FloorNo, number> = { 1: 1, 2: 0.94, 3: 0.8, 4: 0.68 };
@@ -63,15 +73,21 @@ void main() {
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
-export type SpriteLook = PersonLook | keyof typeof PROP;
+export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart;
 export type HospitalSprite = {
   cell: Cell;
   look: SpriteLook;
   /** Nudged from the middle of the cell: across, along and up. */
   shift?: [number, number, number];
+  /** Tipped back from upright. */
+  lean?: number;
+  /** Named so it can be flipped later. */
+  id?: string;
+  /** Part of the furniture of her room: no folding up, no shadow. */
+  fixed?: boolean;
 };
 /** What to look at: a point above a cell, from how far away. */
-export type FocusTarget = { cell: Cell; height: number; away: number };
+export type FocusTarget = { cell: Cell; height: number; away: number; eye?: number };
 
 export type HospitalScene = {
   showFloor: (floor: FloorNo, sprites: HospitalSprite[], pose: Pose, roomShut: boolean) => void;
@@ -80,7 +96,10 @@ export type HospitalScene = {
   jump: (pose: Pose) => void;
   /** Move or turn smoothly; `done` runs when it's finished. */
   moveTo: (pose: Pose, done: () => void) => void;
-  focus: (target: FocusTarget, instant?: boolean) => void;
+  /** `ms`: 0 for no movement at all; otherwise how long the camera takes. */
+  focus: (target: FocusTarget, ms?: number) => void;
+  /** Turn a named cutout over, edge-on, to show a different drawing. */
+  flip: (id: string, look: SpriteLook) => void;
   /** Back to where you were standing. */
   unfocus: (pose: Pose, done: () => void) => void;
   /** Lift a thing up from where it lay to just in front of your eyes. */
@@ -98,9 +117,22 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   laces: { w: 0.24, h: 0.24 },
   coupon: { w: 0.24, h: 0.24 },
   bed: { w: 1.16, h: 0.58 },
-  bedFront: { w: 1.16, h: 0.58 },
+  bedFront: { w: 1.16, h: 0.46 },
   pin: { w: 0.05, h: 0.05 },
-  girl: { w: 0.31, h: 0.62 },
+  headBack: { w: 0.3, h: 0.3 },
+  headSide: { w: 0.3, h: 0.3 },
+  headThree: { w: 0.3, h: 0.3 },
+  headSideTied: { w: 0.3, h: 0.3 },
+  headThreeTied: { w: 0.3, h: 0.3 },
+  headFront: { w: 0.3, h: 0.3 },
+  headTired: { w: 0.3, h: 0.3 },
+  torso: { w: 0.42, h: 0.42 },
+  torsoBack: { w: 0.42, h: 0.42 },
+  hand: { w: 0.16, h: 0.16 },
+  notebook: { w: 0.2, h: 0.2 },
+  leaves: { w: 0.18, h: 0.18 },
+  drip: { w: 0.42, h: 0.84 },
+  blanket: { w: 1.1, h: 0.55 },
 };
 const PERSON_SIZE = { w: 0.46, h: 0.92 };
 
@@ -135,7 +167,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -148,26 +180,83 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const buildingDim = { value: 1 };
   const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }) =>
     new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }) };
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }) };
+  // A soft dark spot on the floor under each cutout, so they stand on it instead of floating over it.
+  const shadowMaterial = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: { uOpacity: { value: SHADOW_OPACITY } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'precision mediump float; uniform float uOpacity; varying vec2 vUv; void main() { float d = length(vUv - 0.5) * 2.0; gl_FragColor = vec4(0.0, 0.0, 0.0, uOpacity * (1.0 - smoothstep(0.35, 1.0, d))); }',
+  });
+  const shadowGeometry = new THREE.PlaneGeometry(1, 1);
+  shadowGeometry.rotateX(-Math.PI / 2);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(78, 1, 0.05, 12);
   camera.rotation.order = 'YXZ';
   let building: InstanceType<typeof THREE.Mesh> | null = null;
-  const spriteMeshes: InstanceType<typeof THREE.Mesh>[] = [];
+  type Cutout = {
+    mesh: InstanceType<typeof THREE.Mesh>;
+    key: string;
+    id?: string;
+    lean: number;
+    /** While it's folding up off the floor. */
+    popAt: number;
+    /** While it's turning over: scales to nothing across, then back. */
+    flipAt: number;
+    flipTo: SpriteLook | null;
+  };
+  const cutouts: Cutout[] = [];
+  const shadows: InstanceType<typeof THREE.Mesh>[] = [];
   let held: { mesh: InstanceType<typeof THREE.Mesh>; from: { x: number; y: number; z: number }; t: number } | null = null;
 
   let cam = { x: 0.5, y: EYE, z: 0.5, yaw: 0, pitch: 0, dim: 1, holdT: 0 };
   let heading: Dir = 0;
   let frame = 0;
 
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const yawOf = (dir: Dir) => -dir * (Math.PI / 2);
   const standPoint = (p: Cell, yaw: number) => ({ x: p.x + 0.5 + Math.sin(yaw) * STAND_BACK, z: p.y + 0.5 + Math.cos(yaw) * STAND_BACK });
+
+  // How far the paper is swinging behind the turn, and how much it trembles from a step.
+  let swing = 0;
+  let wobble = 0;
 
   const draw = (bob = 0) => {
     camera.position.set(cam.x, cam.y + bob, cam.z);
     camera.rotation.set(cam.pitch, cam.yaw, 0);
-    for (const m of spriteMeshes) m.rotation.y = cam.yaw;
+    const now = performance.now();
+    for (const o of cutouts) {
+      const m = o.mesh;
+      m.rotation.y = cam.yaw + swing;
+      m.rotation.z = wobble;
+      let tip = o.lean;
+      if (o.popAt > now) tip = -Math.PI / 2;
+      else if (o.popAt > 0) {
+        const t = Math.min(1, (now - o.popAt) / POP_MS);
+        // up, a little past upright, and settled: paper with some spring in it
+        const back = 1 - t;
+        tip = o.lean - (Math.PI / 2) * back * back * Math.cos(t * Math.PI * 2.4);
+        if (t >= 1) o.popAt = 0;
+      }
+      m.rotation.x = tip;
+      if (o.flipAt > 0) {
+        const t = Math.min(1, (now - o.flipAt) / FLIP_MS);
+        if (t >= 0.5 && o.flipTo) {
+          const next = makeSpriteMesh(o.flipTo);
+          m.geometry.dispose();
+          m.geometry = next.geometry;
+          m.material = next.material;
+          o.flipTo = null;
+        }
+        m.scale.x = Math.abs(Math.cos(t * Math.PI));
+        if (t >= 1) {
+          o.flipAt = 0;
+          m.scale.x = 1;
+        }
+      }
+    }
     buildingDim.value = cam.dim;
     if (held) {
       const t = cam.holdT;
@@ -289,15 +378,19 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     scene.add(building);
   };
 
+  const shadowWidth = (look: SpriteLook) => (look === 'tree' ? 0.8 : (SPRITE_SIZE[look] ?? PERSON_SIZE).w);
+
   const makeSpriteMesh = (look: SpriteLook) => {
     const prop = PROP[look as keyof typeof PROP];
     const size = SPRITE_SIZE[look] ?? PERSON_SIZE;
     const slot = PERSON_SLOT[look as PersonLook];
-    const px = prop ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
-    const u0 = px.x / SHEET;
-    const u1 = (px.x + px.w) / SHEET;
-    const v0 = px.y / SHEET;
-    const v1 = (px.y + px.h) / SHEET;
+    const part = GIRL_PART[look as GirlPart];
+    const px = prop ?? part ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
+    // In from the cell's edge, or the next drawing on the sheet shows as a line along this one's.
+    const u0 = (px.x + UV_INSET) / SHEET;
+    const u1 = (px.x + px.w - UV_INSET) / SHEET;
+    const v0 = (px.y + UV_INSET) / SHEET;
+    const v1 = (px.y + px.h - UV_INSET) / SHEET;
     const hw = size.w / 2;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([-hw, 0, 0, hw, 0, 0, hw, size.h, 0, -hw, size.h, 0], 3));
@@ -306,24 +399,59 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const lit = look === 'tree' ? 1 : look === 'pin' ? 2 : 0;
     geometry.setAttribute('aLit', new THREE.Float32BufferAttribute([lit, lit, lit, lit], 1));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const mesh = new THREE.Mesh(geometry, prop ? materials.props : materials.people);
+    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : materials.people);
     mesh.frustumCulled = false;
+    mesh.rotation.order = 'YXZ';
     return mesh;
   };
 
-  const buildSprites = (sprites: HospitalSprite[]) => {
-    for (const m of spriteMeshes) {
-      scene.remove(m);
-      m.geometry.dispose();
+  // Stops when nothing is folding or flipping any more; a moving camera draws them on its own.
+  let paperFrame = 0;
+  let cameraMoving = false;
+  const paperTick = () => {
+    if (!cameraMoving) draw();
+    if (cutouts.some((o) => o.popAt > 0 || o.flipAt > 0)) paperFrame = requestAnimationFrame(paperTick);
+  };
+  const wakePaper = () => {
+    cancelAnimationFrame(paperFrame);
+    paperFrame = requestAnimationFrame(paperTick);
+  };
+
+  /** `popFrom`: where you're standing, if the new ones should fold up nearest first. */
+  const buildSprites = (sprites: HospitalSprite[], popFrom?: Cell) => {
+    const had = new Set(cutouts.map((o) => o.key));
+    for (const o of cutouts) {
+      scene.remove(o.mesh);
+      o.mesh.geometry.dispose();
     }
-    spriteMeshes.length = 0;
+    cutouts.length = 0;
+    for (const m of shadows) scene.remove(m);
+    shadows.length = 0;
+    const started = performance.now();
     for (const s of sprites) {
       const mesh = makeSpriteMesh(s.look);
       const [across, along, up] = s.shift ?? [0, 0, 0];
-      mesh.position.set(s.cell.x + 0.5 + across, up, s.cell.y + 0.5 + along);
+      const x = s.cell.x + 0.5 + across;
+      const z = s.cell.y + 0.5 + along;
+      mesh.position.set(x, up, z);
       scene.add(mesh);
-      spriteMeshes.push(mesh);
+      const key = `${s.look}@${s.cell.x},${s.cell.y}`;
+      let popAt = 0;
+      if (!s.fixed && !still && (popFrom || !had.has(key))) {
+        const steps = popFrom ? Math.abs(s.cell.x - popFrom.x) + Math.abs(s.cell.y - popFrom.y) : 0;
+        popAt = started + Math.min(POP_DELAY_LIMIT_MS, steps * POP_STAGGER_MS);
+      }
+      cutouts.push({ mesh, key, id: s.id, lean: s.lean ?? 0, popAt, flipAt: 0, flipTo: null });
+      if (!s.fixed) {
+        const size = shadowWidth(s.look);
+        const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
+        shadow.scale.set(size, 1, size * 0.5);
+        shadow.position.set(x, 0.004, z);
+        scene.add(shadow);
+        shadows.push(shadow);
+      }
     }
+    if (cutouts.some((o) => o.popAt > 0)) wakePaper();
   };
 
   const dropHeld = () => {
@@ -354,20 +482,25 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   observer.observe(host);
   resize();
 
-  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-
   const animate = (ms: number, to: typeof cam, bobs: boolean, done?: () => void) => {
     cancelAnimationFrame(frame);
     const from = cam;
     const started = performance.now();
+    cameraMoving = true;
     const tick = (now: number) => {
       const t = Math.min(1, (now - started) / ms);
       const e = t * t * (3 - 2 * t);
       const mix = (a: number, b: number) => a + (b - a) * e;
       cam = { x: mix(from.x, to.x), y: mix(from.y, to.y), z: mix(from.z, to.z), yaw: mix(from.yaw, to.yaw), pitch: mix(from.pitch, to.pitch), dim: mix(from.dim, to.dim), holdT: mix(from.holdT, to.holdT) };
+      // The paper swings behind a turn and trembles from a step, and is straight again at either end.
+      swing = still ? 0 : Math.sin(t * Math.PI) * (to.yaw - from.yaw) * SWING;
+      wobble = bobs && !still ? Math.sin(t * Math.PI * 2) * WOBBLE : 0;
       draw(bobs && !still ? Math.sin(t * Math.PI) * 0.014 : 0);
       if (t < 1) frame = requestAnimationFrame(tick);
-      else done?.();
+      else {
+        cameraMoving = false;
+        done?.();
+      }
     };
     frame = requestAnimationFrame(tick);
   };
@@ -378,7 +511,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       shared.uFog.value.set(FOG_COLOR[floor][0], FOG_COLOR[floor][1], FOG_COLOR[floor][2]);
       renderer.setClearColor(new THREE.Color(FOG_COLOR[floor][0], FOG_COLOR[floor][1], FOG_COLOR[floor][2]));
       buildFloor(floor, roomShut);
-      buildSprites(sprites);
+      buildSprites(sprites, pose);
       jump(pose);
     },
     setSprites: (sprites) => {
@@ -397,17 +530,32 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       heading = pose.dir;
       animate(STEP_MS, { ...cam, ...standPoint(pose, yaw), yaw }, true, done);
     },
-    focus: (target, instant) => {
+    focus: (target, ms = FOCUS_MS) => {
       const yaw = yawOf(heading);
       const x = target.cell.x + 0.5 + Math.sin(yaw) * target.away;
       const z = target.cell.y + 0.5 + Math.cos(yaw) * target.away;
-      const y = EYE + (target.height - EYE) * 0.4;
+      const y = target.eye ?? EYE + (target.height - EYE) * 0.4;
       const pitch = Math.atan2(target.height - y, target.away);
       const to = { x, y, z, yaw, pitch, dim: FOCUS_DIM, holdT: 0 };
-      if (instant) {
+      if (ms === 0 || still) {
         cam = to;
         draw();
-      } else animate(FOCUS_MS, { ...to, yaw: cam.yaw }, false);
+      } else animate(ms, { ...to, yaw: cam.yaw }, false);
+    },
+    flip: (id, look) => {
+      const o = cutouts.find((c) => c.id === id);
+      if (!o) return;
+      if (still) {
+        const next = makeSpriteMesh(look);
+        o.mesh.geometry.dispose();
+        o.mesh.geometry = next.geometry;
+        o.mesh.material = next.material;
+        draw();
+        return;
+      }
+      o.flipAt = performance.now();
+      o.flipTo = look;
+      wakePaper();
     },
     unfocus: (pose, done) => {
       const yaw = cam.yaw;
@@ -425,10 +573,13 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     },
     dispose: () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(paperFrame);
       observer.disconnect();
       dropHeld();
       building?.geometry.dispose();
-      for (const m of spriteMeshes) m.geometry.dispose();
+      for (const o of cutouts) o.mesh.geometry.dispose();
+      shadowGeometry.dispose();
+      shadowMaterial.dispose();
       for (const m of Object.values(materials)) m.dispose();
       for (const t of Object.values(textures)) t.dispose();
       renderer.dispose();

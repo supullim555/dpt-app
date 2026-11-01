@@ -100,7 +100,7 @@ export const SHOP_FRONT: Cell = { x: 10, y: 2 };
 export const ENTRANCE: Pose = { floor: 1, x: 0, y: 4, dir: 1 };
 /** Where you stand when you've been sent out of her room. */
 export const OUTSIDE_ROOM: Pose = { floor: 4, x: 7, y: 4, dir: 1 };
-/** Where you stand to talk to her. */
+/** Where you end up once you're through her door: the view comes in on her by itself. */
 export const BEDSIDE: Pose = { floor: 4, ...GIRL_FRONT, dir: 2 };
 /** The way you face coming out of the lift or off the stairs. */
 export const arrival = (floor: FloorNo, at: Cell): Pose => ({ floor, x: at.x, y: at.y, dir: 2 });
@@ -180,7 +180,7 @@ export type Goal = {
 };
 
 export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFind: { floor: FloorNo; name: string } | null }): Goal | null {
-  if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: GIRL_FRONT, face: 2 };
+  if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: ROOM_ENTRY };
   if (o.clueToFind) return { text: `${o.clueToFind.floor}층에서 ${o.clueToFind.name} 찾기`, floor: o.clueToFind.floor, cell: null };
   if (!o.boughtToday) return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
   return null;

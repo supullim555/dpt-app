@@ -21,6 +21,18 @@ export const DAY_LINES: Record<number, string[]> = {
   7: ['오늘은 네 얘기를 좀 더 오래 듣고 싶었어.', '시간이 더 있었으면 좋겠다. 이런 말은 안 하려고 했는데.'],
 };
 
+// What you see as you come through her door, each day: the state she's in (girlDays.ts draws it). What
+// you notice, not what it means. No numbers, no treatment, nothing that says how long.
+export const ARRIVAL_LINES: Record<number, string> = {
+  1: '창 쪽으로 돌아앉아 있다. 문소리에 고개만 돌린다.',
+  2: '수첩을 무릎에 두고 앉아 있다. 들어가자 얼른 덮는다.',
+  3: '머리를 묶었다. 머리핀 하나에만 색이 있다.',
+  4: '등받이에 기대 있다. 어제까지 없던 링거가 옆에 서 있다.',
+  5: '어제보다 더 기대앉았다. 머리맡에 은행잎이 몇 장 있다.',
+  6: '누운 채로 창 쪽을 보고 있다. 부르니 천천히 돌아본다.',
+  7: '누운 채로 문 쪽을 보고 있었다. 이불 밖으로 손이 나왔다.',
+};
+
 // Day title cards. Placeholders too; the real ones should read differently once the week is over.
 export const DAY_TITLES: Record<number, string> = {
   1: '당첨자',
@@ -79,8 +91,8 @@ export const STAFF_CALL_GENTLE: StaffCall = { who: '간호사', line: '치료 �
 
 // The hospital. She's at the top; the higher the floor, the heavier. No one else's suffering is shown.
 // The walkable version is in hospitalMap.ts; `line` is what you notice on arriving.
-export const FLOORS: Record<number, { name: string; line: string }> = {
-  4: { name: '4층 호스피스 병동', line: '병실 앞 복도. 문은 닫혀 있다. 치료가 끝날 때까지 들어갈 수 없다.' },
+export const FLOORS: Record<number, { name: string; line: string; open?: string }> = {
+  4: { name: '4층 호스피스 병동', line: '병실 앞 복도. 문은 닫혀 있다. 치료가 끝날 때까지 들어갈 수 없다.', open: '복도 가운데에 문이 하나 열려 있다.' },
   3: { name: '3층 중증 병동', line: '보호자들이 복도 의자에서 말없이 앉아 있다.' },
   2: { name: '2층 일반 병동', line: '링거대를 끌고 천천히 걷는 사람들이 있다. 내일 퇴원한다는 말소리가 들린다.' },
   1: { name: '1층 로비', line: '사람이 가장 많다. 유리문 너머 안뜰에 은행나무가 서 있다.' },
@@ -91,7 +103,6 @@ export const ROOM_SHUT = '치료 중이다. 오늘은 더 들어갈 수 없다.'
 // to find near them.
 // She talks through VisitScreen; this entry only names her and draws her.
 export const PEOPLE: Record<string, { name: string; look: PersonLook; lines: string[]; clue?: { day: number; line: string } }> = {
-  '4g': { name: '소녀', look: 'girl', lines: [] },
   '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'] },
   '4p': { name: '옆 병실 보호자', look: 'visitor', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' } },
   '4v': { name: '자원봉사자', look: 'elder', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'] },

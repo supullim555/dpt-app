@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
+import { GIRL_DAYS, girlOn } from '../src/features/visit/girlDays.ts';
 import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
@@ -104,7 +105,15 @@ assert.equal(arrowFor({ floor: 1, x: 4, y: 4, dir: 1 }, toRoom), 3); // left, up
 assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 2 }, toRoom), 2); // at the lift, facing away: turn round
 assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 0 }, toRoom), null); // facing it: nothing more to point at
 assert.equal(arrowFor(arrival(4, LIFT_FRONT), toRoom), 0);
-assert.equal(arrowFor(BEDSIDE, toRoom), null);
+assert.equal(arrowFor({ floor: 4, x: 7, y: 4, dir: 2 }, toRoom), 0); // the door, straight ahead
+assert.equal(arrowFor({ floor: 4, x: 7, y: 5, dir: 2 }, toRoom), null); // through it
+// She turns toward you and sinks lower, every day closer, never the other way.
+for (let d = 2; d <= 7; d++) {
+  assert.ok(GIRL_DAYS[d].away < GIRL_DAYS[d - 1].away, `${d}일째 거리`);
+  assert.ok(GIRL_DAYS[d].up <= GIRL_DAYS[d - 1].up, `${d}일째 자세`);
+}
+assert.equal(girlOn(8), GIRL_DAYS[7]); // an ending after the week
+assert.ok(!GIRL_DAYS[2].headTo.endsWith('Tied') && GIRL_DAYS[3].headTo.endsWith('Tied')); // the pin comes with the third day's hair
 assert.equal(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 7 }), 1); // the gurney: the long way round
 assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null }).text, '1층 매점에서 선물 고르기');
 assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }), null);
