@@ -15,6 +15,7 @@
 const path = require('path');
 const fs = require('fs');
 const { withBrowser } = require('./lib/uitest');
+const sharp = require('sharp');
 
 const BASE = process.argv[2] || 'http://localhost:8098';
 const SHOT_DIR = path.join(__dirname, '.check-shots');
@@ -49,6 +50,23 @@ async function answerDialogue(t, questions, answers) {
     }
     await sleep(600);
   }
+}
+
+// True when the 3D view holds a real picture and not one flat colour: read off a screenshot, since a
+// WebGL canvas clears its own buffer after drawing.
+async function viewHasPicture(t) {
+  const shot = await t.send('Page.captureScreenshot', { format: 'png' });
+  const { channels } = await sharp(Buffer.from(shot.result.data, 'base64')).extract({ left: 40, top: 120, width: 300, height: 260 }).stats();
+  return channels[0].stdev > 10;
+}
+
+async function waitFor(check, ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (await check()) return true;
+    await sleep(200);
+  }
+  return false;
 }
 
 async function main() {
@@ -278,8 +296,50 @@ async function main() {
       await t.clickText('나는 그 아이에게 이야기를 하려 간다.');
 
       // day 1: she asks about the day, and never about feelings
-      t.note('병문안: 1일째 병실 문 앞', (await t.waitText('병실 문 앞에 서 있다.', 3000)) && (await t.hasText('1일째')));
+      t.note('병문안: 1일째 병원 정문 앞', (await t.waitText('병원 정문 앞에 서 있다.', 3000)) && (await t.hasText('1일째')));
       await t.clickText('들어가기');
+
+      // on foot: the front door, along the lobby, the lift, her floor, her door
+      const press = async (label, times = 1) => {
+        for (let i = 0; i < times; i++) {
+          await t.clickText(label);
+          await sleep(420);
+        }
+      };
+      t.note('병문안: 왼쪽 위에 목표', await t.waitText('4층 소녀의 병실로 가기', 3000));
+      t.note('병문안: 3D 화면이 뜸', await waitFor(() => t.evalJs("!!document.querySelector('canvas')"), 8000));
+      await sleep(500);
+      await t.shot('walk_lobby.png');
+      t.note('병문안: 화면이 실제로 그려짐', await viewHasPicture(t));
+      await press('앞으로', 4);
+      await press('왼쪽');
+      await press('앞으로', 2);
+      t.note('병문안: 엘리베이터 앞에서 탈 수 있음', await t.hasText('엘리베이터 타기'));
+      await t.shot('walk_lift.png');
+      await t.clickText('지도');
+      await sleep(200);
+      t.note('병문안: 지도에서 안 가 본 층으로는 못 감', await (async () => {
+        await t.clickText('3층');
+        await sleep(300);
+        return t.hasText('닫기');
+      })());
+      await t.shot('walk_map.png');
+      await t.clickText('닫기');
+      await sleep(200);
+      await t.clickText('엘리베이터 타기');
+      await t.waitText('몇 층으로 갈까', 2000);
+      await t.clickText('4층');
+      t.note('병문안: 엘리베이터로 4층 도착', await t.waitText('4층 호스피스 병동', 3000));
+      await sleep(300);
+      await t.shot('walk_4f.png');
+      await press('앞으로', 2);
+      await press('왼쪽');
+      await press('앞으로', 3);
+      await press('오른쪽');
+      await press('앞으로');
+      t.note('병문안: 소녀의 병실 문 앞', await t.hasText('병실로 들어가기'));
+      await t.shot('walk_door.png');
+      await t.clickText('병실로 들어가기');
       t.note('병문안: 소녀의 첫마디는 말풍선', await t.waitText('진짜 왔네. 당첨자.', 3000));
       await t.shot('visit_bubble.png');
       await t.clickText('진짜 왔네. 당첨자.');
@@ -309,9 +369,19 @@ async function main() {
       await t.shot('visit_outside.png');
 
       // day 2: after listening, she asks how the day felt
+      const toRoom = async () => {
+        await t.clickText('들어가기');
+        await t.waitText('4층 소녀의 병실로 가기', 3000);
+        await sleep(250);
+        await t.clickText('지도');
+        await sleep(200);
+        await t.clickText('(시험) 병실 문 앞');
+        await sleep(300);
+        await t.clickText('병실로 들어가기');
+      };
       await t.clickText('다음 날');
-      t.note('병문안: 다음 날이면 2일째', (await t.waitText('병실 문 앞에 서 있다.', 3000)) && (await t.hasText('2일째')));
-      await t.clickText('들어가기');
+      t.note('병문안: 다음 날이면 2일째', (await t.waitText('병원 정문 앞에 서 있다.', 3000)) && (await t.hasText('2일째')));
+      await toRoom();
       await t.waitText('왔구나.', 3000);
       await t.clickText('왔구나.');
       await t.waitText('아무 얘기나 해 줘', 3000);
@@ -331,8 +401,8 @@ async function main() {
 
       // day 3: what sounds like a crisis gets the fixed lines, not the keyword or the script
       await t.clickText('다음 날');
-      await t.waitText('병실 문 앞에 서 있다.', 3000);
-      await t.clickText('들어가기');
+      await t.waitText('병원 정문 앞에 서 있다.', 3000);
+      await toRoom();
       await t.waitText('왔구나.', 3000);
       await t.clickText('왔구나.');
       await t.waitText('아무 얘기나 해 줘', 3000);
@@ -381,7 +451,7 @@ async function main() {
       t.note('병문안: 어떤 엔딩이든 요정 등장', await t.waitText('한 번 더 찾아가 볼래?', 3000));
       await t.shot('visit_fairy.png');
       await t.clickText('다시 찾아가기');
-      t.note('병문안: 2회차는 1일째부터', (await t.waitText('병실 문 앞에 서 있다.', 3000)) && (await t.hasText('1일째')));
+      t.note('병문안: 2회차는 1일째부터', (await t.waitText('병원 정문 앞에 서 있다.', 3000)) && (await t.hasText('1일째')));
       t.note('병문안: 화면에 2회차 표시', await t.hasText('2회차'));
 
       // run 2: pick the clues up as the fairy said, show them on later visits, walk down to the tree
@@ -394,7 +464,7 @@ async function main() {
         return false;
       };
       const talk = async () => {
-        await t.clickText('들어가기');
+        await toRoom();
         await tapUntil('아무 얘기나');
         await t.clickText('별일 없었어');
         for (let i = 0; i < 20; i++) {
@@ -404,9 +474,27 @@ async function main() {
           await sleep(300);
         }
       };
+      const openMap = async () => {
+        await t.clickText('지도');
+        await sleep(200);
+      };
+      const toClue = async () => {
+        await openMap();
+        await t.clickText('(시험) 단서 앞');
+        await sleep(300);
+      };
+      const toShop = async () => {
+        await openMap();
+        await t.clickText('(시험) 매점 앞');
+        await sleep(300);
+        await t.clickText('매점 주인에게 말 걸기');
+        await sleep(200);
+        await t.clickText('어서 와요. 오늘은 이것들이 있어요.');
+      };
       const nextDay = async () => {
+        await openMap();
         await t.clickText('빛을 따라 다음 날로');
-        await t.waitText('병실 문 앞에 서 있다.', 3000);
+        await t.waitText('병원 정문 앞에 서 있다.', 3000);
       };
       const showMemory = async (name, title, thenText) => {
         await t.clickText(name);
@@ -417,15 +505,19 @@ async function main() {
 
       await talk();
       await tapUntil('병실 앞 복도');
+      t.note('병문안: 2회차엔 목표로 단서를 알려 줌', await t.hasText('1층에서 개목걸이 찾기'));
+      await openMap();
       await t.clickText('요정의 쪽지');
-      t.note('병문안: 2회차 복도에 요정의 쪽지', await t.waitText('1일째 · 1층 · 개목걸이', 2000));
-      await t.clickText('1층');
-      await sleep(600);
+      t.note('병문안: 2회차 지도에 요정의 쪽지', await t.waitText('1일째 · 1층 · 개목걸이', 2000));
+      await t.clickText('닫기');
+      await sleep(200);
+      await toClue();
       t.note('병문안: 그날 그 층에 단서가 있음', await t.hasText('무언가 떨어져 있다'));
       await t.shot('visit_floor1.png');
       await t.clickText('무언가 떨어져 있다');
       t.note('병문안: 주우면 회상 없이 문구만', (await t.waitText('개목걸이를 주웠다', 2000)) && !(await t.hasText('아침 산책')));
-      await t.clickText('매점 가기');
+      await sleep(200);
+      await toShop();
       t.note('병문안: 매점은 하루에 3개', (await t.waitText('귤', 2000)) && (await t.hasText('볼펜')) && (await t.hasText('머리끈')));
       await t.shot('visit_shop.png');
       await t.clickText('귤');
@@ -442,28 +534,27 @@ async function main() {
       await tapUntil('뭐 들고 있어');
       t.note('병문안: 단서를 보여 주면 회상', await showMemory('개목걸이', '아침 산책', '오늘 얘기 잘 들었어'));
       await tapUntil('병실 앞 복도');
-      await t.clickText('3층');
-      await sleep(600);
-      t.note('병문안: 다른 날 다른 층엔 단서 없음', !(await t.hasText('무언가 떨어져 있다')));
-      await t.clickText('1층');
-      await sleep(600);
-      await t.clickText('매점 가기');
+      await openMap();
+      t.note('병문안: 단서 없는 날엔 없음', !(await t.hasText('(시험) 단서 앞')));
+      await t.clickText('닫기');
+      await sleep(200);
+      await toShop();
       t.note('병문안: 품목이 날마다 달라짐', (await t.waitText('초콜릿', 2000)) && !(await t.hasText('귤')));
       await t.clickText('나가기');
 
       await nextDay();
       await talk();
       await tapUntil('병실 앞 복도');
-      await t.clickText('3층');
-      await sleep(600);
+      await toClue();
       await t.clickText('무언가 떨어져 있다');
+      await sleep(200);
       await nextDay();
       await talk();
       t.note('병문안: 3층 단서 회상', await showMemory('과자봉지', '마지막 한 개', '오늘 얘기 잘 들었어'));
       await tapUntil('병실 앞 복도');
-      await t.clickText('2층');
-      await sleep(600);
+      await toClue();
       await t.clickText('무언가 떨어져 있다');
+      await sleep(200);
       await nextDay();
       await talk();
       t.note('병문안: 2층 단서 회상', await showMemory('운동화 끈', '꼴찌', '오늘 얘기 잘 들었어'));
@@ -471,8 +562,9 @@ async function main() {
       await nextDay();
       await talk();
       await tapUntil('병실 앞 복도');
-      await sleep(600);
+      await toClue();
       await t.clickText('무언가 떨어져 있다');
+      await sleep(200);
       await nextDay();
       await talk();
       t.note('병문안: 4층 단서 회상', await showMemory('노래방 쿠폰', '소리 지르기', '나무까지 가 볼래'));

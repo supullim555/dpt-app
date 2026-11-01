@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
+import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, ROOM_DOOR, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 assert.equal(endingFor([]), 'bad');
@@ -61,4 +62,48 @@ for (const t of ['죽고 싶어', '다 포기하고 싶어', '약을 모아 뒀�
 for (const t of ['감기약 먹고 일찍 잤어', '죽을 끓여 먹었어', '배고파 죽겠어', '약속이 취소됐어', '일을 그만두고 싶어']) {
   assert.ok(!soundsLikeCrisis(t), t);
 }
-console.log('✓ visit logic: endings, keywords, crisis check');
+// The hospital: one building, and nothing you need ever walled off.
+for (const f of FLOOR_ORDER) {
+  const { map } = HOSPITAL[f];
+  assert.ok(map.every((r) => r.length === 15), `${f}층 너비`);
+  assert.equal(map[1][4], 'E');
+  assert.equal(map[1][6], 'S');
+  assert.ok(canStand(f, LIFT_FRONT.x, LIFT_FRONT.y) && canStand(f, STAIRS_FRONT.x, STAIRS_FRONT.y));
+  assert.ok(canStand(f, CLUE_CELLS[f].x, CLUE_CELLS[f].y), `${f}층 단서`);
+  // everyone can be talked to from somewhere you can stand
+  map.forEach((row, y) => [...row].forEach((c, x) => {
+    if (!/[a-z]/.test(c)) return;
+    assert.ok([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => canStand(f, x + dx, y + dy)), `${f}층 ${c}`);
+  }));
+}
+assert.ok(canStand(1, ENTRANCE.x, ENTRANCE.y));
+assert.ok(canStand(4, OUTSIDE_ROOM.x, OUTSIDE_ROOM.y));
+assert.ok(canStand(1, SHOP_FRONT.x, SHOP_FRONT.y));
+assert.ok(!canStand(4, 1, 1)); // behind a locked door
+assert.equal(stepped({ floor: 1, x: 4, y: 2, dir: 0 }), null); // the lift itself isn't floor
+assert.deepEqual(stepped({ floor: 1, x: 0, y: 4, dir: 1 }), { floor: 1, x: 1, y: 4, dir: 1 });
+assert.equal(turn(0, -1), 3);
+assert.equal(turn(3, 1), 0);
+assert.equal(thingAt({ floor: 1, x: 4, y: 2, dir: 0 }, false).kind, 'lift');
+assert.equal(thingAt({ floor: 1, x: 6, y: 2, dir: 0 }, false).kind, 'stairs');
+assert.equal(thingAt({ floor: 4, x: 7, y: 5, dir: 2 }, false).kind, 'room');
+assert.equal(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false).id, '1m');
+assert.equal(thingAt({ floor: 1, x: 13, y: 1, dir: 0 }, true).kind, 'clue');
+assert.equal(thingAt({ floor: 1, x: 13, y: 1, dir: 0 }, false), null);
+assert.match(thingAt({ floor: 3, x: 1, y: 4, dir: 0 }, false).text, /병실/);
+
+// The goal's arrow: to the lift from another floor, to the door on hers, round whatever's in the way.
+const toRoom = goalFor({ doneToday: false, boughtToday: false, clueToFind: null });
+assert.equal(toRoom.floor, 4);
+assert.equal(arrowFor(ENTRANCE, toRoom), 0); // straight on along the lobby
+assert.equal(arrowFor({ floor: 1, x: 4, y: 4, dir: 1 }, toRoom), 3); // left, up to the lift
+assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 2 }, toRoom), 2); // at the lift, facing away: turn round
+assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 0 }, toRoom), null); // facing it: nothing more to point at
+assert.equal(arrowFor(arrival(4, LIFT_FRONT), toRoom), 0);
+assert.equal(arrowFor({ floor: 4, ...ROOM_DOOR, dir: 2 }, toRoom), null);
+assert.equal(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 7 }), 1); // the gurney: the long way round
+assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null }).text, '1층 매점에서 선물 고르기');
+assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }), null);
+const findIt = goalFor({ doneToday: true, boughtToday: false, clueToFind: { floor: 2, name: '운동화 끈' } });
+assert.equal(arrowFor(arrival(2, LIFT_FRONT), findIt), null); // on the floor it's up to you
+console.log('✓ visit logic: endings, keywords, crisis check, hospital map');

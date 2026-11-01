@@ -1,6 +1,6 @@
 // Draws the hospital map images in docs/지도/ from the map below and checks that everything can be reached:
 //   node scripts/assets/draw-hospital-map.js
-// The maps are the same ones in docs/병원_지도.md. Every floor shares one footprint, so E and S line up.
+// The cells come from the game's own map (src/features/visit/hospitalMap.ts), so the pictures can't drift from it.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -9,77 +9,21 @@ const { execFileSync } = require('child_process');
 const FLOORS = {
   4: {
     title: '4층  호스피스·완화 병동',
-    map: [
-      '###############',
-      '#AA#E#S#BB#LLp#',
-      '#AA#.#.#BB#LL##',
-      '#=##.#.##=##+##',
-      '#......@......#',
-      '###=#n#+#v#=#.#',
-      '#CCC##GGG##DD.#',
-      '#CCC##GGG##DD.#',
-      '#CCC##GGG##DD.#',
-      '#CCC##GGG##DDW#',
-      '###############',
-    ],
     rooms: { A: ['병실', 'closed'], B: ['병실', 'closed'], C: ['병실', 'closed'], D: ['가족\n면담실', 'closed'], L: ['보호자\n휴게실', 'open', [12.3, 2.45]], G: ['소녀의 병실', 'girl'], W: ['창', 'open'] },
     clue: 'L',
   },
   3: {
     title: '3층  중증 병동',
-    map: [
-      '###############',
-      '#AA#E#S#BB#II##',
-      '#AA#.#.#BB#II##',
-      '#=##.#.##=##=##',
-      '#.............#',
-      '#%#NNNNNNNNN#.#',
-      '#t###c#######.#',
-      '#.............#',
-      '###=###+###=###',
-      '#DDD#RRRb#QQQ##',
-      '###############',
-    ],
     rooms: { A: ['병실', 'closed'], B: ['병실', 'closed'], I: ['중환자실', 'closed'], N: ['간호사 스테이션', 'station'], D: ['병실', 'closed'], R: ['휴게실', 'open', [7, 9.5]], Q: ['처치실', 'closed'] },
     clue: 'R',
   },
   2: {
     title: '2층  일반 병동',
-    map: [
-      '###############',
-      '#AA#E#S#DD#Vh##',
-      '#AA#.#.#Dd#VV##',
-      '#=##.#.##+##+##',
-      '#.............#',
-      '#.#NNN#%#LLL#.#',
-      '#.#NNN#.#LLL#.#',
-      '#.............#',
-      '###=###+###+###',
-      '#FFF#YYYy##kJJ#',
-      '###############',
-    ],
     rooms: { A: ['병실', 'closed'], D: ['병실', 'closed'], V: ['창가\n쉼터', 'open'], N: ['스테이션', 'station'], L: ['린넨실', 'closed'], F: ['병실', 'closed'], Y: ['재활실', 'open', [7, 9.5]], J: ['병실', 'closed'] },
     clue: 'Y',
   },
   1: {
     title: '1층  로비, 외래, 안뜰',
-    map: [
-      '###############',
-      '#Oo#E#S#MMm#XX#',
-      '#OO#.#.#MMM#.%#',
-      '#+##.#.##+##.##',
-      '@.............#',
-      '#.#.#i#.#.#g#.#',
-      '#.............#',
-      '###+###+###=###',
-      '#HHH###.###RRR#',
-      '#HHH###.###RRR#',
-      '#######+#######',
-      '####YYYYYYY####',
-      '####YYYTYYY####',
-      '####YbYYYYY####',
-      '###############',
-    ],
     rooms: { O: ['외래\n대기실', 'open'], M: ['매점', 'open'], X: ['구석', 'open', [13.5, 1.5]], H: ['응급실 앞', 'open'], R: ['원무과·약국', 'closed'], Y: ['안뜰', 'yard', [5.5, 11.6]] },
     clue: 'X',
   },
@@ -266,6 +210,10 @@ function render({ width, height, body }, out) {
   execFileSync(findChrome(), ['--headless=new', '--disable-gpu', '--hide-scrollbars', `--window-size=${width},${height}`, `--screenshot=${out}`, `file:///${tmp.replace(/\\/g, '/')}`], { stdio: 'ignore' });
 }
 
+(async () => {
+const { HOSPITAL } = await import('../../src/features/visit/hospitalMap.ts');
+for (const f of [1, 2, 3, 4]) FLOORS[f].map = HOSPITAL[f].map;
+
 let total = 0;
 for (const f of [4, 3, 2, 1]) {
   const r = check(f);
@@ -279,3 +227,4 @@ fs.mkdirSync(dir, { recursive: true });
 render(plansSvg(), path.join(dir, '층별_지도.png'));
 render(stackSvg(), path.join(dir, '전체_입체지도.png'));
 console.log('그림 저장:', dir);
+})();

@@ -73,15 +73,17 @@ type VisitState = {
   /** Clues picked up, and the ones already shown to her. */
   clues: ClueId[];
   shown: ClueId[];
+  /** Floors you've been on: the map button only takes you to these. */
+  floorsSeen: number[];
   /** Setting. Survives starting over. */
   fontScale: number;
   /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
   skippedDays: number;
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], fontScale: 1, skippedDays: 0 };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], fontScale: 1, skippedDays: 0 };
 
-type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
+type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
 function currentDay(s: VisitState) {
   return dayInRun(s.run, s.startDate ? daysBetween(s.startDate, localDateKey()) : 0, s.skippedDays);
@@ -204,7 +206,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   };
 
   const startOver = () => {
-    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, fontScale: state.fontScale, run: state.run + 1 });
+    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, floorsSeen: state.floorsSeen, fontScale: state.fontScale, run: state.run + 1 });
     setPhase('door');
   };
 
@@ -363,7 +365,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
     );
   }
 
-  // A black title card, the way each day opens. Nothing of the room yet.
+  // A black title card, the way each day opens. Then you walk up from the front door.
   if (phase === 'door') {
     return (
       <View style={styles.screen}>
@@ -372,8 +374,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
           <View style={styles.titleCard}>
             <Text style={styles.titleDay}>{day}일째</Text>
             <Text style={styles.titleText}>{DAY_TITLES[day]}</Text>
-            <Text style={styles.titleLine}>병실 문 앞에 서 있다.</Text>
-            <PaperButton label="들어가기" onPress={enterRoom} />
+            <Text style={styles.titleLine}>병원 정문 앞에 서 있다.</Text>
+            <PaperButton label="들어가기" onPress={() => setPhase('walk')} />
           </View>
           <CrisisFooter tone="dark" />
         </RoomColumn>
@@ -381,23 +383,29 @@ export default function VisitScreen(_props: VisitScreenProps) {
     );
   }
 
-  // Sent out for her treatment: the rest of the day is the hospital.
-  if (phase === 'outside') {
+  // Walking up to her room, or sent out for her treatment with the rest of the day to spend here.
+  if (phase === 'walk' || phase === 'outside') {
     return (
       <View style={styles.screen}>
         <RoomColumn>
-          {devBar}
           <Hospital
+            key={phase}
             day={day}
             run={state.run}
             fontScale={scale}
+            light={light}
+            doneToday={phase === 'outside'}
             boughtToday={state.boughtDay === day}
             found={state.clues}
+            floorsSeen={state.floorsSeen}
+            onSeeFloor={(floor) => setState((s) => (s && !s.floorsSeen.includes(floor) ? { ...s, floorsSeen: [...s.floorsSeen, floor] } : s))}
+            onEnterRoom={enterRoom}
             onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
             onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
             onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
             onTitle={() => setPhase('title')}
           />
+          {devBar}
           <CrisisFooter tone="dark" />
         </RoomColumn>
       </View>

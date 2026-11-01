@@ -173,7 +173,9 @@ async function withBrowser(baseUrl, fn, { shotDir = process.cwd(), width = 390, 
     findChrome(),
     [
       '--headless=new',
-      '--disable-gpu',
+      // software WebGL, so the hospital's first-person view runs here too
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
       `--remote-debugging-port=${port}`,
       `--user-data-dir=${process.env.TEMP}/cdp-${port}`,
       '--hide-scrollbars',
