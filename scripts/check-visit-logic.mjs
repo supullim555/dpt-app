@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
-import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, ROOM_DOOR, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn } from '../src/features/visit/hospitalMap.ts';
+import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 assert.equal(endingFor([]), 'bad');
@@ -86,10 +86,14 @@ assert.equal(turn(0, -1), 3);
 assert.equal(turn(3, 1), 0);
 assert.equal(thingAt({ floor: 1, x: 4, y: 2, dir: 0 }, false).kind, 'lift');
 assert.equal(thingAt({ floor: 1, x: 6, y: 2, dir: 0 }, false).kind, 'stairs');
-assert.equal(thingAt({ floor: 4, x: 7, y: 5, dir: 2 }, false).kind, 'room');
+assert.equal(thingAt(BEDSIDE, false).id, '4g'); // she's a person in her room like anyone else
+assert.ok(!canStand(4, 6, 7)); // the bed takes the room: you stand at its foot
+assert.equal(thingAt({ floor: 3, x: 1, y: 4, dir: 2 }, false).kind, 'look'); // the gurney
 assert.equal(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false).id, '1m');
 assert.equal(thingAt({ floor: 1, x: 13, y: 1, dir: 0 }, true).kind, 'clue');
 assert.equal(thingAt({ floor: 1, x: 13, y: 1, dir: 0 }, false), null);
+assert.equal(thingAt(ENTRANCE, false).kind, 'leave');
+assert.equal(thingAt(OUTSIDE_ROOM, false), null); // the front door is on the first floor only
 assert.match(thingAt({ floor: 3, x: 1, y: 4, dir: 0 }, false).text, /병실/);
 
 // The goal's arrow: to the lift from another floor, to the door on hers, round whatever's in the way.
@@ -100,7 +104,7 @@ assert.equal(arrowFor({ floor: 1, x: 4, y: 4, dir: 1 }, toRoom), 3); // left, up
 assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 2 }, toRoom), 2); // at the lift, facing away: turn round
 assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 0 }, toRoom), null); // facing it: nothing more to point at
 assert.equal(arrowFor(arrival(4, LIFT_FRONT), toRoom), 0);
-assert.equal(arrowFor({ floor: 4, ...ROOM_DOOR, dir: 2 }, toRoom), null);
+assert.equal(arrowFor(BEDSIDE, toRoom), null);
 assert.equal(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 7 }), 1); // the gurney: the long way round
 assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null }).text, '1층 매점에서 선물 고르기');
 assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }), null);

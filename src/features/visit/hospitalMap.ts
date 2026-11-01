@@ -1,6 +1,7 @@
 // The hospital as data, and the rules for walking it: the one source for the first-person view, the map
 // button and docs/지도/ (docs/병원_지도.md). No imports, so scripts/check-visit-logic.mjs can run it directly.
 // One character is one cell. Every floor has one footprint, so the lift and the stairs line up.
+// '_' is floor you can see but not walk on: the part of her room around the bed.
 
 export type FloorNo = 1 | 2 | 3 | 4;
 /** 0 north, 1 east, 2 south, 3 west. */
@@ -19,13 +20,13 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#=##.#.##=##+##',
       '#......@......#',
       '###=#n#+#v#=#.#',
-      '#CCC##GGG##DD.#',
-      '#CCC##GGG##DD.#',
-      '#CCC##GGG##DD.#',
-      '#CCC##GGG##DDW#',
+      '#CCC##_U_##DD.#',
+      '#CCC##_U_##DD.#',
+      '#CCC##_g_##DD.#',
+      '#CCC##___##DDW#',
       '###############',
     ],
-    rooms: { A: '병실', B: '병실', C: '병실', D: '가족 면담실', L: '보호자 휴게실', W: '복도 끝 창' },
+    rooms: { A: '병실', B: '병실', C: '병실', D: '가족 면담실', L: '보호자 휴게실', W: '복도 끝 창', U: '소녀의 병실' },
   },
   3: {
     map: [
@@ -91,19 +92,22 @@ export const DX = [0, 1, 0, -1];
 export const DY = [-1, 0, 1, 0];
 export const LIFT_FRONT: Cell = { x: 4, y: 2 };
 export const STAIRS_FRONT: Cell = { x: 6, y: 2 };
-export const ROOM_DOOR: Cell = { x: 7, y: 5 };
+export const ROOM_ENTRY: Cell = { x: 7, y: 5 };
+export const GIRL_FRONT: Cell = { x: 7, y: 7 };
 export const SHOP_FRONT: Cell = { x: 10, y: 2 };
 
 /** The start of each day: just inside the front door, looking down the lobby. */
 export const ENTRANCE: Pose = { floor: 1, x: 0, y: 4, dir: 1 };
 /** Where you stand when you've been sent out of her room. */
 export const OUTSIDE_ROOM: Pose = { floor: 4, x: 7, y: 4, dir: 1 };
+/** Where you stand to talk to her. */
+export const BEDSIDE: Pose = { floor: 4, ...GIRL_FRONT, dir: 2 };
 /** The way you face coming out of the lift or off the stairs. */
 export const arrival = (floor: FloorNo, at: Cell): Pose => ({ floor, x: at.x, y: at.y, dir: 2 });
 
 export const charAt = (floor: FloorNo, x: number, y: number) => HOSPITAL[floor].map[y]?.[x] ?? '#';
 const isPerson = (c: string) => c >= 'a' && c <= 'z';
-const STOPS_YOU = '#=%NTGES';
+const STOPS_YOU = '#=%NTES_';
 
 const walkableCache = new Map<FloorNo, Set<string>>();
 const key = (x: number, y: number) => `${x},${y}`;
@@ -176,7 +180,7 @@ export type Goal = {
 };
 
 export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFind: { floor: FloorNo; name: string } | null }): Goal | null {
-  if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: ROOM_DOOR, face: 2 };
+  if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: GIRL_FRONT, face: 2 };
   if (o.clueToFind) return { text: `${o.clueToFind.floor}층에서 ${o.clueToFind.name} 찾기`, floor: o.clueToFind.floor, cell: null };
   if (!o.boughtToday) return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
   return null;
@@ -199,10 +203,10 @@ export function arrowFor(p: Pose, goal: Goal | null): number | null {
 export type Thing =
   | { kind: 'lift' }
   | { kind: 'stairs' }
-  | { kind: 'room' }
   | { kind: 'person'; id: string }
   | { kind: 'clue' }
-  | { kind: 'info'; text: string }
+  /** Something to look at. `wall`: it's part of the wall, so stand further off. `up`: look up at it. */
+  | { kind: 'look'; text: string; wall?: boolean; up?: boolean }
   | { kind: 'leave' };
 
 /** What's in front of you (or under you, for a clue or the front door). */
@@ -213,17 +217,16 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   const c = charAt(p.floor, front.x, front.y);
   if (c === 'E') return { kind: 'lift' };
   if (c === 'S') return { kind: 'stairs' };
-  if (c === 'G') return { kind: 'room' };
   if (isPerson(c)) return { kind: 'person', id: `${p.floor}${c}` };
-  if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'info', text: '간호사 스테이션이다. 지금은 아무도 없다.' };
-  if (c === '%') return { kind: 'info', text: HOSPITAL[p.floor].blocked ?? '' };
-  if (c === 'T') return { kind: 'info', text: '은행나무다. 올려다보면 4층 창이 보인다.' };
+  if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'look', text: '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };
+  if (c === '%') return { kind: 'look', text: HOSPITAL[p.floor].blocked ?? '' };
+  if (c === 'T') return { kind: 'look', text: '은행나무다. 저 위 어딘가에 4층 창이 있다.', up: true };
   if (c === '=') {
     const behind = charAt(p.floor, front.x + DX[p.dir], front.y + DY[p.dir]);
-    return { kind: 'info', text: `${HOSPITAL[p.floor].rooms[behind] ?? '방'}. 문이 닫혀 있다.` };
+    return { kind: 'look', text: `${HOSPITAL[p.floor].rooms[behind] ?? '방'}. 문이 닫혀 있다.`, wall: true };
   }
-  if (charAt(p.floor, p.x, p.y) === 'W' && p.dir === 2) return { kind: 'info', text: '안뜰의 은행나무가 내려다보인다.' };
-  if (charAt(p.floor, p.x, p.y) === '@') return { kind: 'leave' };
+  if (charAt(p.floor, p.x, p.y) === 'W' && p.dir === 2) return { kind: 'look', text: '안뜰의 은행나무가 내려다보인다.', wall: true };
+  if (p.floor === 1 && charAt(p.floor, p.x, p.y) === '@') return { kind: 'leave' };
   return null;
 }
 

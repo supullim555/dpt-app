@@ -23,8 +23,8 @@ export const TILES = {
 /** Top-left corner of a tile, in pixels. */
 export const tileAt = (t: number) => ({ x: (t % 5) * TILE, y: Math.floor(t / 5) * TILE });
 
-export type PersonLook = 'nurse' | 'worker' | 'elder' | 'child' | 'visitor' | 'patient' | 'shopkeeper';
-export const PERSON_SLOT: Record<PersonLook, number> = { nurse: 0, worker: 1, elder: 2, child: 3, visitor: 4, patient: 5, shopkeeper: 6 };
+export type PersonLook = 'nurse' | 'worker' | 'elder' | 'child' | 'visitor' | 'patient' | 'shopkeeper' | 'girl';
+export const PERSON_SLOT: Record<PersonLook, number> = { nurse: 0, worker: 1, elder: 2, child: 3, visitor: 4, patient: 5, shopkeeper: 6, girl: 7 };
 /** Slots on the people sheet: 4 across, 2 down. */
 export const SLOT_W = 256;
 export const SLOT_H = 512;
@@ -238,7 +238,7 @@ function slot(i: number) {
   return { x: (i % 4) * SLOT_W, y: Math.floor(i / 4) * SLOT_H };
 }
 
-function figure(p: Pen, i: number, o: { coat: number; hair: number; height: number; width?: number; cap?: boolean; apron?: boolean; bald?: boolean }) {
+function figure(p: Pen, i: number, o: { coat: number; hair: number; height: number; width?: number; cap?: boolean; apron?: boolean; bald?: boolean; bob?: boolean }) {
   const { c } = p;
   const { x, y } = slot(i);
   const cx = x + 128;
@@ -268,6 +268,19 @@ function figure(p: Pen, i: number, o: { coat: number; hair: number; height: numb
     c.fillStyle = grey(o.hair);
     c.beginPath();
     c.arc(cx, top + head * 0.8, head, Math.PI, 0);
+    c.fill();
+  }
+  if (o.bob) {
+    c.fillStyle = grey(o.hair);
+    c.beginPath();
+    c.ellipse(cx, top + head * 1.1, head * 1.28, head * 1.42, 0, Math.PI * 0.98, Math.PI * 0.02);
+    c.lineTo(cx + head * 1.28, top + head * 2.3);
+    c.lineTo(cx + head * 0.72, top + head * 2.3);
+    c.lineTo(cx + head * 0.82, top + head * 0.9);
+    c.lineTo(cx - head * 0.82, top + head * 0.9);
+    c.lineTo(cx - head * 0.72, top + head * 2.3);
+    c.lineTo(cx - head * 1.28, top + head * 2.3);
+    c.closePath();
     c.fill();
   }
   if (o.cap) {
@@ -305,15 +318,22 @@ function paintPeople(c: CanvasRenderingContext2D) {
   figure(p, PERSON_SLOT.visitor, { coat: 0.34, hair: 0.2, height: 460 });
   figure(p, PERSON_SLOT.patient, { coat: 0.78, hair: 0.25, height: 450 });
   figure(p, PERSON_SLOT.shopkeeper, { coat: 0.5, hair: 0.3, height: 450, apron: true });
+  figure(p, PERSON_SLOT.girl, { coat: 0.8, hair: 0.12, height: 470, width: 80, bald: true, bob: true });
 }
 
-/** Cells on the props sheet: the tree across the top half, the rest below. */
+/** Cells on the props sheet. Each clue has its own, so it can be lifted up and looked at. */
 export const PROP = {
-  tree: { x: 0, y: 0, w: 1024, h: 512 },
+  tree: { x: 0, y: 0, w: 512, h: 512 },
+  bed: { x: 512, y: 0, w: 512, h: 256 },
+  bedFront: { x: 512, y: 256, w: 512, h: 256 },
   gurney: { x: 0, y: 512, w: 256, h: 512 },
   cart: { x: 256, y: 512, w: 256, h: 512 },
   vending: { x: 512, y: 512, w: 256, h: 512 },
-  clue: { x: 768, y: 512, w: 256, h: 512 },
+  collar: { x: 768, y: 512, w: 128, h: 128 },
+  snack: { x: 896, y: 512, w: 128, h: 128 },
+  laces: { x: 768, y: 640, w: 128, h: 128 },
+  coupon: { x: 896, y: 640, w: 128, h: 128 },
+  pin: { x: 768, y: 768, w: 64, h: 64 },
 } as const;
 
 function paintProps(c: CanvasRenderingContext2D) {
@@ -323,15 +343,41 @@ function paintProps(c: CanvasRenderingContext2D) {
 
   // ginkgo: the crown goes bright, so it takes the same light as the window
   c.fillStyle = grey(0.28);
-  c.fillRect(490, 300, 44, 212);
-  for (let i = 0; i < 90; i++) {
+  c.fillRect(234, 300, 44, 212);
+  for (let i = 0; i < 70; i++) {
     const a = p.r() * Math.PI * 2;
-    const d = p.r() * 1;
+    const d = p.r();
     c.fillStyle = grey(0.82 + p.r() * 0.18);
     c.beginPath();
-    c.arc(512 + Math.cos(a) * d * 300, 170 + Math.sin(a) * d * 140, 26 + p.r() * 22, 0, Math.PI * 2);
+    c.arc(256 + Math.cos(a) * d * 190, 170 + Math.sin(a) * d * 130, 22 + p.r() * 20, 0, Math.PI * 2);
     c.fill();
   }
+
+  // her bed, seen from the foot: the head and pillow behind her, the blanket and rail in front
+  c.fillStyle = grey(0.5);
+  c.fillRect(530, 40, 476, 216);
+  box(p, 530, 40, 476, 216, 4);
+  c.fillStyle = grey(0.95);
+  c.beginPath();
+  c.ellipse(768, 150, 150, 58, 0, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = grey(0.1);
+  c.lineWidth = 3;
+  c.stroke();
+  c.fillStyle = grey(0.86);
+  c.beginPath();
+  c.moveTo(520, 500);
+  c.lineTo(520, 370);
+  c.quadraticCurveTo(768, 270, 1016, 370);
+  c.lineTo(1016, 500);
+  c.closePath();
+  c.fill();
+  line(p, 524, 370, 650, 322, 3);
+  line(p, 886, 322, 1012, 370, 3);
+  for (const fold of [620, 760, 900]) line(p, fold, 340, fold + 20, 430, 1.6, 0.35);
+  c.fillStyle = grey(0.3);
+  c.fillRect(516, 450, 504, 58);
+  box(p, 516, 450, 504, 58, 4);
 
   // gurney
   let { x, y }: { x: number; y: number } = PROP.gurney;
@@ -362,15 +408,45 @@ function paintProps(c: CanvasRenderingContext2D) {
   c.fillRect(x + 48, y + 66, 120, 250);
   for (let i = 1; i < 4; i++) line(p, x + 48, y + 66 + i * 62, x + 168, y + 66 + i * 62, 2);
 
-  // something dropped
-  ({ x, y } = PROP.clue);
-  c.fillStyle = grey(0.96);
+  // the four clues: someone else's things, dropped
+  ({ x, y } = PROP.collar);
+  c.strokeStyle = grey(0.75);
+  c.lineWidth = 16;
   c.beginPath();
-  c.ellipse(x + 128, y + 466, 64, 28, 0, 0, Math.PI * 2);
-  c.fill();
-  c.strokeStyle = grey(0.1);
-  c.lineWidth = 4;
+  c.arc(x + 64, y + 60, 40, 0, Math.PI * 2);
   c.stroke();
+  c.fillStyle = grey(0.95);
+  c.beginPath();
+  c.arc(x + 64, y + 108, 14, 0, Math.PI * 2);
+  c.fill();
+  ({ x, y } = PROP.snack);
+  c.fillStyle = grey(0.85);
+  c.fillRect(x + 28, y + 18, 72, 94);
+  box(p, x + 28, y + 18, 72, 94, 3);
+  for (let i = 0; i < 3; i++) line(p, x + 40, y + 44 + i * 20, x + 88, y + 40 + i * 20, 2, 0.3);
+  ({ x, y } = PROP.laces);
+  c.strokeStyle = grey(0.92);
+  c.lineWidth = 7;
+  c.beginPath();
+  c.moveTo(x + 16, y + 30);
+  c.bezierCurveTo(x + 120, y + 10, x + 10, y + 70, x + 100, y + 76);
+  c.bezierCurveTo(x + 130, y + 90, x + 40, y + 110, x + 20, y + 106);
+  c.stroke();
+  ({ x, y } = PROP.coupon);
+  c.fillStyle = grey(0.95);
+  c.fillRect(x + 12, y + 38, 104, 54);
+  box(p, x + 12, y + 38, 104, 54, 3);
+  line(p, x + 88, y + 40, x + 88, y + 90, 2, 0.4);
+  for (let i = 0; i < 2; i++) line(p, x + 24, y + 54 + i * 16, x + 76, y + 54 + i * 16, 2, 0.3);
+
+  // her hairpin, the one thing on her with a colour of its own (the shader's)
+  ({ x, y } = PROP.pin);
+  c.fillStyle = grey(0.95);
+  c.save();
+  c.translate(x + 32, y + 32);
+  c.rotate(-0.4);
+  c.fillRect(-28, -9, 56, 18);
+  c.restore();
 }
 
 function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {

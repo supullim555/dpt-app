@@ -89,7 +89,9 @@ export const ROOM_SHUT = '치료 중이다. 오늘은 더 들어갈 수 없다.'
 
 // Who you can talk to, by floor and map letter. `clue` is what they let slip on the day there's something
 // to find near them.
+// She talks through VisitScreen; this entry only names her and draws her.
 export const PEOPLE: Record<string, { name: string; look: PersonLook; lines: string[]; clue?: { day: number; line: string } }> = {
+  '4g': { name: '소녀', look: 'girl', lines: [] },
   '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'] },
   '4p': { name: '옆 병실 보호자', look: 'visitor', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' } },
   '4v': { name: '자원봉사자', look: 'elder', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'] },

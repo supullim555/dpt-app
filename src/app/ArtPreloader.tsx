@@ -2,13 +2,13 @@ import React from 'react';
 import { Image, View, type ImageSourcePropType } from 'react-native';
 import { CHARACTER_CLIPS, PORTRAIT_FRONT } from '@/assets/character';
 import { QUEST_ICON_SOURCES } from '@/assets/questIcons';
-import { VISIT_CARDS, VISIT_GIRL, VISIT_OPENING, VISIT_PANEL, VISIT_ROOM, VISIT_SCRIBBLES, VISIT_TORN } from '@/assets/visitUi';
+import { VISIT_CARDS, VISIT_OPENING, VISIT_PANEL, VISIT_SCRIBBLES } from '@/assets/visitUi';
 import { FLOOR_SOURCE, ROOM_OBJECTS, WALLPAPER_SOURCE } from '@/features/room';
 import { VISIT_ENABLED } from '@/features/visit';
 
 // 병문안 never shows the old room's art, about 5.6MB of it: each version loads only its own.
 const SOURCES: ImageSourcePropType[] = VISIT_ENABLED
-  ? [VISIT_ROOM, VISIT_GIRL, VISIT_TORN, VISIT_PANEL, ...VISIT_CARDS, ...VISIT_OPENING, ...VISIT_SCRIBBLES]
+  ? [VISIT_PANEL, ...VISIT_CARDS, ...VISIT_OPENING, ...VISIT_SCRIBBLES]
   : [
       PORTRAIT_FRONT,
       ...Object.values(CHARACTER_CLIPS).map((c) => c.source),

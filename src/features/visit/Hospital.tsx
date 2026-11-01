@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { VISIT_DEV } from './flag';
-import { createHospitalScene, type HospitalScene, type HospitalSprite } from './hospitalScene';
-import { arrival, arrowFor, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_DOOR, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, type FloorNo, type Pose } from './hospitalMap';
+import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
+import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, type FloorNo, type Pose, type Thing } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY } from './script';
@@ -11,7 +11,12 @@ const AMBER = '#d9a441';
 const LIFT_MS = 1100;
 const STAIRS_MS = 700;
 const ARROWS = ['↑', '→', '↓', '←'];
-const PROP_ON_FLOOR: Record<number, HospitalSprite['look']> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
+const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
+const GIRL_CELL = { x: GIRL_FRONT.x, y: GIRL_FRONT.y + 1 };
+const GIRL_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.68, away: 0.82 };
+// Further back, so whoever came in to send you out is in the picture too.
+const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
+const PERSON_FOCUS = { height: 0.72, away: 0.86 };
 
 type Props = {
   day: number;
@@ -24,22 +29,42 @@ type Props = {
   found: readonly ClueId[];
   floorsSeen: readonly number[];
   onSeeFloor: (floor: number) => void;
-  onEnterRoom: () => void;
+  /** You spoke to her. */
+  onTalkToGirl: () => void;
   onBuy: (gift: string) => void;
   onFind: (clue: ClueId) => void;
   onNextDay: () => void;
   onTitle: () => void;
+  /** Set while the story has you at her bedside: no walking, and the panel below takes the controls' place. */
+  bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean };
 };
 
-type Panel = 'none' | 'map' | 'lift' | 'stairs' | 'shop';
+type Panel = 'none' | 'map' | 'lift' | 'stairs';
+/** Who or what the view has come in close on, until you go back. */
+type Focused =
+  | { kind: 'person'; name: string; lines: string[]; index: number; shop: boolean }
+  | { kind: 'thing'; text: string };
 
-// The hospital on foot (docs/병원_지도.md): a step or a quarter turn at a time, and whatever's in front of
-// you can be pressed. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
+const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean; fontScale: number; name?: string }) => (
+  <View style={styles.bubbleWrap} pointerEvents="none">
+    <View style={styles.bubble}>
+      {name ? <Text style={styles.bubbleName}>{name}</Text> : null}
+      <Text style={[styles.bubbleText, { fontSize: 15 * fontScale, lineHeight: 22 * fontScale }]}>{text}</Text>
+      {more && <Text style={styles.more}>▼</Text>}
+    </View>
+    <View style={styles.bubbleTail} />
+  </View>
+);
+
+// The hospital on foot (docs/병원_지도.md): a step or a quarter turn at a time. Stand in front of someone or
+// something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
+// you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, onTitle }: Props) {
-  const [pose, setPose] = useState<Pose>(doneToday ? OUTSIDE_ROOM : ENTRANCE);
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onTalkToGirl, onBuy, onFind, onNextDay, onTitle, bedside }: Props) {
+  const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
-  const [talk, setTalk] = useState<{ name: string; lines: string[]; index: number; thenShop: boolean } | null>(null);
+  const [focused, setFocused] = useState<Focused | null>(null);
+  const [shopLine, setShopLine] = useState('');
   const [panel, setPanel] = useState<Panel>('none');
   const [hintOpen, setHintOpen] = useState(false);
   const [transit, setTransit] = useState('');
@@ -48,24 +73,36 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const host = useRef<View>(null);
   const scene = useRef<HospitalScene | null>(null);
   const busy = useRef(false);
-  const poseNow = useRef(pose);
-  poseNow.current = pose;
+  const latest = useRef({ pose, bedside, doneToday, found, day });
+  latest.current = { pose, bedside, doneToday, found, day };
 
   const clue = clueOn(day, pose.floor);
   const clueHere = clue !== null && !found.includes(clue.id);
+  const atBedside = bedside !== undefined;
+  const roomShut = doneToday;
 
   const spritesFor = (floor: FloorNo): HospitalSprite[] => {
+    const now = latest.current;
     const out: HospitalSprite[] = [];
     HOSPITAL[floor].map.forEach((row, y) =>
       [...row].forEach((c, x) => {
         const person = PEOPLE[`${floor}${c}`];
-        if (person && c !== 'N') out.push({ cell: { x, y }, look: person.look });
+        if (person && c !== 'N' && c !== 'g') out.push({ cell: { x, y }, look: person.look });
         if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
       })
     );
-    const lying = clueOn(day, floor);
-    if (lying && !found.includes(lying.id)) out.push({ cell: CLUE_CELLS[floor], look: 'clue' });
+    if (floor === 4) {
+      out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, 0.16, 0] });
+      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, -0.2, 0] });
+      if (now.bedside?.girlHere !== false) {
+        out.push({ cell: GIRL_CELL, look: 'girl', shift: [0, 0, 0.27] });
+        out.push({ cell: GIRL_CELL, look: 'pin', shift: [0.055, -0.01, 0.76] });
+      }
+      if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.5, -0.32, 0] });
+    }
+    const lying = clueOn(now.day, floor);
+    if (lying && !now.found.includes(lying.id)) out.push({ cell: CLUE_CELLS[floor], look: lying.id });
     return out;
   };
 
@@ -81,7 +118,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         if (gone) made?.dispose();
         else if (made) {
           scene.current = made;
-          made.showFloor(poseNow.current.floor, spritesFor(poseNow.current.floor), poseNow.current);
+          const now = latest.current;
+          made.showFloor(now.pose.floor, spritesFor(now.pose.floor), now.pose, now.doneToday);
+          if (now.bedside) made.focus(now.bedside.staffIn ? STAFF_FOCUS : GIRL_FOCUS, true);
         } else setNoView(true);
       } catch {
         if (!gone) setNoView(true);
@@ -99,7 +138,32 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   useEffect(() => {
     scene.current?.setSprites(spritesFor(pose.floor));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [found.length]);
+  }, [found.length, bedside?.girlHere, bedside?.staffIn]);
+
+  useEffect(() => {
+    scene.current?.setLight(light);
+  }, [light]);
+
+  // Into the talk, and back out of it: sent out through the door, which shuts behind you.
+  const wasAtBedside = useRef(atBedside);
+  useEffect(() => {
+    if (atBedside && !wasAtBedside.current) {
+      setFocused(null);
+      setPose(BEDSIDE);
+      scene.current?.focus(GIRL_FOCUS);
+    } else if (!atBedside && wasAtBedside.current) {
+      setPose(OUTSIDE_ROOM);
+      setNote(FLOORS[4].line);
+      scene.current?.showFloor(4, spritesFor(4), OUTSIDE_ROOM, true);
+    }
+    wasAtBedside.current = atBedside;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atBedside]);
+
+  useEffect(() => {
+    if (atBedside) scene.current?.focus(bedside?.staffIn ? STAFF_FOCUS : GIRL_FOCUS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bedside?.staffIn]);
 
   const moveTo = (next: Pose) => {
     busy.current = true;
@@ -109,11 +173,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     else busy.current = false;
   };
 
-  const blocked = () => busy.current || panel !== 'none' || talk !== null || transit !== '';
+  const blocked = () => busy.current || atBedside || focused !== null || panel !== 'none' || transit !== '';
+  const facingShutDoor = roomShut && pose.floor === 4 && pose.x === ROOM_ENTRY.x && pose.y === ROOM_ENTRY.y && pose.dir === 2;
+  const nextStep = facingShutDoor ? null : stepped(pose);
   const forward = () => {
-    if (blocked()) return;
-    const next = stepped(pose);
-    if (next) moveTo(next);
+    if (!blocked() && nextStep) moveTo(nextStep);
   };
   const rotate = (by: number) => {
     if (!blocked()) moveTo({ ...pose, dir: turn(pose.dir, by) });
@@ -125,40 +189,53 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     setTimeout(() => {
       setPose(next);
       setNote(next.floor === 4 && doneToday ? '' : FLOORS[next.floor].line);
-      scene.current?.showFloor(next.floor, spritesFor(next.floor), next);
+      scene.current?.showFloor(next.floor, spritesFor(next.floor), next, roomShut);
       onSeeFloor(next.floor);
       setTransit('');
     }, ms);
   };
 
   // The front door is only a way home once she's been seen.
-  const found0 = thingAt(pose, clueHere);
-  const thing = found0?.kind === 'leave' && !doneToday ? null : found0;
+  const near = thingAt(pose, clueHere);
+  const thing: Thing | null = facingShutDoor ? { kind: 'look', text: ROOM_SHUT, wall: true } : near?.kind === 'leave' && !doneToday ? null : near;
+
+  const goBack = () => {
+    if (!focused) return;
+    busy.current = true;
+    setFocused(null);
+    setShopLine('');
+    if (scene.current) scene.current.unfocus(pose, () => (busy.current = false));
+    else busy.current = false;
+  };
 
   const useThing = () => {
     if (!thing || blocked()) return;
     if (thing.kind === 'lift') setPanel('lift');
     else if (thing.kind === 'stairs') setPanel('stairs');
     else if (thing.kind === 'leave') onTitle();
-    else if (thing.kind === 'room') {
-      if (doneToday) {
-        setNote(ROOM_SHUT);
+    else if (thing.kind === 'clue' && clue) {
+      setNote('');
+      setFocused({ kind: 'thing', text: CLUE_TEXT[clue.id].found });
+      scene.current?.hold(clue.id, CLUE_CELLS[pose.floor]);
+      onFind(clue.id);
+    } else if (thing.kind === 'look') {
+      setNote('');
+      setFocused({ kind: 'thing', text: thing.text });
+      scene.current?.focus({ cell: ahead(pose), height: thing.up ? 2.4 : 0.56, away: thing.wall ? 1.05 : 0.95 });
+    } else if (thing.kind === 'person') {
+      if (thing.id === '4g') {
+        onTalkToGirl();
         return;
       }
-      busy.current = true;
-      if (scene.current) scene.current.walkIn(onEnterRoom);
-      else onEnterRoom();
-    } else if (thing.kind === 'clue' && clue) {
-      onFind(clue.id);
-      setNote(CLUE_TEXT[clue.id].found);
-    } else if (thing.kind === 'person') {
       const person = PEOPLE[thing.id];
-      const lines = person.clue?.day === day ? [person.clue.line] : person.lines;
-      setTalk({ name: person.name, lines, index: 0, thenShop: thing.id === '1m' });
+      setNote('');
+      setFocused({ kind: 'person', name: person.name, lines: person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
+      if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
+      else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
   };
 
-  // Web keyboards: the arrow keys or WASD, and Enter or Space for what's in front of you.
+  // Web keyboards: the arrow keys or WASD, Enter or Space for what's in front of you, Escape to go back.
   const keys = useRef((_key: string) => {});
   keys.current = (key: string) => {
     if (key === 'ArrowUp' || key === 'w') forward();
@@ -166,6 +243,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     else if (key === 'ArrowRight' || key === 'd') rotate(1);
     else if (key === 'ArrowDown' || key === 's') rotate(2);
     else if (key === 'Enter' || key === ' ') useThing();
+    else if (key === 'Escape' || key === 'Backspace') goBack();
   };
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -187,20 +265,29 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const thingLabel = thing
     ? thing.kind === 'lift' ? '엘리베이터 타기'
     : thing.kind === 'stairs' ? '계단으로 가기'
-    : thing.kind === 'room' ? (doneToday ? '소녀의 병실' : '병실로 들어가기')
     : thing.kind === 'clue' ? CLUE_SPOT
+    : thing.kind === 'look' ? '살펴보기'
     : thing.kind === 'person' ? `${PEOPLE[thing.id].name}에게 말 걸기`
-    : thing.kind === 'leave' ? '오늘은 돌아가기'
-    : ''
+    : '오늘은 돌아가기'
     : '';
 
   const devJump = (next: Pose) => {
     setPanel('none');
     setPose(next);
     setNote('');
-    scene.current?.showFloor(next.floor, spritesFor(next.floor), next);
+    scene.current?.showFloor(next.floor, spritesFor(next.floor), next, roomShut);
     onSeeFloor(next.floor);
   };
+
+  const onViewPress = () => {
+    if (bedside) return bedside.onPress?.();
+    if (focused?.kind === 'person') {
+      if (focused.index + 1 < focused.lines.length) setFocused({ ...focused, index: focused.index + 1 });
+      return;
+    }
+    if (!focused) useThing();
+  };
+  const moreLines = focused?.kind === 'person' && focused.index + 1 < focused.lines.length;
 
   return (
     <View style={styles.wrap}>
@@ -211,77 +298,50 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             <FloorPlan pose={pose} />
           </View>
         )}
-        {/* What's ahead fills the middle of the view: pressing it there is the same as the button. */}
-        <TouchableOpacity activeOpacity={1} disabled={!thingLabel} onPress={useThing} style={styles.fill} accessibilityLabel={thingLabel || undefined} />
+        <TouchableOpacity activeOpacity={1} onPress={onViewPress} style={styles.fill} accessibilityLabel={!bedside && !focused ? thingLabel || undefined : undefined} />
 
-        <View style={[styles.goal, VISIT_DEV && styles.goalBelowDev]}>
-          <Text style={[styles.place, { fontSize: 12 * fontScale }]}>{placeName(pose) ?? FLOORS[pose.floor].name}</Text>
-          <View style={styles.goalRow}>
-            {arrow !== null && <Text style={styles.goalArrow}>{ARROWS[arrow]}</Text>}
-            <Text style={[styles.goalText, { fontSize: 14 * fontScale }]}>{goal?.text ?? '병원 둘러보기'}</Text>
-          </View>
-        </View>
+        {bedside ? (
+          <Text style={[styles.dayLabel, VISIT_DEV && styles.belowDev]} pointerEvents="none">
+            {day <= 7 ? `${day}일째` : ''}
+          </Text>
+        ) : (
+          !focused && (
+            <>
+              <View style={[styles.goal, VISIT_DEV && styles.belowDev]}>
+                <Text style={[styles.place, { fontSize: 12 * fontScale }]}>{placeName(pose) ?? FLOORS[pose.floor].name}</Text>
+                <View style={styles.goalRow}>
+                  {arrow !== null && <Text style={styles.goalArrow}>{ARROWS[arrow]}</Text>}
+                  <Text style={[styles.goalText, { fontSize: 14 * fontScale }]}>{goal?.text ?? '병원 둘러보기'}</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={[styles.mapButton, VISIT_DEV && styles.belowDev]} onPress={() => panel === 'none' && !transit && setPanel('map')}>
+                <Text style={styles.mapButtonText}>지도</Text>
+              </TouchableOpacity>
+            </>
+          )
+        )}
 
-        <TouchableOpacity style={[styles.mapButton, VISIT_DEV && styles.goalBelowDev]} onPress={() => panel === 'none' && !transit && setPanel('map')}>
-          <Text style={styles.mapButtonText}>지도</Text>
-        </TouchableOpacity>
-
-        {(note !== '' || thing?.kind === 'info') && !talk && (
+        {note !== '' && !focused && !bedside && (
           <View style={styles.noteBox} pointerEvents="none">
-            <Text style={[styles.note, textSize]}>{thing?.kind === 'info' ? thing.text : note}</Text>
+            <Text style={[styles.note, textSize]}>{note}</Text>
+          </View>
+        )}
+
+        {bedside?.bubble ? <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none"><Bubble text={bedside.bubble} more={bedside.more} fontScale={fontScale} /></View> : null}
+        {focused?.kind === 'person' && (
+          <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none">
+            <Bubble name={focused.name} text={shopLine || focused.lines[focused.index]} more={moreLines} fontScale={fontScale} />
+          </View>
+        )}
+        {focused?.kind === 'thing' && (
+          <View style={styles.caption} pointerEvents="none">
+            <Text style={[styles.note, textSize]}>{focused.text}</Text>
           </View>
         )}
 
         {transit !== '' && (
           <View style={styles.transit}>
             <Text style={styles.transitText}>{transit}</Text>
-          </View>
-        )}
-
-        {talk && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={styles.talk}
-            onPress={() => {
-              if (talk.index + 1 < talk.lines.length) setTalk({ ...talk, index: talk.index + 1 });
-              else {
-                setTalk(null);
-                if (talk.thenShop) setPanel('shop');
-              }
-            }}
-          >
-            <Text style={styles.speaker}>{talk.name}</Text>
-            <Text style={[styles.talkLine, textSize]}>{talk.lines[talk.index]}</Text>
-            <Text style={styles.more}>▼</Text>
-          </TouchableOpacity>
-        )}
-
-        {panel === 'shop' && (
-          <View style={styles.panel}>
-            <Text style={[styles.title, { fontSize: 22 * fontScale }]}>매점</Text>
-            {boughtToday ? (
-              <Text style={[styles.text, textSize]}>{note || SOLD_TODAY}</Text>
-            ) : (
-              (GIFTS[day] ?? []).map((g) => (
-                <PaperButton
-                  key={g.name}
-                  label={g.name}
-                  onPress={() => {
-                    onBuy(g.name);
-                    setNote(boughtLine(g.name));
-                  }}
-                />
-              ))
-            )}
-            <TouchableOpacity
-              style={styles.link}
-              onPress={() => {
-                setPanel('none');
-                setNote('');
-              }}
-            >
-              <Text style={[styles.linkText, textSize]}>나가기</Text>
-            </TouchableOpacity>
           </View>
         )}
 
@@ -346,9 +406,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
             {VISIT_DEV && (
               <View style={styles.floors}>
-                <TouchableOpacity onPress={() => devJump({ floor: 4, ...ROOM_DOOR, dir: 2 })}>
-                  <Text style={styles.devLink}>(시험) 병실 문 앞</Text>
-                </TouchableOpacity>
+                {!doneToday && (
+                  <TouchableOpacity onPress={() => devJump(BEDSIDE)}>
+                    <Text style={styles.devLink}>(시험) 소녀 앞</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={() => devJump({ floor: 1, ...SHOP_FRONT, dir: 0 })}>
                   <Text style={styles.devLink}>(시험) 매점 앞</Text>
                 </TouchableOpacity>
@@ -370,21 +432,49 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         )}
       </View>
 
-      <View style={styles.controls}>
-        {thingLabel !== '' ? (
-          <TouchableOpacity style={styles.thingButton} onPress={useThing}>
-            <Text style={[styles.thingText, { fontSize: 14 * fontScale }]}>{thingLabel}</Text>
+      {bedside ? (
+        bedside.below
+      ) : focused ? (
+        <View style={styles.controls}>
+          {focused.kind === 'person' && focused.shop && (
+            <View style={styles.shop}>
+              {boughtToday ? (
+                !shopLine && <Text style={[styles.text, textSize]}>{SOLD_TODAY}</Text>
+              ) : (
+                (GIFTS[day] ?? []).map((g) => (
+                  <PaperButton
+                    key={g.name}
+                    label={g.name}
+                    onPress={() => {
+                      onBuy(g.name);
+                      setShopLine(boughtLine(g.name));
+                    }}
+                  />
+                ))
+              )}
+            </View>
+          )}
+          <TouchableOpacity style={styles.backButton} onPress={goBack}>
+            <Text style={[styles.backText, { fontSize: 15 * fontScale }]}>뒤로가기</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={styles.thingSpace} />
-        )}
-        <View style={styles.pad}>
-          <TurnButton glyph="↺" label="왼쪽" onPress={() => rotate(-1)} />
-          <TurnButton glyph="↑" label="앞으로" onPress={forward} wide disabled={stepped(pose) === null} />
-          <TurnButton glyph="↻" label="오른쪽" onPress={() => rotate(1)} />
-          <TurnButton glyph="↓" label="뒤돌기" onPress={() => rotate(2)} />
         </View>
-      </View>
+      ) : (
+        <View style={styles.controls}>
+          {thingLabel !== '' ? (
+            <TouchableOpacity style={styles.thingButton} onPress={useThing}>
+              <Text style={[styles.thingText, { fontSize: 14 * fontScale }]}>{thingLabel}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.thingSpace} />
+          )}
+          <View style={styles.pad}>
+            <TurnButton glyph="↺" label="왼쪽" onPress={() => rotate(-1)} />
+            <TurnButton glyph="↑" label="앞으로" onPress={forward} wide disabled={nextStep === null} />
+            <TurnButton glyph="↻" label="오른쪽" onPress={() => rotate(1)} />
+            <TurnButton glyph="↓" label="뒤돌기" onPress={() => rotate(2)} />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -399,7 +489,7 @@ function TurnButton({ glyph, label, onPress, wide, disabled }: { glyph: string; 
 }
 
 const PLAN_CELL = 13;
-const PLAN_COLOR: Record<string, string> = { '#': '#23211e', '=': '#6d695f', '+': AMBER, E: '#3f5d78', S: '#3f5d78', G: AMBER, N: '#8f8a7e' };
+const PLAN_COLOR: Record<string, string> = { '#': '#23211e', '=': '#6d695f', '+': AMBER, E: '#3f5d78', S: '#3f5d78', N: '#8f8a7e' };
 
 /** The floor seen from above. The map button's picture, and the whole view where 3D can't run. */
 function FloorPlan({ pose }: { pose: Pose }) {
@@ -422,11 +512,12 @@ function FloorPlan({ pose }: { pose: Pose }) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: '#000' },
-  view: { flex: 1, overflow: 'hidden', backgroundColor: '#0a0a09' },
+  view: { flex: 1, minHeight: 200, overflow: 'hidden', backgroundColor: '#0a0a09' },
   fill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   noView: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   goal: { position: 'absolute', left: 10, top: 10, right: 72, gap: 2, pointerEvents: 'none' },
-  goalBelowDev: { marginTop: 44 },
+  belowDev: { marginTop: 44 },
+  dayLabel: { position: 'absolute', left: 12, top: 10, color: '#fff', fontSize: 15, fontFamily: 'serif', textShadowColor: '#000', textShadowRadius: 4 },
   place: { color: 'rgba(255,255,255,0.8)', fontFamily: 'serif', textShadowColor: '#000', textShadowRadius: 3 },
   goalRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2', paddingHorizontal: 9, paddingVertical: 5 },
   goalArrow: { color: AMBER, fontSize: 20, fontWeight: '700', lineHeight: 22 },
@@ -434,13 +525,17 @@ const styles = StyleSheet.create({
   mapButton: { position: 'absolute', right: 10, top: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2' },
   mapButtonText: { color: '#fff', fontSize: 14, fontFamily: 'serif' },
   noteBox: { position: 'absolute', left: 14, right: 14, bottom: 12, backgroundColor: 'rgba(0,0,0,0.78)', padding: 10 },
+  caption: { position: 'absolute', left: 14, right: 14, bottom: 14, backgroundColor: 'rgba(0,0,0,0.85)', borderWidth: 1.5, borderColor: '#f2f2f2', padding: 12 },
   note: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },
+  // Above whoever the view has come in on, its tail pointing down at them.
+  bubbleWrap: { position: 'absolute', left: 20, right: 20, top: 40, alignItems: 'center' },
+  bubble: { alignSelf: 'stretch', backgroundColor: '#f7f7f4', borderWidth: 2.5, borderColor: '#111', paddingHorizontal: 18, paddingVertical: 12, borderTopLeftRadius: 22, borderTopRightRadius: 8, borderBottomRightRadius: 26, borderBottomLeftRadius: 12 },
+  bubbleName: { color: '#7a5a18', fontSize: 12, textAlign: 'center', marginBottom: 3, fontFamily: 'serif' },
+  bubbleText: { color: '#111', textAlign: 'center', fontFamily: 'serif' },
+  bubbleTail: { width: 18, height: 18, marginTop: -11, backgroundColor: '#f7f7f4', borderRightWidth: 2.5, borderBottomWidth: 2.5, borderColor: '#111', transform: [{ rotate: '45deg' }] },
+  more: { color: '#555', fontSize: 10, textAlign: 'right', marginTop: 2 },
   transit: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
   transitText: { color: '#fff', fontSize: 30, fontFamily: 'serif', letterSpacing: 4 },
-  talk: { position: 'absolute', left: 12, right: 12, bottom: 12, borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000', padding: 14, minHeight: 92 },
-  speaker: { color: AMBER, fontSize: 13, fontFamily: 'serif', marginBottom: 6 },
-  talkLine: { color: '#fff', fontFamily: 'serif' },
-  more: { color: 'rgba(255,255,255,0.6)', fontSize: 10, textAlign: 'right', marginTop: 4 },
   panel: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 18 },
   title: { color: '#fff', fontFamily: 'serif', marginBottom: 4 },
   text: { color: 'rgba(255,255,255,0.75)', textAlign: 'center', fontFamily: 'serif' },
@@ -454,6 +549,9 @@ const styles = StyleSheet.create({
   floorText: { color: '#f2f2f2', fontSize: 14, fontFamily: 'serif' },
   floorTextHere: { color: '#111', fontWeight: '700' },
   controls: { paddingHorizontal: 12, paddingTop: 8, gap: 8, backgroundColor: '#000' },
+  shop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  backButton: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', height: 58, borderWidth: 2, borderColor: '#f2f2f2' },
+  backText: { color: '#fff', fontFamily: 'serif' },
   thingButton: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', height: 42, backgroundColor: '#f2f2f2' },
   thingText: { color: '#111', fontWeight: '700', fontFamily: 'serif' },
   thingSpace: { height: 42 },

@@ -11,7 +11,7 @@ import { loadEntryOr, saveEntry } from '@/core/storage';
 import { EmotionPicker } from '@/features/gate';
 import CrisisFooter from '@/ui/CrisisFooter';
 import RoomColumn from '@/ui/RoomColumn';
-import { VISIT_GIRL, VISIT_OPENING, VISIT_PANEL, VISIT_ROOM, VISIT_TORN } from '@/assets/visitUi';
+import { VISIT_OPENING, VISIT_PANEL } from '@/assets/visitUi';
 import CardScene from './CardScene';
 import { VISIT_DEV } from './flag';
 import Hospital from './Hospital';
@@ -383,35 +383,6 @@ export default function VisitScreen(_props: VisitScreenProps) {
     );
   }
 
-  // Walking up to her room, or sent out for her treatment with the rest of the day to spend here.
-  if (phase === 'walk' || phase === 'outside') {
-    return (
-      <View style={styles.screen}>
-        <RoomColumn>
-          <Hospital
-            key={phase}
-            day={day}
-            run={state.run}
-            fontScale={scale}
-            light={light}
-            doneToday={phase === 'outside'}
-            boughtToday={state.boughtDay === day}
-            found={state.clues}
-            floorsSeen={state.floorsSeen}
-            onSeeFloor={(floor) => setState((s) => (s && !s.floorsSeen.includes(floor) ? { ...s, floorsSeen: [...s.floorsSeen, floor] } : s))}
-            onEnterRoom={enterRoom}
-            onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
-            onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
-            onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
-            onTitle={() => setPhase('title')}
-          />
-          {devBar}
-          <CrisisFooter tone="dark" />
-        </RoomColumn>
-      </View>
-    );
-  }
-
   if (phase === 'memory') {
     return (
       <View style={styles.screen}>
@@ -462,85 +433,93 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const inBubble = showGirl && !!spoken && phase !== 'staff';
   const canTapThrough = lines.length > 0;
 
+  const walking = phase === 'walk' || phase === 'outside';
+
+  // Everything from the walk up to the goodbye happens in the one 3D hospital. She's a person in her room
+  // like everyone else: at her bedside the view comes in on her, and the panel takes the controls' place.
+  const below = walking ? undefined : (
+    <ImageBackground source={VISIT_PANEL} resizeMode="repeat" imageStyle={styles.fillImage} style={styles.panel}>
+      {phase === 'emotion' && <EmotionPicker paper question={null} onPick={(word) => pickEmotion(word)} />}
+
+      {phase === 'give' && (
+        <View style={styles.choices}>
+          {state.gifts.map((g) => (
+            <PaperButton key={g} label={g} onPress={() => giveGift(g)} />
+          ))}
+          {toShow.map((c) => (
+            <PaperButton key={c} label={CLUE_TEXT[c].name} onPress={() => showClue(c)} />
+          ))}
+          <PaperButton label={GIVE_NOTHING} onPress={finishDay} />
+        </View>
+      )}
+
+      {phase === 'tell' &&
+        (writing ? (
+          <View style={styles.answer}>
+            <TextInput
+              style={[styles.input, { fontSize: 15 * scale }]}
+              value={draft}
+              onChangeText={setDraft}
+              onKeyPress={makeSubmitOnEnterHandler(submitDraft)}
+              placeholder="쓰고 싶은 만큼만"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              multiline
+            />
+            <PaperButton label={draft.trim() ? '들려주기' : '돌아가기'} onPress={() => (draft.trim() ? submitDraft() : setWriting(false))} />
+          </View>
+        ) : (
+          <View style={styles.choices}>
+            {TELL_QUESTION.choices.map((c) => (
+              <PaperButton key={c} label={c} onPress={() => tell(c, false)} />
+            ))}
+            <PaperButton label="직접 쓸게요" onPress={() => setWriting(true)} />
+          </View>
+        ))}
+
+      {/* Narration when she isn't in the room, and the nurse or doctor. */}
+      {!inBubble && phase !== 'fairy' && lines.length > 0 && (
+        <TouchableOpacity activeOpacity={0.85} onPress={advance} disabled={!canTapThrough} style={styles.textBox}>
+          {phase === 'staff' && staffCall && <Text style={styles.speaker}>{staffCall.who}</Text>}
+          <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{lines[lineIndex]}</Text>
+          {canTapThrough && <Text style={styles.moreLight}>▼</Text>}
+        </TouchableOpacity>
+      )}
+
+      {phase === 'fairy' && (
+        <View style={styles.textBox}>
+          <View style={styles.center}>
+            <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{[...FAIRY_LINES, ...hintLines()].join('\n')}</Text>
+            <PaperButton label="다시 찾아가기" onPress={startOver} />
+          </View>
+        </View>
+      )}
+
+      {inBubble && canTapThrough && <Text style={styles.hint}>화면을 눌러 넘기기</Text>}
+    </ImageBackground>
+  );
+
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <RoomColumn>
-        <TouchableOpacity activeOpacity={1} disabled={!canTapThrough} onPress={advance} style={[styles.scene, { backgroundColor: light }]}>
-          <Image source={VISIT_ROOM} resizeMode="cover" style={styles.sceneImage} />
-          {showGirl && <Image source={VISIT_GIRL} resizeMode="cover" style={styles.sceneImage} />}
-          <Image source={VISIT_TORN} resizeMode="stretch" style={[styles.torn, { height: 54 + insets.top }]} />
-          {!ending && <Text style={[styles.tornText, { top: insets.top + 10 }]}>{day}일째</Text>}
-          {inBubble && (
-            <View style={styles.bubbleWrap}>
-              <View style={styles.bubble}>
-                <Text style={[styles.bubbleText, { fontSize: 15 * scale, lineHeight: 22 * scale }]}>{spoken}</Text>
-                {canTapThrough && <Text style={styles.more}>▼</Text>}
-              </View>
-              <View style={styles.bubbleTail} />
-            </View>
-          )}
-        </TouchableOpacity>
+        <Hospital
+          day={day}
+          run={state.run}
+          fontScale={scale}
+          light={light}
+          doneToday={phase === 'outside'}
+          boughtToday={state.boughtDay === day}
+          found={state.clues}
+          floorsSeen={state.floorsSeen}
+          onSeeFloor={(floor) => setState((s) => (s && !s.floorsSeen.includes(floor) ? { ...s, floorsSeen: [...s.floorsSeen, floor] } : s))}
+          onTalkToGirl={enterRoom}
+          onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
+          onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
+          onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
+          onTitle={() => setPhase('title')}
+          bedside={walking ? undefined : { below, bubble: inBubble ? spoken : undefined, more: canTapThrough, onPress: canTapThrough ? advance : undefined, girlHere: showGirl, staffIn: phase === 'staff' }}
+        />
         {devBar}
-
-        <ImageBackground source={VISIT_PANEL} resizeMode="repeat" imageStyle={styles.fillImage} style={styles.panel}>
-          {phase === 'emotion' && <EmotionPicker paper question={null} onPick={(word) => pickEmotion(word)} />}
-
-          {phase === 'give' && (
-            <View style={styles.choices}>
-              {state.gifts.map((g) => (
-                <PaperButton key={g} label={g} onPress={() => giveGift(g)} />
-              ))}
-              {toShow.map((c) => (
-                <PaperButton key={c} label={CLUE_TEXT[c].name} onPress={() => showClue(c)} />
-              ))}
-              <PaperButton label={GIVE_NOTHING} onPress={finishDay} />
-            </View>
-          )}
-
-          {phase === 'tell' &&
-            (writing ? (
-              <View style={styles.answer}>
-                <TextInput
-                  style={[styles.input, { fontSize: 15 * scale }]}
-                  value={draft}
-                  onChangeText={setDraft}
-                  onKeyPress={makeSubmitOnEnterHandler(submitDraft)}
-                  placeholder="쓰고 싶은 만큼만"
-                  placeholderTextColor="rgba(255,255,255,0.45)"
-                  multiline
-                />
-                <PaperButton label={draft.trim() ? '들려주기' : '돌아가기'} onPress={() => (draft.trim() ? submitDraft() : setWriting(false))} />
-              </View>
-            ) : (
-              <View style={styles.choices}>
-                {TELL_QUESTION.choices.map((c) => (
-                  <PaperButton key={c} label={c} onPress={() => tell(c, false)} />
-                ))}
-                <PaperButton label="직접 쓸게요" onPress={() => setWriting(true)} />
-              </View>
-            ))}
-
-          {/* Narration when she isn't in the room, and the nurse or doctor. */}
-          {!inBubble && phase !== 'fairy' && lines.length > 0 && (
-            <TouchableOpacity activeOpacity={0.85} onPress={advance} disabled={!canTapThrough} style={styles.textBox}>
-              {phase === 'staff' && staffCall && <Text style={styles.speaker}>{staffCall.who}</Text>}
-              <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{lines[lineIndex]}</Text>
-              {canTapThrough && <Text style={styles.moreLight}>▼</Text>}
-            </TouchableOpacity>
-          )}
-
-          {phase === 'fairy' && (
-            <View style={styles.textBox}>
-              <View style={styles.center}>
-                <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{[...FAIRY_LINES, ...hintLines()].join('\n')}</Text>
-                <PaperButton label="다시 찾아가기" onPress={startOver} />
-              </View>
-            </View>
-          )}
-
-          {inBubble && canTapThrough && <Text style={styles.hint}>화면을 눌러 넘기기</Text>}
-          <CrisisFooter tone="dark" />
-        </ImageBackground>
+        <CrisisFooter tone="dark" />
       </RoomColumn>
     </KeyboardAvoidingView>
   );
@@ -548,16 +527,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
-  scene: { flex: 1, minHeight: 200, overflow: 'hidden' },
   sceneImage: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' },
-  torn: { position: 'absolute', left: 0, right: 0, top: 0, width: '100%' },
-  tornText: { position: 'absolute', left: 16, color: '#111', fontSize: 16, fontWeight: '700', fontFamily: 'serif' },
-  // Above the bed, its tail pointing down at her.
-  bubbleWrap: { position: 'absolute', left: 22, right: 22, bottom: '44%', alignItems: 'center' },
-  bubble: { alignSelf: 'stretch', backgroundColor: '#f7f7f4', borderWidth: 2.5, borderColor: '#111', paddingHorizontal: 18, paddingVertical: 14, borderTopLeftRadius: 22, borderTopRightRadius: 8, borderBottomRightRadius: 26, borderBottomLeftRadius: 12 },
-  bubbleText: { color: '#111', textAlign: 'center', fontFamily: 'serif' },
-  bubbleTail: { width: 18, height: 18, marginTop: -11, backgroundColor: '#f7f7f4', borderRightWidth: 2.5, borderBottomWidth: 2.5, borderColor: '#111', transform: [{ rotate: '45deg' }] },
-  more: { color: '#555', fontSize: 10, textAlign: 'right', marginTop: 2 },
   moreLight: { color: 'rgba(255,255,255,0.6)', fontSize: 10, textAlign: 'right', marginTop: 4 },
   hint: { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', paddingVertical: 6 },
   panel: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 4, gap: 10 },

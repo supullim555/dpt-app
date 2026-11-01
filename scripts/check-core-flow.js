@@ -337,11 +337,12 @@ async function main() {
       await press('왼쪽');
       await press('앞으로', 3);
       await press('오른쪽');
-      await press('앞으로');
-      t.note('병문안: 소녀의 병실 문 앞', await t.hasText('병실로 들어가기'));
+      await press('앞으로', 3);
+      t.note('병문안: 소녀는 병실 안에 있고 앞에 서면 말을 걺', await t.hasText('소녀에게 말 걸기'));
       await t.shot('walk_door.png');
-      await t.clickText('병실로 들어가기');
+      await t.clickText('소녀에게 말 걸기');
       t.note('병문안: 소녀의 첫마디는 말풍선', await t.waitText('진짜 왔네. 당첨자.', 3000));
+      await sleep(600);
       await t.shot('visit_bubble.png');
       await t.clickText('진짜 왔네. 당첨자.');
       t.note('병문안: 들려줄 이야기를 먼저 물음', await t.waitText('아무 얘기나 해 줘', 3000));
@@ -367,7 +368,21 @@ async function main() {
       t.note('병문안: 나가면 병실 앞 복도', await t.waitText('병실 앞 복도', 3000));
       t.note('병문안: 복도에선 다시 들어갈 수 없음', !(await t.hasText('들어가기')));
       t.note('병문안: 1회차엔 빛으로 날을 넘길 수 없음', !(await t.hasText('빛을 따라')));
+      await sleep(300);
       await t.shot('visit_outside.png');
+
+      // someone in the corridor: the view comes in on them, they speak, and 뒤로가기 lets you walk again
+      await press('뒤돌기');
+      await press('앞으로', 2);
+      await press('왼쪽');
+      t.note('병문안: 사람 앞에 서면 말을 걸 수 있음', await t.clickText('담당 간호사에게 말 걸기'));
+      t.note('병문안: 사람에게 말풍선', await t.waitText('그래도 오늘 웃었어요', 2000));
+      t.note('병문안: 대화 중엔 움직이지 않음', !(await t.hasText('앞으로')));
+      await sleep(600);
+      await t.shot('talk_person.png');
+      t.note('병문안: 뒤로가기', await t.clickText('뒤로가기'));
+      await sleep(600);
+      t.note('병문안: 뒤로가면 다시 움직임', (await t.hasText('앞으로')) && !(await t.hasText('그래도 오늘 웃었어요')));
 
       // day 2: after listening, she asks how the day felt
       const toRoom = async () => {
@@ -376,9 +391,9 @@ async function main() {
         await sleep(250);
         await t.clickText('지도');
         await sleep(200);
-        await t.clickText('(시험) 병실 문 앞');
+        await t.clickText('(시험) 소녀 앞');
         await sleep(300);
-        await t.clickText('병실로 들어가기');
+        await t.clickText('소녀에게 말 걸기');
       };
       await t.clickText('다음 날');
       t.note('병문안: 다음 날이면 2일째', (await t.waitText('병원 정문 앞에 서 있다.', 3000)) && (await t.hasText('2일째')));
@@ -490,7 +505,14 @@ async function main() {
         await sleep(300);
         await t.clickText('매점 주인에게 말 걸기');
         await sleep(200);
-        await t.clickText('어서 와요. 오늘은 이것들이 있어요.');
+      };
+      const pickClue = async () => {
+        await t.clickText('무언가 떨어져 있다');
+        await sleep(700);
+      };
+      const stepBack = async () => {
+        await t.clickText('뒤로가기');
+        await sleep(600);
       };
       const nextDay = async () => {
         await openMap();
@@ -515,15 +537,16 @@ async function main() {
       await toClue();
       t.note('병문안: 그날 그 층에 단서가 있음', await t.hasText('무언가 떨어져 있다'));
       await t.shot('visit_floor1.png');
-      await t.clickText('무언가 떨어져 있다');
+      await pickClue();
       t.note('병문안: 주우면 회상 없이 문구만', (await t.waitText('개목걸이를 주웠다', 2000)) && !(await t.hasText('아침 산책')));
-      await sleep(200);
+      await t.shot('hold_clue.png');
+      await stepBack();
       await toShop();
       t.note('병문안: 매점은 하루에 3개', (await t.waitText('귤', 2000)) && (await t.hasText('볼펜')) && (await t.hasText('머리끈')));
       await t.shot('visit_shop.png');
       await t.clickText('귤');
       t.note('병문안: 선물은 하루에 1개', (await t.waitText('귤 하나를 샀다', 2000)) && !(await t.hasText('볼펜')));
-      await t.clickText('나가기');
+      await stepBack();
 
       await nextDay();
       t.note('병문안: 2회차는 빛을 따라 기다리지 않고 다음 날', await t.hasText('2일째'));
@@ -541,21 +564,21 @@ async function main() {
       await sleep(200);
       await toShop();
       t.note('병문안: 품목이 날마다 달라짐', (await t.waitText('초콜릿', 2000)) && !(await t.hasText('귤')));
-      await t.clickText('나가기');
+      await stepBack();
 
       await nextDay();
       await talk();
       await tapUntil('병실 앞 복도');
       await toClue();
-      await t.clickText('무언가 떨어져 있다');
-      await sleep(200);
+      await pickClue();
+      await stepBack();
       await nextDay();
       await talk();
       t.note('병문안: 3층 단서 회상', await showMemory('과자봉지', '마지막 한 개', '오늘 얘기 잘 들었어'));
       await tapUntil('병실 앞 복도');
       await toClue();
-      await t.clickText('무언가 떨어져 있다');
-      await sleep(200);
+      await pickClue();
+      await stepBack();
       await nextDay();
       await talk();
       t.note('병문안: 2층 단서 회상', await showMemory('운동화 끈', '꼴찌', '오늘 얘기 잘 들었어'));
@@ -564,8 +587,8 @@ async function main() {
       await talk();
       await tapUntil('병실 앞 복도');
       await toClue();
-      await t.clickText('무언가 떨어져 있다');
-      await sleep(200);
+      await pickClue();
+      await stepBack();
       await nextDay();
       await talk();
       t.note('병문안: 4층 단서 회상', await showMemory('노래방 쿠폰', '소리 지르기', '나무까지 가 볼래'));

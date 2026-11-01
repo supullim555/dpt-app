@@ -9,7 +9,7 @@ const { execFileSync } = require('child_process');
 const FLOORS = {
   4: {
     title: '4층  호스피스·완화 병동',
-    rooms: { A: ['병실', 'closed'], B: ['병실', 'closed'], C: ['병실', 'closed'], D: ['가족\n면담실', 'closed'], L: ['보호자\n휴게실', 'open', [12.3, 2.45]], G: ['소녀의 병실', 'girl'], W: ['창', 'open'] },
+    rooms: { A: ['병실', 'closed'], B: ['병실', 'closed'], C: ['병실', 'closed'], D: ['가족\n면담실', 'closed'], L: ['보호자\n휴게실', 'open', [12.3, 2.45]], _: ['소녀의 병실', 'girl', [7.5, 9.5]], U: ['', 'girl'], W: ['창', 'open'] },
     clue: 'L',
   },
   3: {
@@ -29,11 +29,10 @@ const FLOORS = {
   },
 };
 
-const PEOPLE = { 4: 'npv', 3: 'tcb', 2: 'dhky', 1: 'oimgb' };
+const PEOPLE = { 4: 'npvg', 3: 'tcb', 2: 'dhky', 1: 'oimgb' };
 const TALK_AT_DESK = { 3: 'N' }; // the 3rd-floor nurse is behind the station, so the station is what you talk to
-const DOORS_INTO_SCENES = 'G'; // her room is the existing scene: you go through the door, you don't walk it
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const isSolid = (c) => '#=%NT'.includes(c) || /[a-z]/.test(c) || DOORS_INTO_SCENES.includes(c);
+const isSolid = (c) => '#=%NT_'.includes(c) || /[a-z]/.test(c);
 
 function check(f) {
   const { map, clue } = FLOORS[f];
@@ -69,7 +68,7 @@ function check(f) {
   if (clueAt === undefined) throw new Error(`${f}층 단서 ${clue}에 닿을 수 없음`);
   const who = [...PEOPLE[f], ...(TALK_AT_DESK[f] ?? '')];
   who.forEach(nextTo);
-  return { walk: dist.size, clue: clueAt, people: who.length, door: f === 4 ? nextTo('G') : null, lobby: f === 1 ? dist.get(find('@').join()) : null };
+  return { walk: dist.size, clue: clueAt, people: who.length, door: f === 4 ? nextTo('g') : null, lobby: f === 1 ? dist.get(find('@').join()) : null };
 }
 
 const COLOR = { wall: '#23211e', corridor: '#f0ebdf', open: '#e2d6bb', closed: '#b9b4a8', girl: '#d9a441', station: '#8f8a7e', yard: '#c9d0a6', door: '#d9a441', shut: '#6d695f', person: '#a3263f', clue: '#d9a441', lift: '#3f5d78' };
@@ -218,7 +217,7 @@ let total = 0;
 for (const f of [4, 3, 2, 1]) {
   const r = check(f);
   total += r.walk;
-  console.log(`${f}층 걷는 칸 ${r.walk}, 사람 ${r.people}, 엘리베이터→단서 ${r.clue}${r.door !== null ? `, 엘리베이터→병실 문 ${r.door}` : ''}${r.lobby !== null ? `, 엘리베이터→정문 ${r.lobby}` : ''}`);
+  console.log(`${f}층 걷는 칸 ${r.walk}, 사람 ${r.people}, 엘리베이터→단서 ${r.clue}${r.door !== null ? `, 엘리베이터→소녀 앞 ${r.door}` : ''}${r.lobby !== null ? `, 엘리베이터→정문 ${r.lobby}` : ''}`);
 }
 console.log(`합계 ${total}칸`);
 
