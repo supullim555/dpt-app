@@ -263,6 +263,7 @@ async function main() {
       await t.clickText('시작하기');
       t.note('병문안: 시작 전에 어떤 이야기인지 안내', await t.waitText('아픔과 이별을 다뤄요', 6000));
       await t.clickText('들어가 볼게요');
+      t.note('병문안: 예전 방 그림을 내려받지 않음', await t.evalJs("!performance.getEntriesByType('resource').some(e=>/wallpaper|portrait-front|bookshelf/.test(e.name))"));
 
       // title screen and settings
       t.note('병문안: 타이틀 화면', (await t.waitText('이야기 시작', 3000)) && (await t.hasText('병문안')));
