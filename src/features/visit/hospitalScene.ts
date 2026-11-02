@@ -1,7 +1,7 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type GirlPart, type LyingPart, type PersonLook } from './hospitalArt';
+import { FIRST_PART, GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type FirstPart, type GirlPart, type LyingPart, type PersonLook } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -24,6 +24,8 @@ const SWING = 0.34;
 const WOBBLE = 0.012;
 const SHADOW_OPACITY = 0.34;
 const UV_INSET = 3;
+// Her window: to one side of the head of the bed, where lying there she can look out of it.
+const WINDOW_X = GIRL_FRONT.x + 1;
 const INK = [0.09, 0.08, 0.06];
 const PAPER = [0.93, 0.9, 0.84];
 const FLOOR_LIGHT: Record<FloorNo, number> = { 1: 1, 2: 0.94, 3: 0.8, 4: 0.68 };
@@ -73,7 +75,7 @@ void main() {
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
-export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart;
+export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | FirstPart;
 export type HospitalSprite = {
   cell: Cell;
   look: SpriteLook;
@@ -139,6 +141,8 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   lyingWindow: LYING,
   lyingTurned: LYING,
   lyingHand: LYING,
+  lyingLooseWindow: LYING,
+  lyingLooseTurned: LYING,
 };
 const PERSON_SIZE = { w: 0.46, h: 0.92 };
 
@@ -172,7 +176,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), first: texture(sheets.first) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -185,7 +189,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const buildingDim = { value: 1 };
   const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }) =>
     new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }) };
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), first: material(textures.first, true, { value: 1 }) };
   // A soft dark spot on the floor under each cutout, so they stand on it instead of floating over it.
   const shadowMaterial = new THREE.ShaderMaterial({
     transparent: true,
@@ -356,7 +360,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         else if (here === '+') tile = TILES.jamb;
         else if (yard) tile = TILES.yardWall;
         // windows: the end of her floor's corridor, above her bed, and the sitting room on the second
-        else if ((here === 'W' && d === 2) || (floor === 4 && here === '_' && x === GIRL_FRONT.x && d === 2) || (floor === 2 && here === 'V' && d === 0)) {
+        else if ((here === 'W' && d === 2) || (floor === 4 && here === '_' && x === WINDOW_X && d === 2) || (floor === 2 && here === 'V' && d === 0)) {
           tile = TILES.window;
           lit = true;
         } else if (((x === 4 || x === 6) && y === 2 && d % 2 === 1) || (x === 4 && y === 4 && d === 2)) {
@@ -391,7 +395,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const slot = PERSON_SLOT[look as PersonLook];
     const part = GIRL_PART[look as GirlPart];
     const lying = LYING_PART[look as LyingPart];
-    const px = prop ?? part ?? lying ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
+    const first = FIRST_PART[look as FirstPart];
+    const px = prop ?? part ?? lying ?? first ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
     // In from the cell's edge, or the next drawing on the sheet shows as a line along this one's.
     const u0 = (px.x + UV_INSET) / SHEET;
     const u1 = (px.x + px.w - UV_INSET) / SHEET;
@@ -405,7 +410,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const lit = look === 'tree' ? 1 : look === 'pin' || look === 'pinSmall' ? 2 : 0;
     geometry.setAttribute('aLit', new THREE.Float32BufferAttribute([lit, lit, lit, lit], 1));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : materials.people);
+    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : first ? materials.first : materials.people);
     mesh.frustumCulled = false;
     mesh.rotation.order = 'YXZ';
     return mesh;

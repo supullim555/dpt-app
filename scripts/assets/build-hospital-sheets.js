@@ -66,6 +66,11 @@ const ITEMS = {
     { src: 'lying-turned', box: [125, 115, 895, 1024], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.547 },
     { src: 'lying-hand', box: [205, 45, 825, 1024], cell: { x: 0, y: 512, w: 512, h: 512 }, scale: 0.505 },
   ],
+  // The first day, with her hair down.
+  first: [
+    { src: 'lying-loose-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
+    { src: 'lying-loose-turned', box: [185, 165, 890, 910], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.657 },
+  ],
 };
 
 function slot(i) {

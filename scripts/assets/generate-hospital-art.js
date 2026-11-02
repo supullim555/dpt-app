@@ -29,6 +29,15 @@ plain blanket covers her from the chest down, her pajamas buttoned to the neck. 
 bed frame. Perfectly flat pure green background (#00FF00), no shadows on it. No text,
 no signature, no border, no blood, no medical equipment.`;
 
+const LYING_LOOSE = `The same girl as in the attached image, same face, same pajamas buttoned to the neck,
+same pillow, mattress and blanket, same framing from above, in exactly the same
+drawing style. She lies flat on her back, both shoulders resting evenly on the
+mattress, relaxed, arms at her sides under the blanket, which covers her from the
+chest down. Her hair is down, a shoulder-length bob spread softly on the pillow, not
+tied. No hairpin. No window in the image. Perfectly flat pure green background
+(#00FF00), no shadows on it. No text, no signature, no border, no blood, no medical
+equipment.`;
+
 const ART = {
   'heads-loose': `${GIRL} Three drawings of her head and neck only, side by side at the same size, her hair down: from
 directly behind so no face shows, in left profile, and in three-quarter view looking left.`,
@@ -76,11 +85,15 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   'lying-window': `${LYING} Her head is turned away toward her left, looking out of a window. Calm.`,
   'lying-turned': `${LYING} Her head is turned slowly toward the viewer. Tired half-closed eyes, a faint gentle smile.`,
   'lying-hand': `${LYING} She looks straight at the viewer, tired and gentle. One hand rests on top of the blanket, palm down, relaxed.`,
+  // The first day: hair down, both shoulders on the mattress, only her head turning.
+  'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
+  'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
 const TIRED = path.join(OUT_DIR, 'heads-tied-2-raw.png');
-const REFS = { 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED };
+const LYING_POSE = path.join(OUT_DIR, 'lying-window-raw.png');
+const REFS = { 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
 const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 
 runGenerateCli({

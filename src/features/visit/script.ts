@@ -24,7 +24,7 @@ export const DAY_LINES: Record<number, string[]> = {
 // What you see as you come through her door, each day: the state she's in (girlDays.ts draws it). What
 // you notice, not what it means. No numbers, no treatment, nothing that says how long.
 export const ARRIVAL_LINES: Record<number, string> = {
-  1: '창 쪽으로 돌아앉아 있다. 문소리에 고개만 돌린다.',
+  1: '누운 채로 창밖을 보고 있다. 문소리에 고개만 돌린다.',
   2: '수첩을 무릎에 두고 앉아 있다. 들어가자 얼른 덮는다.',
   3: '머리를 묶었다. 머리핀 하나에만 색이 있다.',
   4: '등받이에 기대 있다. 어제까지 없던 링거가 옆에 서 있다.',

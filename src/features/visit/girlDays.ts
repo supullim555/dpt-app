@@ -3,7 +3,7 @@
 // date alone: come back after days away and you see the change you missed. No imports, so
 // scripts/check-visit-logic.mjs can run it directly.
 
-export type GirlHead = 'headBack' | 'headSide' | 'headThree' | 'headSideTied' | 'headFront' | 'headTired' | 'lyingWindow' | 'lyingTurned' | 'lyingHand';
+export type GirlHead = 'headBack' | 'headSide' | 'headThree' | 'headSideTied' | 'headFront' | 'headTired' | 'lyingWindow' | 'lyingTurned' | 'lyingHand' | 'lyingLooseWindow' | 'lyingLooseTurned';
 export type GirlBody = 'torsoBack' | 'torso';
 
 export type GirlDay = {
@@ -29,7 +29,8 @@ const propped = { ...sitting, up: 0.24, lean: -0.2, drip: true } as const;
 const lying = { ...sitting, body: null, up: 0.2, lean: -0.95, drip: true, leaves: true } as const;
 
 export const GIRL_DAYS: Record<number, GirlDay> = {
-  1: { ...sitting, body: 'torsoBack', headFrom: 'headBack', headTo: 'headSide', away: 1.28, height: 0.68 },
+  // The first day she's lying there looking out of the window, and only her head turns. She sits up for you after that.
+  1: { ...lying, drip: false, leaves: false, headFrom: 'lyingLooseWindow', headTo: 'lyingLooseTurned', away: 0.66, height: 0.6, eye: 0.82 },
   2: { ...sitting, headFrom: 'headSide', headTo: 'headThree', notebook: true, away: 1.14, height: 0.68 },
   3: { ...sitting, headFrom: 'headSideTied', headTo: 'headFront', away: 1.02, height: 0.68 },
   4: { ...propped, headFrom: 'headFront', headTo: 'headFront', away: 0.92, height: 0.62 },

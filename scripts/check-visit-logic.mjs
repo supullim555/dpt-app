@@ -138,8 +138,8 @@ assert.equal(arrowFor({ floor: 4, x: 7, y: 4, dir: 2 }, toRoom), 0); // the door
 assert.equal(arrowFor({ floor: 4, x: 7, y: 5, dir: 2 }, toRoom), null); // through it
 // She turns toward you and sinks lower, every day closer, never the other way.
 for (let d = 2; d <= 7; d++) {
-  assert.ok(GIRL_DAYS[d].away < GIRL_DAYS[d - 1].away, `${d}일째 거리`);
-  assert.ok(GIRL_DAYS[d].up <= GIRL_DAYS[d - 1].up, `${d}일째 자세`);
+  if (d > 2) assert.ok(GIRL_DAYS[d].away < GIRL_DAYS[d - 1].away, `${d}일째 거리`); // sitting up she's further off than lying down
+  if (d > 2) assert.ok(GIRL_DAYS[d].up <= GIRL_DAYS[d - 1].up, `${d}일째 자세`); // the first day she's lying down, then sits up
 }
 assert.equal(girlOn(8), GIRL_DAYS[7]); // an ending after the week
 assert.ok(!PIN_ON[GIRL_DAYS[2].headTo] && PIN_ON[GIRL_DAYS[3].headTo]); // the pin comes with the third day's hair

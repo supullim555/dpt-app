@@ -379,11 +379,11 @@ async function main() {
       t.note('병문안: 문이 열려 있다고 나옴', !(await t.hasText('문은 닫혀')));
       await t.shot('walk_door.png');
       await press('앞으로');
-      t.note('병문안: 문을 지나면 자동으로 그날의 컷씬', await t.waitText('창 쪽으로 돌아앉아 있다', 3000));
+      t.note('병문안: 문을 지나면 자동으로 그날의 컷씬', await t.waitText('누운 채로 창밖을 보고 있다', 3000));
       t.note('병문안: 컷씬 중엔 움직이지 않음', !(await t.hasText('앞으로')));
       await sleep(2600);
       await t.shot('visit_arrive.png');
-      await t.clickText('창 쪽으로 돌아앉아 있다. 문소리에 고개만 돌린다.');
+      await t.clickText('누운 채로 창밖을 보고 있다. 문소리에 고개만 돌린다.');
       t.note('병문안: 소녀의 첫마디는 말풍선', await t.waitText('진짜 왔네. 당첨자.', 3000));
       await sleep(600);
       await t.shot('visit_bubble.png');

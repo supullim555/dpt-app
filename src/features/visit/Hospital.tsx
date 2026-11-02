@@ -14,9 +14,10 @@ const STAIRS_MS = 700;
 const ARROWS = ['↑', '→', '↓', '←'];
 const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
 const GIRL_CELL = { x: GIRL_FRONT.x, y: GIRL_FRONT.y + 1 };
-// However long the camera takes to come in from the door, and how far in she turns to you.
+// However long the camera takes to come in from the door, and when she turns to you: after it's there, so you
+// get to see her as she was.
 const ENTER_MS = 2200;
-const TURN_AFTER_MS = 1150;
+const TURN_AFTER_MS = 2800;
 const BAR_H = 54;
 // How far above her waist the drawing of her head and shoulders starts.
 const BUST_UP = 0.06;
@@ -196,7 +197,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       setFocused(null);
       setPose(BEDSIDE);
       scene.current?.focus(herFocus(), ENTER_MS);
-      // She turns toward the door partway through, once you're close enough to see it.
+      // She turns toward the door once you're close enough to see it.
       const g = girlOn(day);
       const timer = setTimeout(() => {
         turned.current = true;
