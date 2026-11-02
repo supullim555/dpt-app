@@ -3,7 +3,7 @@ import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 're
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS } from './script';
@@ -26,11 +26,13 @@ const BED_HEAD = 0.46;
 const BED_FOOT = -0.2;
 // Things along the walls that you walk past, not into: cell, what, and how far off the middle of the cell (across, along).
 const ALONG_THE_WALLS: Record<FloorNo, [number, number, SpriteLook, number, number][]> = {
-  4: [[3, 4, 'chair', 0, -0.36], [10, 4, 'plant', 0, -0.36], [12, 2, 'sofa', 0.05, 0.28], [13, 7, 'chair', 0.36, 0]],
-  3: [[4, 7, 'chair', 0, 0.36], [5, 7, 'chair', 0, 0.36], [6, 7, 'chair', 0, 0.36], [9, 4, 'chair', 0, -0.36], [13, 7, 'plant', 0.34, 0.34], [7, 9, 'sofa', 0, 0.28], [2, 4, 'wheelchair', 0, -0.33]],
-  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chair', 0, 0.36], [10, 7, 'chair', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chair', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
-  1: [[1, 1, 'chair', -0.34, -0.34], [1, 2, 'chair', -0.34, 0.34], [2, 2, 'chair', 0.34, 0.34], [1, 8, 'wheelchair', -0.32, 0], [2, 9, 'chair', 0, 0.36], [3, 9, 'chair', 0, 0.36], [7, 8, 'plant', 0.34, 0]],
+  4: [[3, 4, 'chairBox', 0, -0.36], [10, 4, 'plant', 0, -0.36], [13, 7, 'chairBox', 0.36, 0]],
+  3: [[4, 7, 'chairBox', 0, 0.36], [5, 7, 'chairBox', 0, 0.36], [6, 7, 'chairBox', 0, 0.36], [9, 4, 'chairBox', 0, -0.36], [13, 7, 'plant', 0.34, 0.34], [6, 9, 'chairBox', 0, 0.36], [2, 4, 'wheelchair', 0, -0.33]],
+  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chairBox', 0, 0.36], [10, 7, 'chairBox', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chairBox', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
+  1: [[1, 1, 'chairBox', -0.34, -0.34], [1, 2, 'chairBox', -0.34, 0.34], [2, 2, 'chairBox', 0.34, 0.34], [1, 8, 'wheelchair', -0.32, 0], [2, 9, 'chairBox', 0, 0.36], [3, 9, 'chairBox', 0, 0.36], [7, 8, 'plant', 0.34, 0]],
 };
+// A chair backs onto the wall it's beside, facing the room.
+const awayFromWall = (across: number, along: number): Dir => (along > 0 ? 0 : along < 0 ? 2 : across > 0 ? 3 : 1);
 const GUIDE_CELL = { x: 5, y: 5 };
 const SHOPKEEPER_CELL = { x: 10, y: 1 };
 const SHOP_DOOR = { x: 9, y: 3 };
@@ -116,18 +118,18 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         if (person && c !== 'N') out.push({ cell: { x, y }, look: person.look });
         if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
-        if (c === '&') out.push({ cell: { x, y }, look: 'sofaBox', face: 0 });
+        if (c === '&') out.push({ cell: { x, y }, look: 'sofaBox', face: floor === 4 ? 1 : 0 });
         if (c === '^') out.push({ cell: { x, y }, look: 'plant' });
       })
     );
-    for (const d of ALONG_THE_WALLS[floor]) out.push({ cell: { x: d[0], y: d[1] }, look: d[2], shift: [d[3], d[4], 0] });
+    for (const d of ALONG_THE_WALLS[floor]) out.push({ cell: { x: d[0], y: d[1] }, look: d[2], shift: [d[3], d[4], 0], face: awayFromWall(d[3], d[4]) });
     if (floor === 1) {
       // The front desk, between you and whoever's at it, and the shop's counter. Each sign sticks out over the
       // lobby, so you can see it coming along the corridor.
-      out.push({ cell: GUIDE_CELL, look: 'desk', shift: [0, -0.2, 0], fixed: true });
+      out.push({ cell: GUIDE_CELL, look: 'deskBox', shift: [0, -0.2, 0], face: 0 });
       // Close up, talking to someone, it would hang across the top of the picture.
       if (!now.talking) out.push({ cell: GUIDE_CELL, look: 'signGuide', shift: [0, -0.62, 0.98], fixed: true });
-      out.push({ cell: SHOPKEEPER_CELL, look: 'counter', shift: [0, 0.26, 0], fixed: true });
+      out.push({ cell: SHOPKEEPER_CELL, look: 'counterBox', shift: [0, 0.26, 0], face: 2 });
       out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.52, 0.98], fixed: true });
     }
     if (floor === 4) {
@@ -135,8 +137,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       // through it, the mattress flat from there to the rail in front.
       out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, BED_HEAD, 0.28], fixed: true });
       out.push({ cell: GIRL_CELL, look: 'mattress', shift: [0, BED_FOOT, 0.27], lean: -1.45, fixed: true });
-      out.push({ cell: GIRL_CELL, look: 'cabinet', shift: [0.72, BED_HEAD - 0.1, 0], fixed: true });
-      out.push({ cell: GIRL_CELL, look: 'chair', shift: [-0.78, -0.1, 0], fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'cabinetBox', shift: [0.72, BED_HEAD - 0.1, 0], face: 0 });
+      out.push({ cell: GIRL_CELL, look: 'chairBox', shift: [-0.78, -0.1, 0], face: 1 });
       out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, BED_FOOT, 0], fixed: true });
       const g = girlOn(now.day);
       if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: g.body ? [0.3, 0.36, 0.33] : [0.24, 0.22, 0.5], fixed: true });

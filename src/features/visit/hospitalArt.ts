@@ -334,23 +334,20 @@ export const LYING_PART = {
 } as const;
 export type LyingPart = keyof typeof LYING_PART;
 
-/** Somewhere to wait, and things left along the walls. */
+/** What's too round or too thin to be built out of boxes, and stays a cutout. */
 export const FURNITURE_PART = {
-  sofa: { x: 0, y: 0, w: 512, h: 256 },
-  chair: { x: 512, y: 0, w: 256, h: 256 },
   wheelchair: { x: 768, y: 0, w: 256, h: 256 },
   plant: { x: 0, y: 256, w: 256, h: 512 },
-  cabinet: { x: 256, y: 256, w: 256, h: 256 },
 } as const;
 export type FurniturePart = keyof typeof FURNITURE_PART;
 
 /**
- * The sides of the solid sofa, laid out flat on the furniture sheet like a skin. Each is a rectangle, in pixels; to dress
- * a sofa differently, only this drawing changes.
+ * The sides of the solid furniture, laid out flat on the furniture sheet like a skin. Each is a rectangle, in pixels; to
+ * dress something differently, only this drawing changes.
  */
-const SKIN_AT = { x: 512, y: 256 };
-const skinFace = (x: number, y: number, w: number, h: number) => ({ x: SKIN_AT.x + x, y: SKIN_AT.y + y, w, h });
-export const SOFA_SKIN = {
+const skinFace = (x: number, y: number, w: number, h: number) => ({ x: 512 + x, y: 256 + y, w, h });
+const lowerFace = (x: number, y: number, w: number, h: number) => ({ x, y: 768 + y, w, h });
+export const SKIN = {
   seatTop: skinFace(0, 0, 256, 128),
   seatFront: skinFace(256, 0, 256, 64),
   backFront: skinFace(0, 128, 256, 128),
@@ -360,15 +357,29 @@ export const SOFA_SKIN = {
   armSide: skinFace(320, 256, 128, 128),
   armTop: skinFace(448, 256, 64, 128),
   leg: skinFace(0, 320, 32, 32),
+  deskFront: lowerFace(0, 0, 256, 128),
+  deskSide: lowerFace(256, 0, 128, 128),
+  deskTop: lowerFace(384, 0, 256, 64),
+  screen: lowerFace(640, 0, 128, 96),
+  leaflets: lowerFace(768, 0, 64, 64),
+  jar: lowerFace(832, 0, 96, 128),
+  cabinetFront: lowerFace(928, 0, 96, 128),
+  counterFront: lowerFace(0, 128, 256, 128),
+  counterSide: lowerFace(256, 128, 128, 128),
+  counterTop: lowerFace(384, 64, 256, 64),
+  chairBack: lowerFace(384, 128, 96, 96),
+  chairSeat: lowerFace(480, 128, 96, 96),
+  boxDark: lowerFace(640, 96, 96, 96),
+  boxPale: lowerFace(736, 96, 96, 96),
+  cabinetSide: lowerFace(832, 128, 96, 96),
+  cabinetTop: lowerFace(928, 128, 96, 96),
 } as const;
-export type SkinFace = keyof typeof SOFA_SKIN;
+export type SkinFace = keyof typeof SKIN;
 
 /** The first day, with her hair down, and the lobby's furniture. */
 export const EXTRA_PART = {
   lyingLooseWindow: { x: 0, y: 0, w: 512, h: 512 },
   lyingLooseTurned: { x: 512, y: 0, w: 512, h: 512 },
-  desk: { x: 0, y: 512, w: 512, h: 256 },
-  counter: { x: 512, y: 512, w: 512, h: 256 },
   signGuide: { x: 0, y: 768, w: 512, h: 128 },
   signShop: { x: 512, y: 768, w: 512, h: 128 },
 } as const;

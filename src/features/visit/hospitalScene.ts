@@ -1,7 +1,7 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, SOFA_SKIN, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type SkinFace } from './hospitalArt';
+import { EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type SkinFace } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -76,7 +76,7 @@ void main() {
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
-export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart | FurniturePart | 'sofaBox';
+export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart | FurniturePart | SolidLook;
 export type HospitalSprite = {
   cell: Cell;
   look: SpriteLook;
@@ -146,32 +146,75 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   lyingHand: LYING,
   lyingLooseWindow: LYING,
   lyingLooseTurned: LYING,
-  desk: { w: 0.8, h: 0.4 },
-  counter: { w: 0.8, h: 0.4 },
-  sofa: { w: 0.9, h: 0.45 },
-  chair: { w: 0.3, h: 0.3 },
   wheelchair: { w: 0.4, h: 0.4 },
   plant: { w: 0.32, h: 0.64 },
-  cabinet: { w: 0.32, h: 0.32 },
   signGuide: { w: 0.6, h: 0.15 },
   signShop: { w: 0.6, h: 0.15 },
 };
 const PERSON_SIZE = { w: 0.4, h: 0.8 };
 
-// The sofa as boxes with a skin on them: across, up and front to back, then which drawing goes on which side.
+// Furniture as boxes with a skin on them: across, up and front to back, then which drawing goes on which side. Nobody
+// stands on these or sits in them, so a flat person is never seen against one from the wrong side (docs/병원_지도.md).
 type Box = { x: [number, number]; y: [number, number]; z: [number, number]; front: SkinFace; rear: SkinFace; side: SkinFace; top: SkinFace };
-const SOFA_LEG = (x: number, z: number): Box => ({ x: [x - 0.02, x + 0.02], y: [0, 0.1], z: [z - 0.02, z + 0.02], front: 'leg', rear: 'leg', side: 'leg', top: 'leg' });
-const SOFA_ARM = (x0: number, x1: number): Box => ({ x: [x0, x1], y: [0.1, 0.3], z: [-0.2, 0.2], front: 'armFront', rear: 'armFront', side: 'armSide', top: 'armTop' });
-const SOFA_BOXES: Box[] = [
-  { x: [-0.36, 0.36], y: [0.1, 0.22], z: [-0.12, 0.2], front: 'seatFront', rear: 'seatFront', side: 'armFront', top: 'seatTop' },
-  { x: [-0.36, 0.36], y: [0.1, 0.46], z: [-0.2, -0.1], front: 'backFront', rear: 'backRear', side: 'armSide', top: 'backTop' },
-  SOFA_ARM(-0.45, -0.36),
-  SOFA_ARM(0.36, 0.45),
-  SOFA_LEG(-0.4, -0.16),
-  SOFA_LEG(0.4, -0.16),
-  SOFA_LEG(-0.4, 0.16),
-  SOFA_LEG(0.4, 0.16),
-];
+const allOver = (x: [number, number], y: [number, number], z: [number, number], skin: SkinFace): Box => ({ x, y, z, front: skin, rear: skin, side: skin, top: skin });
+const leg = (x: number, z: number, h: number): Box => allOver([x - 0.02, x + 0.02], [0, h], [z - 0.02, z + 0.02], 'leg');
+const sofaArm = (x0: number, x1: number): Box => ({ x: [x0, x1], y: [0.1, 0.3], z: [-0.2, 0.2], front: 'armFront', rear: 'armFront', side: 'armSide', top: 'armTop' });
+const SOLIDS = {
+  sofaBox: {
+    shadow: [1.1, 0.7],
+    boxes: [
+      { x: [-0.36, 0.36], y: [0.1, 0.22], z: [-0.12, 0.2], front: 'seatFront', rear: 'seatFront', side: 'armFront', top: 'seatTop' },
+      { x: [-0.36, 0.36], y: [0.1, 0.46], z: [-0.2, -0.1], front: 'backFront', rear: 'backRear', side: 'armSide', top: 'backTop' },
+      sofaArm(-0.45, -0.36),
+      sofaArm(0.36, 0.45),
+      leg(-0.4, -0.16, 0.1),
+      leg(0.4, -0.16, 0.1),
+      leg(-0.4, 0.16, 0.1),
+      leg(0.4, 0.16, 0.1),
+    ],
+  },
+  chairBox: {
+    shadow: [0.36, 0.36],
+    boxes: [
+      allOver([-0.11, 0.11], [0.16, 0.2], [-0.11, 0.11], 'chairSeat'),
+      allOver([-0.11, 0.11], [0.2, 0.38], [-0.11, -0.08], 'chairBack'),
+      leg(-0.09, -0.09, 0.16),
+      leg(0.09, -0.09, 0.16),
+      leg(-0.09, 0.09, 0.16),
+      leg(0.09, 0.09, 0.16),
+    ],
+  },
+  cabinetBox: {
+    shadow: [0.42, 0.42],
+    boxes: [
+      { x: [-0.15, 0.15], y: [0, 0.3], z: [-0.14, 0.14], front: 'cabinetFront', rear: 'cabinetSide', side: 'cabinetSide', top: 'cabinetTop' },
+      allOver([-0.17, 0.17], [0.3, 0.33], [-0.16, 0.16], 'cabinetTop'),
+    ],
+  },
+  deskBox: {
+    shadow: [1, 0.5],
+    boxes: [
+      { x: [-0.38, 0.38], y: [0, 0.34], z: [-0.13, 0.13], front: 'deskFront', rear: 'deskSide', side: 'deskSide', top: 'deskTop' },
+      allOver([-0.41, 0.41], [0.34, 0.38], [-0.16, 0.16], 'deskTop'),
+      allOver([-0.3, -0.08], [0.38, 0.56], [-0.02, 0.02], 'screen'),
+      allOver([0.04, 0.2], [0.38, 0.41], [-0.06, 0.08], 'leaflets'),
+      allOver([0.27, 0.33], [0.38, 0.43], [-0.02, 0.04], 'boxDark'),
+    ],
+  },
+  counterBox: {
+    shadow: [1, 0.5],
+    boxes: [
+      { x: [-0.38, 0.38], y: [0, 0.32], z: [-0.13, 0.13], front: 'counterFront', rear: 'counterSide', side: 'counterSide', top: 'counterTop' },
+      allOver([-0.41, 0.41], [0.32, 0.36], [-0.16, 0.16], 'counterTop'),
+      allOver([-0.35, -0.2], [0.36, 0.5], [-0.07, 0.08], 'boxDark'),
+      allOver([-0.13, -0.05], [0.36, 0.54], [-0.04, 0.04], 'jar'),
+      allOver([0.02, 0.2], [0.36, 0.46], [-0.08, 0.08], 'boxPale'),
+      allOver([0.25, 0.35], [0.36, 0.44], [-0.05, 0.05], 'boxDark'),
+    ],
+  },
+} as const satisfies Record<string, { shadow: readonly [number, number]; boxes: readonly Box[] }>;
+export type SolidLook = keyof typeof SOLIDS;
+
 // Light from above, so its sides read as sides.
 const FACE_SHADE = { front: 0.96, rear: 0.74, left: 0.84, right: 0.84, top: 1 };
 
@@ -451,7 +494,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     return mesh;
   };
 
-  const makeSofa = () => {
+  const makeSolid = (look: SolidLook) => {
     const positions: number[] = [];
     const uvs: number[] = [];
     const shades: number[] = [];
@@ -459,7 +502,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     // from a corner, along two edges whose cross product points outward
     const side = (o: number[], r: number[], u: number[], skin: SkinFace, shade: number) => {
       const base = positions.length / 3;
-      const px = SOFA_SKIN[skin];
+      const px = SKIN[skin];
       const u0 = (px.x + UV_INSET) / SHEET;
       const u1 = (px.x + px.w - UV_INSET) / SHEET;
       const v0 = (px.y + UV_INSET) / SHEET;
@@ -471,7 +514,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       });
       indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
     };
-    for (const b of SOFA_BOXES) {
+    for (const b of SOLIDS[look].boxes) {
       const [x0, x1] = b.x;
       const [y0, y1] = b.y;
       const [z0, z1] = b.z;
@@ -527,15 +570,16 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       const [across, along, up] = s.shift ?? [0, 0, 0];
       const x = s.cell.x + 0.5 + across;
       const z = s.cell.y + 0.5 + along;
-      if (s.look === 'sofaBox') {
-        const solid = makeSofa();
+      if (s.look in SOLIDS) {
+        const look = s.look as SolidLook;
+        const solid = makeSolid(look);
         solid.position.set(x, up, z);
         const face = s.face ?? 2;
         solid.rotation.y = Math.atan2(DX[face], DY[face]);
         scene.add(solid);
         solids.push(solid);
         const shadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
-        shadow.scale.set(1.1, 1, 0.7);
+        shadow.scale.set(SOLIDS[look].shadow[0], 1, SOLIDS[look].shadow[1]);
         shadow.position.set(x, 0.004, z);
         scene.add(shadow);
         shadows.push(shadow);

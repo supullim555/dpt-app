@@ -193,68 +193,18 @@ function cutEdge(sheet, cell, radius, paper = 244) {
   }
 }
 
-// The front desk, the shop counter and their signs: words have to be right, so these are drawn here and not generated.
+// The signs: words have to be right, so these are drawn here and not generated.
 const FONT = 'font-family="Batang, serif" font-weight="700" text-anchor="middle" fill="rgb(26,26,26)"';
 const INK_LINE = 'stroke="rgb(26,26,26)" stroke-width="4" stroke-linejoin="round"';
 const FAINT = 'stroke="rgb(90,90,90)" stroke-width="2"';
-const hatchLines = (x, y, w, h, gap) => {
-  let d = '';
-  for (let i = gap; i < w; i += gap) d += `M${x + i} ${y + 2} l-3 ${h - 4} `;
-  return `<path d="${d}" fill="none" ${FAINT}/>`;
-};
 const sign = (word) => `<svg width="512" height="128"><path d="M110 10 V36 M402 10 V36" ${INK_LINE}/><rect x="24" y="34" width="464" height="84" rx="6" fill="rgb(238,238,238)" ${INK_LINE}/><text x="256" y="97" font-size="62" ${FONT}>${word}</text></svg>`;
 const FURNITURE = [
-  {
-    // a flat-topped desk: a screen's back, a stack of leaflets, a bell
-    cell: { x: 0, y: 512, w: 512, h: 256 },
-    svg: `<svg width="512" height="256">
-      <rect x="88" y="26" width="104" height="66" rx="4" fill="rgb(120,120,120)" ${INK_LINE}/><rect x="126" y="90" width="28" height="14" fill="rgb(90,90,90)" ${INK_LINE}/>
-      <rect x="250" y="82" width="84" height="22" fill="rgb(235,235,235)" ${INK_LINE}/><path d="M250 92 H334" ${FAINT}/>
-      <path d="M372 104 a24 24 0 0 1 48 0 Z" fill="rgb(200,200,200)" ${INK_LINE}/><circle cx="396" cy="77" r="4" fill="rgb(60,60,60)"/>
-      <rect x="44" y="124" width="424" height="120" fill="rgb(176,176,176)" ${INK_LINE}/>${hatchLines(44, 124, 424, 120, 26)}
-      <rect x="18" y="102" width="476" height="24" rx="3" fill="rgb(236,236,236)" ${INK_LINE}/>
-      <rect x="166" y="140" width="180" height="88" rx="4" fill="rgb(240,240,240)" ${INK_LINE}/><text x="256" y="205" font-size="62" ${FONT}>안내</text>
-    </svg>`,
-  },
-  {
-    // a low counter with the day's small things out on it
-    cell: { x: 512, y: 512, w: 512, h: 256 },
-    svg: `<svg width="512" height="256">
-      <g fill="rgb(214,214,214)" ${INK_LINE}><circle cx="62" cy="92" r="19"/><circle cx="100" cy="92" r="19"/><circle cx="81" cy="62" r="19"/></g>
-      <rect x="150" y="56" width="62" height="54" fill="rgb(120,120,120)" ${INK_LINE}/><path d="M150 76 H212" ${FAINT}/>
-      <rect x="236" y="44" width="40" height="66" rx="8" fill="rgb(236,236,236)" ${INK_LINE}/><rect x="244" y="30" width="24" height="16" fill="rgb(90,90,90)" ${INK_LINE}/>
-      <rect x="298" y="72" width="78" height="38" fill="rgb(224,224,224)" ${INK_LINE}/><path d="M298 86 H376 M322 72 V110" ${FAINT}/>
-      <path d="M398 110 L410 58 L466 58 L478 110 Z" fill="rgb(170,170,170)" ${INK_LINE}/>
-      <rect x="44" y="128" width="424" height="116" fill="rgb(128,128,128)" ${INK_LINE}/>${hatchLines(44, 128, 424, 116, 34)}
-      <rect x="18" y="108" width="476" height="24" rx="3" fill="rgb(232,232,232)" ${INK_LINE}/>
-      <rect x="176" y="146" width="160" height="80" rx="4" fill="rgb(240,240,240)" ${INK_LINE}/><text x="256" y="205" font-size="56" ${FONT}>매점</text>
-    </svg>`,
-  },
   { cell: { x: 0, y: 768, w: 512, h: 128 }, svg: sign('안내') },
   { cell: { x: 512, y: 768, w: 512, h: 128 }, svg: sign('매점') },
 ];
 
 // What makes it a hospital: somewhere to wait, and things left along the walls.
 const ROOM_THINGS = [
-  {
-    // a long vinyl waiting-room sofa
-    cell: { x: 0, y: 0, w: 512, h: 256 },
-    svg: `<svg width="512" height="256">
-      <rect x="36" y="44" width="440" height="106" rx="16" fill="rgb(120,120,120)" ${INK_LINE}/><path d="M183 50 V148 M329 50 V148" ${FAINT}/>
-      <rect x="20" y="96" width="50" height="104" rx="14" fill="rgb(146,146,146)" ${INK_LINE}/><rect x="442" y="96" width="50" height="104" rx="14" fill="rgb(146,146,146)" ${INK_LINE}/>
-      <rect x="66" y="142" width="380" height="58" rx="10" fill="rgb(172,172,172)" ${INK_LINE}/><path d="M193 146 V198 M319 146 V198" ${FAINT}/>
-      <path d="M62 200 V238 M450 200 V238" stroke="rgb(26,26,26)" stroke-width="9"/>
-    </svg>`,
-  },
-  {
-    // a plastic chair, the kind in a row along a corridor
-    cell: { x: 512, y: 0, w: 256, h: 256 },
-    svg: `<svg width="256" height="256">
-      <path d="M60 50 q68 -22 136 0 l-6 92 h-124 Z" fill="rgb(186,186,186)" ${INK_LINE}/>
-      <path d="M54 142 h148 l10 34 h-168 Z" fill="rgb(214,214,214)" ${INK_LINE}/>
-      <path d="M62 176 L52 244 M194 176 L204 244 M92 176 L88 228 M164 176 L168 228" stroke="rgb(26,26,26)" stroke-width="7"/>
-    </svg>`,
-  },
   {
     // a wheelchair left folded out against a wall
     cell: { x: 768, y: 0, w: 256, h: 256 },
@@ -281,20 +231,33 @@ const ROOM_THINGS = [
       <path d="M72 372 H184 L168 498 H88 Z" fill="rgb(226,226,226)" ${INK_LINE}/><rect x="62" y="360" width="132" height="24" rx="4" fill="rgb(238,238,238)" ${INK_LINE}/>
     </svg>`,
   },
-  {
-    // the bedside cabinet in her room
-    cell: { x: 256, y: 256, w: 256, h: 256 },
-    svg: `<svg width="256" height="256">
-      <rect x="50" y="60" width="156" height="170" fill="rgb(206,206,206)" ${INK_LINE}/><rect x="36" y="44" width="184" height="20" rx="3" fill="rgb(238,238,238)" ${INK_LINE}/>
-      <path d="M50 118 H206" ${INK_LINE}/><path d="M112 90 H144 M112 150 H144" stroke="rgb(26,26,26)" stroke-width="6"/>
-      <path d="M62 230 V246 M194 230 V246" stroke="rgb(26,26,26)" stroke-width="8"/>
-    </svg>`,
-  },
 ];
 
 // The sofa that stands in the room as a solid: every side of it laid out flat, like a skin (SOFA_SKIN in hospitalArt.ts).
 // Each side is its own piece of card, with a pale edge where it folds.
 const skinFace = (x, y, w, h, tone, extra = '') => `<rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="rgb(${tone},${tone},${tone})" stroke="rgb(232,232,232)" stroke-width="4"/><rect x="${x + 7}" y="${y + 7}" width="${w - 14}" height="${h - 14}" fill="none" stroke="rgb(26,26,26)" stroke-width="3"/>${extra}`;
+const THE_REST_ART = {
+  // the other solids, along the bottom of the sheet (the same places as in SKIN)
+  cell: { x: 0, y: 768, w: 1024, h: 256 },
+  svg: `<svg width="1024" height="256">${[
+    skinFace(0, 0, 256, 128, 176, `<rect x="66" y="26" width="124" height="76" rx="4" fill="rgb(240,240,240)" ${INK_LINE}/><text x="128" y="84" font-size="50" ${FONT}>안내</text>`),
+    skinFace(256, 0, 128, 128, 150),
+    skinFace(384, 0, 256, 64, 236),
+    skinFace(640, 0, 128, 96, 110),
+    skinFace(768, 0, 64, 64, 236, '<path d="M780 26 H820 M780 40 H820" stroke="rgb(90,90,90)" stroke-width="3"/>'),
+    skinFace(832, 0, 96, 128, 228),
+    skinFace(928, 0, 96, 128, 200, `<path d="M936 62 H1016" ${INK_LINE}/><path d="M964 34 H988 M964 94 H988" stroke="rgb(26,26,26)" stroke-width="5"/>`),
+    skinFace(0, 128, 256, 128, 128, `<rect x="66" y="154" width="124" height="76" rx="4" fill="rgb(240,240,240)" ${INK_LINE}/><text x="128" y="212" font-size="50" ${FONT}>매점</text>`),
+    skinFace(256, 128, 128, 128, 108),
+    skinFace(384, 64, 256, 64, 232),
+    skinFace(384, 128, 96, 96, 186),
+    skinFace(480, 128, 96, 96, 214),
+    skinFace(640, 96, 96, 96, 120, '<path d="M650 136 H726" stroke="rgb(200,200,200)" stroke-width="3"/>'),
+    skinFace(736, 96, 96, 96, 214, '<path d="M770 104 V184" stroke="rgb(90,90,90)" stroke-width="3"/>'),
+    skinFace(832, 128, 96, 96, 170),
+    skinFace(928, 128, 96, 96, 238),
+  ].join('')}</svg>`,
+};
 const SOFA_SKIN_ART = {
   cell: { x: 512, y: 256, w: 512, h: 512 },
   svg: `<svg width="512" height="512">${[
@@ -337,7 +300,7 @@ async function buildSheet(name) {
     cutEdge(sheet, item.cell, edge, item.solid ? 180 : 244);
   }
   if (name === 'extra' || name === 'furniture') {
-    for (const f of name === 'extra' ? FURNITURE : [...ROOM_THINGS, SOFA_SKIN_ART]) {
+    for (const f of name === 'extra' ? FURNITURE : [...ROOM_THINGS, SOFA_SKIN_ART, THE_REST_ART]) {
       const { data } = await sharp(Buffer.from(f.svg)).extractChannel('red').raw().toBuffer({ resolveWithObject: true });
       const a = await sharp(Buffer.from(f.svg)).extractChannel('alpha').raw().toBuffer();
       for (let y = 0; y < f.cell.h; y++) {

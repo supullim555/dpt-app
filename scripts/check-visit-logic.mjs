@@ -35,7 +35,13 @@ import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE
   assert.equal(tutorialGoal('shop').cell, SHOP_FRONT);
   assert.equal(tutorialGoal('lift'), null);
   assert.deepEqual(thingAt({ floor: 1, x: 5, y: 4, dir: 2 }, false), { kind: 'person', id: '1i' });
-  assert.equal(thingAt({ floor: 1, x: 5, y: 6, dir: 0 }, false).kind, 'look'); // the wall behind the desk
+  // the guide and the shopkeeper only from the front, where they and their furniture go together
+  assert.equal(thingAt({ floor: 1, x: 5, y: 6, dir: 0 }, false).kind, 'look');
+  assert.equal(thingAt({ floor: 1, x: 4, y: 5, dir: 1 }, false).kind, 'look');
+  assert.equal(thingAt({ floor: 1, x: 6, y: 5, dir: 3 }, false).kind, 'look');
+  assert.deepEqual(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false), { kind: 'person', id: '1m' });
+  assert.equal(thingAt({ floor: 1, x: 9, y: 1, dir: 1 }, false).kind, 'look');
+  assert.ok(canStand(4, 11, 1) && canStand(4, 12, 2) && !canStand(4, 11, 2)); // the sofa on her floor leaves the room and its clue open
 }
 
 assert.equal(endingFor([]), 'bad');

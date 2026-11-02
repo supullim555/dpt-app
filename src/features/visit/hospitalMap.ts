@@ -16,7 +16,7 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
     map: [
       '###############',
       '#AA#E#S#BB#LLp#',
-      '#AA#.#.#BB#LL##',
+      '#AA#.#.#BB#&L##',
       '#=##.#.##=##+##',
       '#......@......#',
       '###=#n#+#v#=#.#',
@@ -245,8 +245,9 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   const c = charAt(p.floor, front.x, front.y);
   if (c === 'E') return { kind: 'lift' };
   if (c === 'S') return { kind: 'stairs' };
-  // The front desk has its wall behind it, so there's no talking to the guide from that side.
-  if (isPerson(c) && p.floor === 1 && c === 'i' && p.dir === 0) return { kind: 'look', text: '층별 안내판의 뒷면이다.', wall: true };
+  // Someone with furniture in front of them is spoken to from the one spot where the two go together (docs/병원_지도.md).
+  if (p.floor === 1 && c === 'i' && p.dir !== 2) return { kind: 'look', text: p.dir === 0 ? '층별 안내판의 뒷면이다.' : '안내 데스크 옆이다. 말을 걸려면 앞으로 돌아가야 한다.', wall: p.dir === 0 };
+  if (p.floor === 1 && c === 'm' && p.dir !== 0) return { kind: 'look', text: '계산대 옆이다. 말을 걸려면 앞으로 돌아가야 한다.' };
   if (isPerson(c)) return { kind: 'person', id: `${p.floor}${c}` };
   if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'look', text: '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };
   if (c === '%') return { kind: 'look', text: HOSPITAL[p.floor].blocked ?? '' };
