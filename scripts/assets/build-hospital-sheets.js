@@ -66,6 +66,8 @@ const ITEMS = {
     { src: 'lying-turned', box: [125, 115, 895, 1024], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.547 },
     { src: 'lying-hand', box: [205, 45, 825, 1024], cell: { x: 0, y: 512, w: 512, h: 512 }, scale: 0.505 },
   ],
+  // Sofas, chairs and so on, drawn further down.
+  furniture: [],
   // The first day, with her hair down, and below it the lobby's furniture (drawn further down).
   extra: [
     { src: 'lying-loose-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
@@ -232,6 +234,64 @@ const FURNITURE = [
   { cell: { x: 512, y: 768, w: 512, h: 128 }, svg: sign('매점') },
 ];
 
+// What makes it a hospital: somewhere to wait, and things left along the walls.
+const ROOM_THINGS = [
+  {
+    // a long vinyl waiting-room sofa
+    cell: { x: 0, y: 0, w: 512, h: 256 },
+    svg: `<svg width="512" height="256">
+      <rect x="36" y="44" width="440" height="106" rx="16" fill="rgb(120,120,120)" ${INK_LINE}/><path d="M183 50 V148 M329 50 V148" ${FAINT}/>
+      <rect x="20" y="96" width="50" height="104" rx="14" fill="rgb(146,146,146)" ${INK_LINE}/><rect x="442" y="96" width="50" height="104" rx="14" fill="rgb(146,146,146)" ${INK_LINE}/>
+      <rect x="66" y="142" width="380" height="58" rx="10" fill="rgb(172,172,172)" ${INK_LINE}/><path d="M193 146 V198 M319 146 V198" ${FAINT}/>
+      <path d="M62 200 V238 M450 200 V238" stroke="rgb(26,26,26)" stroke-width="9"/>
+    </svg>`,
+  },
+  {
+    // a plastic chair, the kind in a row along a corridor
+    cell: { x: 512, y: 0, w: 256, h: 256 },
+    svg: `<svg width="256" height="256">
+      <path d="M60 50 q68 -22 136 0 l-6 92 h-124 Z" fill="rgb(186,186,186)" ${INK_LINE}/>
+      <path d="M54 142 h148 l10 34 h-168 Z" fill="rgb(214,214,214)" ${INK_LINE}/>
+      <path d="M62 176 L52 244 M194 176 L204 244 M92 176 L88 228 M164 176 L168 228" stroke="rgb(26,26,26)" stroke-width="7"/>
+    </svg>`,
+  },
+  {
+    // a wheelchair left folded out against a wall
+    cell: { x: 768, y: 0, w: 256, h: 256 },
+    svg: `<svg width="256" height="256">
+      <path d="M66 32 h28 M80 32 V136 H186 V96 M186 136 L204 200 M180 96 H136" fill="none" stroke="rgb(26,26,26)" stroke-width="9" stroke-linecap="round"/>
+      <rect x="84" y="60" width="16" height="74" fill="rgb(150,150,150)"/><rect x="84" y="118" width="102" height="20" fill="rgb(150,150,150)" ${INK_LINE}/>
+      <circle cx="102" cy="184" r="56" fill="none" stroke="rgb(26,26,26)" stroke-width="11"/><circle cx="102" cy="184" r="44" fill="none" stroke="rgb(190,190,190)" stroke-width="4"/>
+      <path d="M102 128 V240 M46 184 H158 M62 144 L142 224 M142 144 L62 224" stroke="rgb(90,90,90)" stroke-width="2"/>
+      <circle cx="202" cy="222" r="20" fill="rgb(236,236,236)" stroke="rgb(26,26,26)" stroke-width="7"/>
+    </svg>`,
+  },
+  {
+    // a big-leafed plant someone waters
+    cell: { x: 0, y: 256, w: 256, h: 512 },
+    svg: `<svg width="256" height="512">
+      <g fill="rgb(150,150,150)" ${INK_LINE}>
+        <path d="M128 360 C70 300 34 220 44 150 C96 190 128 280 128 360 Z"/>
+        <path d="M128 360 C186 300 222 220 212 150 C160 190 128 280 128 360 Z"/>
+        <path d="M128 360 C90 260 90 110 128 34 C166 110 166 260 128 360 Z" fill="rgb(180,180,180)"/>
+        <path d="M128 372 C80 348 34 330 14 276 C70 276 110 316 128 372 Z" fill="rgb(120,120,120)"/>
+        <path d="M128 372 C176 348 222 330 242 276 C186 276 146 316 128 372 Z" fill="rgb(120,120,120)"/>
+      </g>
+      <path d="M128 70 V340 M64 182 L120 330 M192 182 L136 330" ${FAINT}/>
+      <path d="M72 372 H184 L168 498 H88 Z" fill="rgb(226,226,226)" ${INK_LINE}/><rect x="62" y="360" width="132" height="24" rx="4" fill="rgb(238,238,238)" ${INK_LINE}/>
+    </svg>`,
+  },
+  {
+    // the bedside cabinet in her room
+    cell: { x: 256, y: 256, w: 256, h: 256 },
+    svg: `<svg width="256" height="256">
+      <rect x="50" y="60" width="156" height="170" fill="rgb(206,206,206)" ${INK_LINE}/><rect x="36" y="44" width="184" height="20" rx="3" fill="rgb(238,238,238)" ${INK_LINE}/>
+      <path d="M50 118 H206" ${INK_LINE}/><path d="M112 90 H144 M112 150 H144" stroke="rgb(26,26,26)" stroke-width="6"/>
+      <path d="M62 230 V246 M194 230 V246" stroke="rgb(26,26,26)" stroke-width="8"/>
+    </svg>`,
+  },
+];
+
 async function buildSheet(name) {
   const sheet = new Uint8Array(SHEET * SHEET);
   for (const item of ITEMS[name]) {
@@ -258,8 +318,8 @@ async function buildSheet(name) {
     // The tree takes the window's light on whatever is bright: its margin stays under that, or it turns the colour of the day.
     cutEdge(sheet, item.cell, edge, item.solid ? 180 : 244);
   }
-  if (name === 'extra') {
-    for (const f of FURNITURE) {
+  if (name === 'extra' || name === 'furniture') {
+    for (const f of name === 'extra' ? FURNITURE : ROOM_THINGS) {
       const { data } = await sharp(Buffer.from(f.svg)).extractChannel('red').raw().toBuffer({ resolveWithObject: true });
       const a = await sharp(Buffer.from(f.svg)).extractChannel('alpha').raw().toBuffer();
       for (let y = 0; y < f.cell.h; y++) {

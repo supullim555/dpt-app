@@ -1,4 +1,4 @@
-// The hospital's six sheets, one channel of ink each and 1024 square: about 8MB of GPU memory in all
+// The hospital's seven sheets, one channel of ink each and 1024 square: about 9MB of GPU memory in all
 // (docs/병원_지도.md). Colour comes later, in the shader. The walls and floors are painted here on a canvas, since they
 // have to tile. People, props and the girl are drawings, cut out of paper by scripts/assets/build-hospital-sheets.js,
 // whose cells must match these; on those three sheets exactly black means nothing is there.
@@ -334,6 +334,16 @@ export const LYING_PART = {
 } as const;
 export type LyingPart = keyof typeof LYING_PART;
 
+/** Somewhere to wait, and things left along the walls. */
+export const FURNITURE_PART = {
+  sofa: { x: 0, y: 0, w: 512, h: 256 },
+  chair: { x: 512, y: 0, w: 256, h: 256 },
+  wheelchair: { x: 768, y: 0, w: 256, h: 256 },
+  plant: { x: 0, y: 256, w: 256, h: 512 },
+  cabinet: { x: 256, y: 256, w: 256, h: 256 },
+} as const;
+export type FurniturePart = keyof typeof FURNITURE_PART;
+
 /** The first day, with her hair down, and the lobby's furniture. */
 export const EXTRA_PART = {
   lyingLooseWindow: { x: 0, y: 0, w: 512, h: 512 },
@@ -357,7 +367,7 @@ function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   return out;
 }
 
-const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png' };
+const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
 
 /** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
 function loadChannel(url: string): Promise<Uint8Array> {
@@ -370,6 +380,6 @@ function loadChannel(url: string): Promise<Uint8Array> {
 }
 
 export const loadSheets = async () => {
-  const [people, props, girl, lying, extra] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra)]);
-  return { structure: toChannel(paintStructure), people, props, girl, lying, extra };
+  const [people, props, girl, lying, extra, furniture] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture)]);
+  return { structure: toChannel(paintStructure), people, props, girl, lying, extra, furniture };
 };

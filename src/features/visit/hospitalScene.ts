@@ -1,12 +1,13 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { EXTRA_PART, GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type GirlPart, type LyingPart, type PersonLook } from './hospitalArt';
+import { EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON_SLOT, PROP, SHEET, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
-const EYE = 0.52;
-const WALL_H = 1;
+// With people 1.7m tall, a cell is about 2.1m across, the ceiling about 2.7m and your eyes about 1.35m (docs/병원_지도.md).
+const EYE = 0.64;
+const WALL_H = 1.25;
 const YARD_WALL_H = 3;
 // A little behind the middle of the cell, or a wall ahead would fill the screen.
 const STAND_BACK = 0.36;
@@ -75,7 +76,7 @@ void main() {
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
-export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart;
+export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart | FurniturePart;
 export type HospitalSprite = {
   cell: Cell;
   look: SpriteLook;
@@ -143,12 +144,17 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   lyingHand: LYING,
   lyingLooseWindow: LYING,
   lyingLooseTurned: LYING,
-  desk: { w: 0.9, h: 0.45 },
-  counter: { w: 0.9, h: 0.45 },
+  desk: { w: 0.8, h: 0.4 },
+  counter: { w: 0.8, h: 0.4 },
+  sofa: { w: 0.9, h: 0.45 },
+  chair: { w: 0.3, h: 0.3 },
+  wheelchair: { w: 0.4, h: 0.4 },
+  plant: { w: 0.32, h: 0.64 },
+  cabinet: { w: 0.32, h: 0.32 },
   signGuide: { w: 0.6, h: 0.15 },
   signShop: { w: 0.6, h: 0.15 },
 };
-const PERSON_SIZE = { w: 0.46, h: 0.92 };
+const PERSON_SIZE = { w: 0.4, h: 0.8 };
 
 const hash = (x: number, y: number, d: number) => {
   const n = Math.sin(x * 12.9898 + y * 78.233 + d * 37.719) * 43758.5453;
@@ -180,7 +186,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -193,7 +199,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const buildingDim = { value: 1 };
   const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }) =>
     new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }) };
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }) };
   // A soft dark spot on the floor under each cutout, so they stand on it instead of floating over it.
   const shadowMaterial = new THREE.ShaderMaterial({
     transparent: true,
@@ -314,7 +320,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
 
     // Everything visible stands on these cells: where you can walk, who or what is in the way, and the
     // part of her room you can see but not walk on.
-    const isFurnished = (c: string) => c === '%' || c === 'T' || c === '_' || (c >= 'a' && c <= 'z');
+    const isFurnished = (c: string) => c === '%' || c === 'T' || c === '_' || c === '&' || c === '^' || (c >= 'a' && c <= 'z');
     const open = new Set(walkable(floor));
     const queue = [...open];
     while (queue.length) {
@@ -404,7 +410,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const part = GIRL_PART[look as GirlPart];
     const lying = LYING_PART[look as LyingPart];
     const extra = EXTRA_PART[look as ExtraPart];
-    const px = prop ?? part ?? lying ?? extra ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
+    const furniture = FURNITURE_PART[look as FurniturePart];
+    const px = prop ?? part ?? lying ?? extra ?? furniture ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
     // In from the cell's edge, or the next drawing on the sheet shows as a line along this one's.
     const u0 = (px.x + UV_INSET) / SHEET;
     const u1 = (px.x + px.w - UV_INSET) / SHEET;
@@ -418,7 +425,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const lit = look === 'tree' ? 1 : look === 'pin' || look === 'pinSmall' ? 2 : 0;
     geometry.setAttribute('aLit', new THREE.Float32BufferAttribute([lit, lit, lit, lit], 1));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : extra ? materials.extra : materials.people);
+    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : extra ? materials.extra : furniture ? materials.furniture : materials.people);
     mesh.frustumCulled = false;
     mesh.rotation.order = 'YXZ';
     return mesh;

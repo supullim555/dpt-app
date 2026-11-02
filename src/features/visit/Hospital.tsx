@@ -24,12 +24,19 @@ const BUST_UP = 0.06;
 const LYING_FROM = -0.19;
 const BED_HEAD = 0.46;
 const BED_FOOT = -0.2;
+// Things along the walls that you walk past, not into: cell, what, and how far off the middle of the cell (across, along).
+const ALONG_THE_WALLS: Record<FloorNo, [number, number, SpriteLook, number, number][]> = {
+  4: [[3, 4, 'chair', 0, -0.36], [10, 4, 'plant', 0, -0.36], [12, 2, 'sofa', 0.05, 0.28], [13, 7, 'chair', 0.36, 0]],
+  3: [[4, 7, 'chair', 0, 0.36], [5, 7, 'chair', 0, 0.36], [6, 7, 'chair', 0, 0.36], [9, 4, 'chair', 0, -0.36], [13, 7, 'plant', 0.34, 0.34], [7, 9, 'sofa', 0, 0.28], [2, 4, 'wheelchair', 0, -0.33]],
+  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chair', 0, 0.36], [10, 7, 'chair', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chair', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
+  1: [[1, 1, 'chair', -0.34, -0.34], [1, 2, 'chair', -0.34, 0.34], [2, 2, 'chair', 0.34, 0.34], [1, 8, 'wheelchair', -0.32, 0], [2, 9, 'chair', 0, 0.36], [3, 9, 'chair', 0, 0.36], [7, 8, 'plant', 0.34, 0]],
+};
 const GUIDE_CELL = { x: 5, y: 5 };
 const SHOPKEEPER_CELL = { x: 10, y: 1 };
 const SHOP_DOOR = { x: 9, y: 3 };
 // Further back, so whoever came in to send you out is in the picture too.
 const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
-const PERSON_FOCUS = { height: 0.72, away: 0.86 };
+const PERSON_FOCUS = { height: 0.64, away: 0.86 };
 
 type Props = {
   day: number;
@@ -109,22 +116,27 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         if (person && c !== 'N') out.push({ cell: { x, y }, look: person.look });
         if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
+        if (c === '&') out.push({ cell: { x, y }, look: 'sofa' });
+        if (c === '^') out.push({ cell: { x, y }, look: 'plant' });
       })
     );
+    for (const d of ALONG_THE_WALLS[floor]) out.push({ cell: { x: d[0], y: d[1] }, look: d[2], shift: [d[3], d[4], 0] });
     if (floor === 1) {
       // The front desk, between you and whoever's at it, and the shop's counter. Each sign sticks out over the
       // lobby, so you can see it coming along the corridor.
-      out.push({ cell: GUIDE_CELL, look: 'desk', shift: [0, -0.22, 0], fixed: true });
+      out.push({ cell: GUIDE_CELL, look: 'desk', shift: [0, -0.2, 0], fixed: true });
       // Close up, talking to someone, it would hang across the top of the picture.
-      if (!now.talking) out.push({ cell: GUIDE_CELL, look: 'signGuide', shift: [0, -0.62, 0.76], fixed: true });
+      if (!now.talking) out.push({ cell: GUIDE_CELL, look: 'signGuide', shift: [0, -0.62, 0.98], fixed: true });
       out.push({ cell: SHOPKEEPER_CELL, look: 'counter', shift: [0, 0.26, 0], fixed: true });
-      out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.52, 0.76], fixed: true });
+      out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.52, 0.98], fixed: true });
     }
     if (floor === 4) {
       // One bed, seen from its foot: the head far enough back that she can tip onto the pillows without going
       // through it, the mattress flat from there to the rail in front.
       out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, BED_HEAD, 0.28], fixed: true });
       out.push({ cell: GIRL_CELL, look: 'mattress', shift: [0, BED_FOOT, 0.27], lean: -1.45, fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'cabinet', shift: [0.72, BED_HEAD - 0.1, 0], fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'chair', shift: [-0.78, -0.1, 0], fixed: true });
       out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, BED_FOOT, 0], fixed: true });
       const g = girlOn(now.day);
       if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: g.body ? [0.3, 0.36, 0.33] : [0.24, 0.22, 0.5], fixed: true });
@@ -600,7 +612,7 @@ function TurnButton({ glyph, label, onPress, wide, disabled }: { glyph: string; 
 }
 
 const PLAN_CELL = 13;
-const PLAN_COLOR: Record<string, string> = { '#': '#23211e', '=': '#6d695f', '+': AMBER, E: '#3f5d78', S: '#3f5d78', N: '#8f8a7e' };
+const PLAN_COLOR: Record<string, string> = { '&': '#8f8a7e', '^': '#8f8a7e', '#': '#23211e', '=': '#6d695f', '+': AMBER, E: '#3f5d78', S: '#3f5d78', N: '#8f8a7e' };
 
 /** The floor seen from above. The map button's picture, and the whole view where 3D can't run. */
 function FloorPlan({ pose }: { pose: Pose }) {

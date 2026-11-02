@@ -1,7 +1,7 @@
 // The hospital as data, and the rules for walking it: the one source for the first-person view, the map
 // button and docs/지도/ (docs/병원_지도.md). No imports, so scripts/check-visit-logic.mjs can run it directly.
 // One character is one cell. Every floor has one footprint, so the lift and the stairs line up.
-// '_' is floor you can see but not walk on: the part of her room around the bed.
+// '_' is floor you can see but not walk on: the part of her room around the bed. '&' is a sofa and '^' a plant.
 
 export type FloorNo = 1 | 2 | 3 | 4;
 /** 0 north, 1 east, 2 south, 3 west. */
@@ -69,7 +69,7 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#OO#.#.#MMM#.%#',
       '#+##.#.##+##.##',
       '@.............#',
-      '#.#.#i#.#.#g#.#',
+      '#^...i..&&.g.^#',
       '#.............#',
       '###+###+###=###',
       '#HHH###.###RRR#',
@@ -108,7 +108,7 @@ export const arrival = (floor: FloorNo, at: Cell): Pose => ({ floor, x: at.x, y:
 
 export const charAt = (floor: FloorNo, x: number, y: number) => HOSPITAL[floor].map[y]?.[x] ?? '#';
 const isPerson = (c: string) => c >= 'a' && c <= 'z';
-const STOPS_YOU = '#=%NTES_';
+const STOPS_YOU = '#=%NTES_&^';
 
 const walkableCache = new Map<FloorNo, Set<string>>();
 const key = (x: number, y: number) => `${x},${y}`;
@@ -248,6 +248,8 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   if (isPerson(c)) return { kind: 'person', id: `${p.floor}${c}` };
   if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'look', text: '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };
   if (c === '%') return { kind: 'look', text: HOSPITAL[p.floor].blocked ?? '' };
+  if (c === '&') return { kind: 'look', text: '대기실 소파다. 가운데가 조금 꺼져 있다.' };
+  if (c === '^') return { kind: 'look', text: '화분이다. 누가 물을 주고 있는지 흙이 젖어 있다.' };
   if (c === 'T') return { kind: 'look', text: '은행나무다. 저 위 어딘가에 4층 창이 있다.', up: true };
   if (c === '=') {
     const behind = charAt(p.floor, front.x + DX[p.dir], front.y + DY[p.dir]);
