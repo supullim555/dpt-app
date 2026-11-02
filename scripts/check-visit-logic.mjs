@@ -5,7 +5,7 @@ import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlo
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
-import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
+import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 // the first walk in moves on by what you've done, only forward, and can't strand you
@@ -42,6 +42,16 @@ import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE
   assert.deepEqual(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false), { kind: 'person', id: '1m' });
   assert.equal(thingAt({ floor: 1, x: 9, y: 1, dir: 1 }, false).kind, 'look');
   assert.ok(canStand(4, 11, 1) && canStand(4, 12, 2) && !canStand(4, 11, 2)); // the sofa on her floor leaves the room and its clue open
+}
+
+// nothing stands against a door, or on anywhere but floor
+for (const floor of FLOOR_ORDER) {
+  for (const [x, y, look, across, along] of ALONG_THE_WALLS[floor]) {
+    const where = `${floor}층 ${x},${y} ${look}`;
+    assert.ok(!'#=%NTES&^'.includes(charAt(floor, x, y)), where);
+    if (along !== 0) assert.equal(charAt(floor, x, y + Math.sign(along)), '#', `${where}: 벽이어야 함`);
+    if (across !== 0) assert.equal(charAt(floor, x + Math.sign(across), y), '#', `${where}: 벽이어야 함`);
+  }
 }
 
 assert.equal(endingFor([]), 'bad');

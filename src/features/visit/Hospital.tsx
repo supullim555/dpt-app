@@ -3,7 +3,7 @@ import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 're
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS } from './script';
@@ -24,13 +24,6 @@ const BUST_UP = 0.06;
 const LYING_FROM = -0.19;
 const BED_HEAD = 0.46;
 const BED_FOOT = -0.2;
-// Things along the walls that you walk past, not into: cell, what, and how far off the middle of the cell (across, along).
-const ALONG_THE_WALLS: Record<FloorNo, [number, number, SpriteLook, number, number][]> = {
-  4: [[3, 4, 'chairBox', 0, -0.36], [10, 4, 'plant', 0, -0.36], [13, 7, 'chairBox', 0.36, 0]],
-  3: [[4, 7, 'chairBox', 0, 0.36], [5, 7, 'chairBox', 0, 0.36], [6, 7, 'chairBox', 0, 0.36], [9, 4, 'chairBox', 0, -0.36], [13, 7, 'plant', 0.34, 0.34], [6, 9, 'chairBox', 0, 0.36], [2, 4, 'wheelchair', 0, -0.33]],
-  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chairBox', 0, 0.36], [10, 7, 'chairBox', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chairBox', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
-  1: [[1, 1, 'chairBox', -0.34, -0.34], [1, 2, 'chairBox', -0.34, 0.34], [2, 2, 'chairBox', 0.34, 0.34], [1, 8, 'wheelchair', -0.32, 0], [2, 9, 'chairBox', 0, 0.36], [3, 9, 'chairBox', 0, 0.36], [7, 8, 'plant', 0.34, 0]],
-};
 // A chair backs onto the wall it's beside, facing the room.
 const awayFromWall = (across: number, along: number): Dir => (along > 0 ? 0 : along < 0 ? 2 : across > 0 ? 3 : 1);
 const GUIDE_CELL = { x: 5, y: 5 };

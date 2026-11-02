@@ -85,6 +85,15 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
   },
 };
 
+// Things along the walls that you walk past, not into: cell, what, and how far off the middle of the cell (across, along).
+// Never against a door: scripts/check-visit-logic.mjs checks.
+export const ALONG_THE_WALLS: Record<FloorNo, [number, number, 'chairBox' | 'plant' | 'wheelchair', number, number][]> = {
+  4: [[3, 4, 'chairBox', 0, -0.36], [10, 4, 'plant', 0, -0.36], [13, 7, 'chairBox', 0.36, 0]],
+  3: [[4, 7, 'chairBox', 0, 0.36], [5, 7, 'chairBox', 0, 0.36], [6, 7, 'chairBox', 0, 0.36], [13, 7, 'plant', 0.34, 0.34], [6, 9, 'chairBox', 0, 0.36], [2, 4, 'wheelchair', 0, -0.33]],
+  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chairBox', 0, 0.36], [10, 7, 'chairBox', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chairBox', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
+  1: [[1, 1, 'chairBox', -0.34, -0.34], [2, 2, 'chairBox', 0.34, 0.34], [1, 8, 'wheelchair', -0.32, 0], [2, 9, 'chairBox', 0, 0.36], [3, 9, 'chairBox', 0, 0.36], [7, 8, 'plant', 0.34, 0]],
+};
+
 // Same cells as CLUES in progress.ts, by floor.
 export const CLUE_CELLS: Record<FloorNo, Cell> = { 4: { x: 11, y: 1 }, 3: { x: 5, y: 9 }, 2: { x: 5, y: 9 }, 1: { x: 13, y: 1 } };
 
