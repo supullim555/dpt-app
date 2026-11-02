@@ -34,7 +34,8 @@ const ITEMS = {
   ],
   props: [
     { src: 'large', box: [5, 255, 365, 720], cell: { x: 0, y: 0, w: 512, h: 512 }, solid: true, tone: tree },
-    { src: 'bed', box: [295, 215, 720, 465], cell: { x: 512, y: 0, w: 512, h: 256 } },
+    // the head of the bed only: the mattress between its two ends is drawn below
+    { src: 'bed', box: [360, 225, 655, 352], cell: { x: 512, y: 0, w: 512, h: 256 } },
     { src: 'bed', box: [265, 540, 750, 770], cell: { x: 512, y: 256, w: 512, h: 256 } },
     { src: 'large', box: [340, 480, 535, 725], cell: { x: 0, y: 512, w: 256, h: 256 } },
     { src: 'large', box: [560, 490, 765, 725], cell: { x: 256, y: 512, w: 256, h: 256 } },
@@ -57,6 +58,7 @@ const ITEMS = {
     { src: 'things', box: [130, 110, 290, 325], cell: { x: 512, y: 680, w: 256, h: 172 } },
     { src: 'things', box: [640, 120, 895, 335], cell: { x: 512, y: 852, w: 256, h: 172 } },
     { src: 'things', box: [100, 400, 280, 925], cell: { x: 768, y: 340, w: 256, h: 684 } },
+    { src: 'blanket', box: [10, 345, 1010, 765], cell: { x: 0, y: 860, w: 512, h: 164 }, keep: blanketOnly },
   ],
   // The whole of her lying down, each to the same size of shoulders. The foot of each goes under the bed's rail.
   lying: [
@@ -75,7 +77,19 @@ function tree(v, y) {
   return y < CROWN_ENDS ? Math.min(255, v * 1.5) : v * 0.55;
 }
 
-async function cut({ src, box, solid, tone }) {
+// A pillow came with it, which would sit in front of her: only what's below the blanket's top edge.
+function blanketOnly(x, y) {
+  const edge = [[0, 760], [20, 740], [190, 492], [270, 440], [360, 418], [500, 395], [660, 425], [760, 445], [830, 495], [1024, 760]];
+  for (let i = 1; i < edge.length; i++) {
+    if (x > edge[i][0]) continue;
+    const [x0, y0] = edge[i - 1];
+    const [x1, y1] = edge[i];
+    return y >= y0 + ((y1 - y0) * (x - x0)) / (x1 - x0) - 4;
+  }
+  return false;
+}
+
+async function cut({ src, box, solid, keep, tone }) {
   const { data, info } = await sharp(path.join(RAW, `${src}-raw.png`)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const [x0, y0, x1, y1] = box;
   const w = x1 - x0;
@@ -110,7 +124,7 @@ async function cut({ src, box, solid, tone }) {
     // Only the crown is shaded that green: below it the green simply goes, or the trunk gets a dark rim.
     for (let y = Math.max(0, CROWN_ENDS - y0); y < h; y++) for (let x = 0; x < w; x++) if (isGreen(at(x, y))) on[y * w + x] = 0;
   } else {
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) on[y * w + x] = isGreen(at(x, y)) ? 0 : 1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) on[y * w + x] = isGreen(at(x, y)) || (keep && !keep(x0 + x, y0 + y)) ? 0 : 1;
   }
   // Specks left in the green, which would stretch the box and get a paper margin of their own.
   const seen = new Uint8Array(w * h);
@@ -197,6 +211,12 @@ async function buildSheet(name) {
     }
     // The tree takes the window's light on whatever is bright: its margin stays under that, or it turns the colour of the day.
     cutEdge(sheet, item.cell, edge, item.solid ? 180 : 244);
+  }
+  if (name === 'girl') {
+    // the mattress, plain enough to draw: it lies flat between the two ends of the bed, seen along its length
+    const mattress = Buffer.from(`<svg width="256" height="340"><rect x="5" y="5" width="246" height="330" rx="12" fill="rgb(226,226,226)" stroke="rgb(30,30,30)" stroke-width="5"/><path d="M40 70 q50 -12 90 4 M150 150 q40 14 70 2 M30 240 q60 16 110 -4" fill="none" stroke="rgb(135,135,135)" stroke-width="3"/></svg>`);
+    const { data } = await sharp(mattress).extractChannel('red').raw().toBuffer({ resolveWithObject: true });
+    for (let y = 0; y < 340; y++) for (let x = 0; x < 256; x++) sheet[(340 + y) * SHEET + 512 + x] = data[y * 256 + x];
   }
   if (name === 'props') {
     // her hairpin, the one thing on her with a colour of its own (the shader's)

@@ -95,6 +95,7 @@ export const STAIRS_FRONT: Cell = { x: 6, y: 2 };
 export const ROOM_ENTRY: Cell = { x: 7, y: 5 };
 export const GIRL_FRONT: Cell = { x: 7, y: 7 };
 export const SHOP_FRONT: Cell = { x: 10, y: 2 };
+export const GUIDE_FRONT: Cell = { x: 5, y: 4 };
 
 /** The start of each day: just inside the front door, looking down the lobby. */
 export const ENTRANCE: Pose = { floor: 1, x: 0, y: 4, dir: 1 };
@@ -183,6 +184,33 @@ export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFin
   if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: ROOM_ENTRY };
   if (o.clueToFind) return { text: `${o.clueToFind.floor}층에서 ${o.clueToFind.name} 찾기`, floor: o.clueToFind.floor, cell: null };
   if (!o.boughtToday) return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
+  return null;
+}
+
+// The first walk in: how to move, what the goal means, how to talk to someone, the shop, then up to her floor.
+// Goes by what you've actually done, only ever forward, so wandering off never strands you in it.
+export type TutorialStep = 'walk' | 'goal' | 'talk' | 'back' | 'shop' | 'buy' | 'shopBack' | 'lift' | 'room' | 'inRoom' | 'day' | 'done';
+
+export function tutorialAfter(step: TutorialStep, o: { moved: boolean; facing: string | null; talkingTo: string | null; floor: FloorNo; bought: boolean; atBedside: boolean; doneToday: boolean }): TutorialStep {
+  if (step === 'done' || step === 'day') return step;
+  if (o.doneToday) return 'day';
+  if (o.atBedside) return 'inRoom';
+  if (step === 'inRoom' || step === 'room') return step;
+  if (o.floor === 4) return 'room';
+  if (step === 'lift') return step;
+  if (o.bought) return o.talkingTo ? 'shopBack' : 'lift';
+  if (step === 'walk' && o.moved) return 'goal';
+  if (step === 'goal' && o.facing === '1i') return 'talk';
+  if (step === 'talk' && o.talkingTo === '1i') return 'back';
+  if (step === 'back' && !o.talkingTo) return 'shop';
+  if (step === 'shop' && o.facing === '1m') return 'buy';
+  return step;
+}
+
+/** What the goal is while it's being taught; afterwards goalFor decides. */
+export function tutorialGoal(step: TutorialStep): Goal | null {
+  if (step === 'walk' || step === 'goal' || step === 'talk' || step === 'back') return { text: '안내 직원에게 가기', floor: 1, cell: GUIDE_FRONT, face: 2 };
+  if (step === 'shop' || step === 'buy' || step === 'shopBack') return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
   return null;
 }
 

@@ -5,9 +5,38 @@ import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlo
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
-import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn } from '../src/features/visit/hospitalMap.ts';
+import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
+// the first walk in moves on by what you've done, only forward, and can't strand you
+{
+  const at = { moved: false, facing: null, talkingTo: null, floor: 1, bought: false, atBedside: false, doneToday: false };
+  assert.equal(tutorialAfter('walk', at), 'walk');
+  assert.equal(tutorialAfter('walk', { ...at, moved: true }), 'goal');
+  assert.equal(tutorialAfter('goal', { ...at, moved: true, facing: '1i' }), 'talk');
+  assert.equal(tutorialAfter('talk', { ...at, talkingTo: '1i' }), 'back');
+  assert.equal(tutorialAfter('back', { ...at, talkingTo: '1i' }), 'back');
+  assert.equal(tutorialAfter('back', at), 'shop');
+  assert.equal(tutorialAfter('shop', { ...at, facing: '1m' }), 'buy');
+  assert.equal(tutorialAfter('buy', { ...at, talkingTo: '1m', bought: true }), 'shopBack');
+  assert.equal(tutorialAfter('shopBack', { ...at, bought: true }), 'lift');
+  assert.equal(tutorialAfter('lift', at), 'lift'); // the next day's shop doesn't send you back
+  assert.equal(tutorialAfter('lift', { ...at, floor: 4 }), 'room');
+  assert.equal(tutorialAfter('room', { ...at, atBedside: true }), 'inRoom');
+  assert.equal(tutorialAfter('inRoom', at), 'inRoom');
+  assert.equal(tutorialAfter('inRoom', { ...at, doneToday: true }), 'day');
+  assert.equal(tutorialAfter('day', at), 'day');
+  assert.equal(tutorialAfter('done', { ...at, moved: true, floor: 4 }), 'done');
+  // go your own way and it catches up
+  assert.equal(tutorialAfter('walk', { ...at, floor: 4 }), 'room');
+  assert.equal(tutorialAfter('goal', { ...at, bought: true }), 'lift');
+  assert.equal(tutorialAfter('talk', { ...at, atBedside: true }), 'inRoom');
+  assert.equal(tutorialGoal('walk').face, 2);
+  assert.equal(tutorialGoal('shop').cell, SHOP_FRONT);
+  assert.equal(tutorialGoal('lift'), null);
+  assert.deepEqual(thingAt({ floor: 1, x: 5, y: 4, dir: 2 }, false), { kind: 'person', id: '1i' });
+}
+
 assert.equal(endingFor([]), 'bad');
 assert.equal(endingFor([1, 2, 3]), 'bad'); // away 4 days, missed the last
 assert.equal(endingFor([1, 7]), 'withGirl'); // away 5 days, came on the last

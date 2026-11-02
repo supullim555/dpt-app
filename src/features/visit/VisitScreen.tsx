@@ -17,6 +17,7 @@ import { VISIT_DEV } from './flag';
 import Hospital from './Hospital';
 import { findKeyword } from './keyword';
 import Notebook, { type Told } from './Notebook';
+import type { TutorialStep } from './hospitalMap';
 import Opening from './Opening';
 import PaperButton from './PaperButton';
 import { dayInRun, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
@@ -44,6 +45,8 @@ import {
   STAFF_CALL_GENTLE,
   STAFF_CALLS,
   TELL_QUESTION,
+  TUTORIAL_GIVE,
+  TUTORIAL_TELL,
 } from './script';
 
 const STORAGE_KEY = 'visit.state';
@@ -76,13 +79,15 @@ type VisitState = {
   shown: ClueId[];
   /** Floors you've been on: the map button only takes you to these. */
   floorsSeen: number[];
+  /** Where the first walk in has got to. */
+  tutorial: TutorialStep;
   /** Setting. Survives starting over. */
   fontScale: number;
   /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
   skippedDays: number;
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], fontScale: 1, skippedDays: 0 };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, skippedDays: 0 };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
@@ -117,7 +122,9 @@ export default function VisitScreen(_props: VisitScreenProps) {
   useAsyncEffect(async (isCancelled) => {
     const saved = await loadEntryOr<unknown>(STORAGE_KEY, null);
     if (isCancelled()) return;
-    const loaded = saved ? mergeWithDefaults(INITIAL, saved) : INITIAL;
+    const merged = saved ? mergeWithDefaults(INITIAL, saved) : INITIAL;
+    // Saved before there was a tutorial, by someone already on their way.
+    const loaded = merged.startDate && !(saved as { tutorial?: string }).tutorial ? { ...merged, tutorial: 'done' as const } : merged;
     setState(loaded);
     setPhase(loaded.noticeSeen ? 'title' : 'notice');
   }, []);
@@ -207,7 +214,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   };
 
   const startOver = () => {
-    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, floorsSeen: state.floorsSeen, fontScale: state.fontScale, run: state.run + 1 });
+    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, floorsSeen: state.floorsSeen, tutorial: 'done', fontScale: state.fontScale, run: state.run + 1 });
     setPhase('door');
   };
 
@@ -405,7 +412,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
             beats={HAPPY_BEATS}
             fontScale={scale}
             onDone={() => {
-              setState({ ...INITIAL, noticeSeen: true, openingSeen: true, fontScale: state.fontScale });
+              setState({ ...INITIAL, noticeSeen: true, openingSeen: true, tutorial: 'done', fontScale: state.fontScale });
               setPhase('title');
             }}
           />
@@ -443,6 +450,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
   // like everyone else: at her bedside the view comes in on her, and the panel takes the controls' place.
   const below = walking ? undefined : (
     <ImageBackground source={VISIT_PANEL} resizeMode="repeat" imageStyle={styles.fillImage} style={styles.panel}>
+      {state.tutorial === 'inRoom' && (phase === 'tell' || phase === 'give') && <Text style={[styles.tutorialTip, { fontSize: 13 * scale, lineHeight: 19 * scale }]}>{phase === 'tell' ? TUTORIAL_TELL : TUTORIAL_GIVE}</Text>}
+
       {phase === 'emotion' && <EmotionPicker paper question={null} onPick={(word) => pickEmotion(word)} />}
 
       {phase === 'give' && (
@@ -520,6 +529,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
           onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
           onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
           onTitle={() => setPhase('title')}
+          tutorial={state.tutorial}
+          onTutorial={(tutorial) => setState((s) => (s ? { ...s, tutorial } : s))}
           bedside={walking ? undefined : { below, bubble: inBubble ? spoken : undefined, more: canTapThrough, onPress: canTapThrough ? advance : undefined, girlHere: showGirl, staffIn: phase === 'staff', arriving: phase === 'arrive' ? lines[0] : undefined }}
         />
         {devBar}
@@ -533,6 +544,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
   sceneImage: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' },
   moreLight: { color: 'rgba(255,255,255,0.6)', fontSize: 10, textAlign: 'right', marginTop: 4 },
+  tutorialTip: { color: '#fff', textAlign: 'center', fontFamily: 'serif', borderWidth: 1.5, borderColor: AMBER, backgroundColor: 'rgba(0,0,0,0.88)', padding: 8 },
   hint: { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', paddingVertical: 6 },
   panel: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 4, gap: 10 },
   textBox: { borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000', padding: 14, minHeight: 96, justifyContent: 'center' },

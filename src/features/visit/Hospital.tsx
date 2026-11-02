@@ -3,10 +3,10 @@ import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 're
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, type FloorNo, type Pose, type Thing } from './hospitalMap';
+import { ahead, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY } from './script';
+import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS } from './script';
 
 const AMBER = '#d9a441';
 const LIFT_MS = 1100;
@@ -21,6 +21,8 @@ const BAR_H = 54;
 // How far above her waist the drawing of her head and shoulders starts.
 const BUST_UP = 0.06;
 const LYING_FROM = -0.19;
+const BED_HEAD = 0.46;
+const BED_FOOT = -0.2;
 // Further back, so whoever came in to send you out is in the picture too.
 const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
 const PERSON_FOCUS = { height: 0.72, away: 0.86 };
@@ -42,6 +44,8 @@ type Props = {
   onFind: (clue: ClueId) => void;
   onNextDay: () => void;
   onTitle: () => void;
+  tutorial: TutorialStep;
+  onTutorial: (step: TutorialStep) => void;
   /** Set while the story has you at her bedside: no walking, and the panel below takes the controls' place. */
   bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean; arriving?: string };
 };
@@ -49,7 +53,7 @@ type Props = {
 type Panel = 'none' | 'map' | 'lift' | 'stairs';
 /** Who or what the view has come in close on, until you go back. */
 type Focused =
-  | { kind: 'person'; name: string; lines: string[]; index: number; shop: boolean }
+  | { kind: 'person'; id: string; name: string; lines: string[]; index: number; shop: boolean }
   | { kind: 'thing'; text: string };
 
 const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean; fontScale: number; name?: string }) => (
@@ -67,7 +71,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, onTitle, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, onTitle, tutorial, onTutorial, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -103,11 +107,13 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       })
     );
     if (floor === 4) {
-      // far enough back that she can tip onto the pillows without going through it
-      out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, 0.46, 0], fixed: true });
-      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, -0.2, 0], fixed: true });
+      // One bed, seen from its foot: the head far enough back that she can tip onto the pillows without going
+      // through it, the mattress flat from there to the rail in front.
+      out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, BED_HEAD, 0.28], fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'mattress', shift: [0, BED_FOOT, 0.27], lean: -1.45, fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, BED_FOOT, 0], fixed: true });
       const g = girlOn(now.day);
-      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: [g.body ? 0.36 : 0.48, 0.36, 0.3], fixed: true });
+      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: g.body ? [0.3, 0.36, 0.33] : [0.24, 0.22, 0.5], fixed: true });
       if (now.bedside?.girlHere !== false) {
         const look = turned.current ? g.headTo : g.headFrom;
         // Up the tipped paper, from her waist.
@@ -122,7 +128,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           const [pinUp, pinBack] = along(bustUp, pin[1]);
           out.push({ cell: GIRL_CELL, look: g.body ? 'pin' : 'pinSmall', id: 'pin', shift: [pin[0], y + pinBack - 0.012, pinUp], fixed: true });
         }
-        if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [-0.3, 0.3, 0], fixed: true });
+        // over her lap, or the bottom of the drawing of her would show on the mattress
+        if (g.body) out.push({ cell: GIRL_CELL, look: 'blanket', shift: [0, -0.06, 0.12], fixed: true });
+        if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [-0.47, 0.3, 0], fixed: true });
         if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [0.06, -0.14, 0.33], fixed: true });
       }
       if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.5, -0.32, 0] });
@@ -283,7 +291,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     } else if (thing.kind === 'person') {
       const person = PEOPLE[thing.id];
       setNote('');
-      setFocused({ kind: 'person', name: person.name, lines: person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
+      const firstVisit = thing.id === '1i' && (tutorial === 'goal' || tutorial === 'talk');
+      setFocused({ kind: 'person', id: thing.id, name: person.name, lines: firstVisit ? GUIDE_FIRST_LINES : person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
       if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
       else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
@@ -308,13 +317,28 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   // Only the fairy's note makes a clue a goal, so a first run still stumbles on them.
   const todaysClue = CLUES.find((c) => c.day === day && !found.includes(c.id)) ?? null;
-  const goal = goalFor({
+  const goal = tutorialGoal(tutorial) ?? goalFor({
     doneToday,
     boughtToday,
     clueToFind: run >= 2 && todaysClue ? { floor: todaysClue.floor as FloorNo, name: CLUE_TEXT[todaysClue.id].name } : null,
   });
   const arrow = arrowFor(pose, goal);
   const textSize = { fontSize: 14 * fontScale, lineHeight: 21 * fontScale };
+
+  const nextLesson = tutorialAfter(tutorial, {
+    moved: pose.floor !== ENTRANCE.floor || pose.x !== ENTRANCE.x || pose.y !== ENTRANCE.y,
+    facing: thing?.kind === 'person' ? thing.id : null,
+    talkingTo: focused?.kind === 'person' ? focused.id : null,
+    floor: pose.floor,
+    bought: boughtToday,
+    atBedside,
+    doneToday,
+  });
+  useEffect(() => {
+    if (nextLesson !== tutorial) onTutorial(nextLesson);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextLesson, tutorial]);
+  const lesson = !bedside && focused?.kind !== 'thing' ? TUTORIAL_TIPS[tutorial] : undefined;
 
   const thingLabel = thing
     ? thing.kind === 'lift' ? '엘리베이터 타기'
@@ -375,11 +399,21 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           )
         )}
 
-        {note !== '' && !focused && !bedside && (
-          <View style={styles.noteBox} pointerEvents="none">
-            <Text style={[styles.note, textSize]}>{note}</Text>
-          </View>
-        )}
+        <View style={styles.bottomStack} pointerEvents="box-none">
+          {note !== '' && !focused && !bedside && (
+            <View style={styles.noteBox} pointerEvents="none">
+              <Text style={[styles.note, textSize]}>{note}</Text>
+            </View>
+          )}
+          {lesson !== undefined && (
+            <View style={styles.lesson}>
+              <Text style={[styles.lessonText, textSize]}>{lesson}</Text>
+              <TouchableOpacity onPress={() => onTutorial('done')} style={styles.lessonLink}>
+                <Text style={[styles.lessonLinkText, { fontSize: 12 * fontScale }]}>{tutorial === 'day' ? TUTORIAL_OK : TUTORIAL_SKIP}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
 
         {bedside && (
           <>
@@ -587,7 +621,12 @@ const styles = StyleSheet.create({
   goalText: { color: '#fff', fontFamily: 'serif', flexShrink: 1 },
   mapButton: { position: 'absolute', right: 10, top: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2' },
   mapButtonText: { color: '#fff', fontSize: 14, fontFamily: 'serif' },
-  noteBox: { position: 'absolute', left: 14, right: 14, bottom: 12, backgroundColor: 'rgba(0,0,0,0.78)', padding: 10 },
+  bottomStack: { position: 'absolute', left: 14, right: 14, bottom: 12, gap: 8 },
+  noteBox: { backgroundColor: 'rgba(0,0,0,0.78)', padding: 10 },
+  lesson: { backgroundColor: 'rgba(0,0,0,0.88)', borderWidth: 1.5, borderColor: AMBER, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, gap: 2 },
+  lessonText: { color: '#fff', fontFamily: 'serif' },
+  lessonLink: { alignSelf: 'flex-end', paddingVertical: 4, paddingLeft: 12 },
+  lessonLinkText: { color: AMBER, textDecorationLine: 'underline', fontFamily: 'serif' },
   caption: { position: 'absolute', left: 14, right: 14, bottom: 14, backgroundColor: 'rgba(0,0,0,0.85)', borderWidth: 1.5, borderColor: '#f2f2f2', padding: 12 },
   note: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },
   // Above whoever the view has come in on, its tail pointing down at them.

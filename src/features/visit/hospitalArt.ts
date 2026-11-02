@@ -272,11 +272,13 @@ export const GIRL_PART = {
   headSideTied: bust(3, 0),
   headFront: bust(0, 1),
   headTired: bust(1, 1),
+  mattress: bust(2, 1),
   torso: { x: 0, y: 680, w: 256, h: 180 },
   torsoBack: { x: 256, y: 680, w: 256, h: 180 },
   notebook: { x: 512, y: 680, w: 256, h: 172 },
   leaves: { x: 512, y: 852, w: 256, h: 172 },
   drip: { x: 768, y: 340, w: 256, h: 684 },
+  blanket: { x: 0, y: 860, w: 512, h: 164 },
 } as const;
 export type GirlPart = keyof typeof GIRL_PART;
 
