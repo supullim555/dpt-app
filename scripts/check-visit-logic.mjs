@@ -35,6 +35,7 @@ import { arrival, arrowFor, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE
   assert.equal(tutorialGoal('shop').cell, SHOP_FRONT);
   assert.equal(tutorialGoal('lift'), null);
   assert.deepEqual(thingAt({ floor: 1, x: 5, y: 4, dir: 2 }, false), { kind: 'person', id: '1i' });
+  assert.equal(thingAt({ floor: 1, x: 5, y: 6, dir: 0 }, false).kind, 'look'); // the wall behind the desk
 }
 
 assert.equal(endingFor([]), 'bad');

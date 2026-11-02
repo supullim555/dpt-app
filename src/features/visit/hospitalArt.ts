@@ -344,6 +344,25 @@ export const FURNITURE_PART = {
 } as const;
 export type FurniturePart = keyof typeof FURNITURE_PART;
 
+/**
+ * The sides of the solid sofa, laid out flat on the furniture sheet like a skin. Each is a rectangle, in pixels; to dress
+ * a sofa differently, only this drawing changes.
+ */
+const SKIN_AT = { x: 512, y: 256 };
+const skinFace = (x: number, y: number, w: number, h: number) => ({ x: SKIN_AT.x + x, y: SKIN_AT.y + y, w, h });
+export const SOFA_SKIN = {
+  seatTop: skinFace(0, 0, 256, 128),
+  seatFront: skinFace(256, 0, 256, 64),
+  backFront: skinFace(0, 128, 256, 128),
+  backRear: skinFace(256, 128, 256, 128),
+  backTop: skinFace(0, 256, 256, 32),
+  armFront: skinFace(256, 256, 64, 128),
+  armSide: skinFace(320, 256, 128, 128),
+  armTop: skinFace(448, 256, 64, 128),
+  leg: skinFace(0, 320, 32, 32),
+} as const;
+export type SkinFace = keyof typeof SOFA_SKIN;
+
 /** The first day, with her hair down, and the lobby's furniture. */
 export const EXTRA_PART = {
   lyingLooseWindow: { x: 0, y: 0, w: 512, h: 512 },

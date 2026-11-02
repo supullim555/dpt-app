@@ -292,6 +292,24 @@ const ROOM_THINGS = [
   },
 ];
 
+// The sofa that stands in the room as a solid: every side of it laid out flat, like a skin (SOFA_SKIN in hospitalArt.ts).
+// Each side is its own piece of card, with a pale edge where it folds.
+const skinFace = (x, y, w, h, tone, extra = '') => `<rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" fill="rgb(${tone},${tone},${tone})" stroke="rgb(232,232,232)" stroke-width="4"/><rect x="${x + 7}" y="${y + 7}" width="${w - 14}" height="${h - 14}" fill="none" stroke="rgb(26,26,26)" stroke-width="3"/>${extra}`;
+const SOFA_SKIN_ART = {
+  cell: { x: 512, y: 256, w: 512, h: 512 },
+  svg: `<svg width="512" height="512">${[
+    skinFace(0, 0, 256, 128, 178, '<path d="M88 12 V116 M170 12 V116" stroke="rgb(70,70,70)" stroke-width="3"/><path d="M24 60 q20 8 40 0 M112 72 q18 8 36 0 M192 54 q18 8 36 0" fill="none" stroke="rgb(120,120,120)" stroke-width="2"/>'),
+    skinFace(256, 0, 256, 64, 142, '<path d="M344 10 V54 M426 10 V54" stroke="rgb(60,60,60)" stroke-width="3"/>'),
+    skinFace(0, 128, 256, 128, 124, '<path d="M88 138 V246 M170 138 V246" stroke="rgb(50,50,50)" stroke-width="3"/><path d="M26 164 q18 -8 40 2 M110 200 q20 -8 38 2 M190 170 q18 -8 40 2" fill="none" stroke="rgb(85,85,85)" stroke-width="2"/>'),
+    skinFace(256, 128, 256, 128, 104, '<path d="M270 192 H498" stroke="rgb(60,60,60)" stroke-width="2"/>'),
+    skinFace(0, 256, 256, 32, 158),
+    skinFace(256, 256, 64, 128, 150),
+    skinFace(320, 256, 128, 128, 138, '<path d="M336 300 q44 -14 80 2" fill="none" stroke="rgb(90,90,90)" stroke-width="2"/>'),
+    skinFace(448, 256, 64, 128, 170),
+    skinFace(0, 320, 32, 32, 60),
+  ].join('')}</svg>`,
+};
+
 async function buildSheet(name) {
   const sheet = new Uint8Array(SHEET * SHEET);
   for (const item of ITEMS[name]) {
@@ -319,7 +337,7 @@ async function buildSheet(name) {
     cutEdge(sheet, item.cell, edge, item.solid ? 180 : 244);
   }
   if (name === 'extra' || name === 'furniture') {
-    for (const f of name === 'extra' ? FURNITURE : ROOM_THINGS) {
+    for (const f of name === 'extra' ? FURNITURE : [...ROOM_THINGS, SOFA_SKIN_ART]) {
       const { data } = await sharp(Buffer.from(f.svg)).extractChannel('red').raw().toBuffer({ resolveWithObject: true });
       const a = await sharp(Buffer.from(f.svg)).extractChannel('alpha').raw().toBuffer();
       for (let y = 0; y < f.cell.h; y++) {

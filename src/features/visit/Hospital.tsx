@@ -116,7 +116,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         if (person && c !== 'N') out.push({ cell: { x, y }, look: person.look });
         if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
-        if (c === '&') out.push({ cell: { x, y }, look: 'sofa' });
+        if (c === '&') out.push({ cell: { x, y }, look: 'sofaBox', face: 0 });
         if (c === '^') out.push({ cell: { x, y }, look: 'plant' });
       })
     );

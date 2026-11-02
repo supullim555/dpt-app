@@ -245,6 +245,8 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   const c = charAt(p.floor, front.x, front.y);
   if (c === 'E') return { kind: 'lift' };
   if (c === 'S') return { kind: 'stairs' };
+  // The front desk has its wall behind it, so there's no talking to the guide from that side.
+  if (isPerson(c) && p.floor === 1 && c === 'i' && p.dir === 0) return { kind: 'look', text: '층별 안내판의 뒷면이다.', wall: true };
   if (isPerson(c)) return { kind: 'person', id: `${p.floor}${c}` };
   if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'look', text: '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };
   if (c === '%') return { kind: 'look', text: HOSPITAL[p.floor].blocked ?? '' };
