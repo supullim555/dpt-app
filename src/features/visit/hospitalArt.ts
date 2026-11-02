@@ -19,6 +19,8 @@ export const TILES = {
   yardWall: 13,
   yardGround: 14,
   number: 15, // to 18: floors 1 to 4
+  shelf: 19,
+  floorGuide: 20,
 } as const;
 
 /** Top-left corner of a tile, in pixels. */
@@ -244,6 +246,48 @@ function paintStructure(c: CanvasRenderingContext2D) {
     c.font = '700 78px serif';
     c.fillText(`${f}층`, t.x + 100, t.y + 62);
   }
+
+  // the shop's walls: shelves from floor to ceiling, things on them in no particular order
+  t = at(TILES.shelf);
+  paper(p, t.x, t.y, TILE, 0.46);
+  for (let row = 0; row < 3; row++) {
+    const base = t.y + 60 + row * 64;
+    let lx = t.x + 6;
+    while (lx < t.x + 170) {
+      const w = 14 + p.r() * 22;
+      const h = 22 + p.r() * 24;
+      const v = 0.45 + p.r() * 0.5;
+      c.fillStyle = grey(v);
+      if (p.r() < 0.3) {
+        c.beginPath();
+        c.arc(lx + w / 2, base - w / 2, w / 2, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = grey(0.1);
+        c.lineWidth = 2;
+        c.stroke();
+      } else {
+        c.fillRect(lx, base - h, w, h);
+        box(p, lx, base - h, w, h, 1.6);
+      }
+      lx += w + 4 + p.r() * 6;
+    }
+    c.fillStyle = grey(0.78);
+    c.fillRect(t.x, base, TILE, 7);
+    line(p, t.x, base + 7, t.x + TILE, base + 7, 2.4, 0.08);
+  }
+
+  // behind the front desk: which floor is which
+  t = at(TILES.floorGuide);
+  wallBase(p, t.x, t.y);
+  c.fillStyle = grey(0.96);
+  c.fillRect(t.x + 22, t.y + 8, 156, 104);
+  box(p, t.x + 22, t.y + 8, 156, 104, 3);
+  c.fillStyle = grey(0.1);
+  c.font = '700 17px serif';
+  c.fillText('4층 호스피스', t.x + 100, t.y + 26);
+  c.fillText('3층 중증 병동', t.x + 100, t.y + 49);
+  c.fillText('2층 일반 병동', t.x + 100, t.y + 72);
+  c.fillText('1층 로비·매점', t.x + 100, t.y + 95);
 }
 
 /** Cells on the props sheet. Each clue has its own, so it can be lifted up and looked at. */
@@ -290,12 +334,16 @@ export const LYING_PART = {
 } as const;
 export type LyingPart = keyof typeof LYING_PART;
 
-/** The first day, with her hair down. */
-export const FIRST_PART = {
+/** The first day, with her hair down, and the lobby's furniture. */
+export const EXTRA_PART = {
   lyingLooseWindow: { x: 0, y: 0, w: 512, h: 512 },
   lyingLooseTurned: { x: 512, y: 0, w: 512, h: 512 },
+  desk: { x: 0, y: 512, w: 512, h: 256 },
+  counter: { x: 512, y: 512, w: 512, h: 256 },
+  signGuide: { x: 0, y: 768, w: 512, h: 128 },
+  signShop: { x: 512, y: 768, w: 512, h: 128 },
 } as const;
-export type FirstPart = keyof typeof FIRST_PART;
+export type ExtraPart = keyof typeof EXTRA_PART;
 
 function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   const canvas = document.createElement('canvas');
@@ -309,7 +357,7 @@ function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   return out;
 }
 
-const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', first: '/hospital/sheet-first.png' };
+const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png' };
 
 /** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
 function loadChannel(url: string): Promise<Uint8Array> {
@@ -322,6 +370,6 @@ function loadChannel(url: string): Promise<Uint8Array> {
 }
 
 export const loadSheets = async () => {
-  const [people, props, girl, lying, first] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.first)]);
-  return { structure: toChannel(paintStructure), people, props, girl, lying, first };
+  const [people, props, girl, lying, extra] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra)]);
+  return { structure: toChannel(paintStructure), people, props, girl, lying, extra };
 };

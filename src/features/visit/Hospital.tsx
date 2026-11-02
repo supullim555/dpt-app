@@ -24,6 +24,9 @@ const BUST_UP = 0.06;
 const LYING_FROM = -0.19;
 const BED_HEAD = 0.46;
 const BED_FOOT = -0.2;
+const GUIDE_CELL = { x: 5, y: 5 };
+const SHOPKEEPER_CELL = { x: 10, y: 1 };
+const SHOP_DOOR = { x: 9, y: 3 };
 // Further back, so whoever came in to send you out is in the picture too.
 const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
 const PERSON_FOCUS = { height: 0.72, away: 0.86 };
@@ -87,8 +90,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const busy = useRef(false);
   // Has she turned to you yet? Walking up the corridor she hasn't; come in and she does.
   const turned = useRef(bedside !== undefined);
-  const latest = useRef({ pose, bedside, doneToday, found, day });
-  latest.current = { pose, bedside, doneToday, found, day };
+  const talking = focused?.kind === 'person';
+  const latest = useRef({ pose, bedside, doneToday, found, day, talking });
+  latest.current = { pose, bedside, doneToday, found, day, talking };
   const bars = useRef(new Animated.Value(0)).current;
 
   const clue = clueOn(day, pose.floor);
@@ -107,6 +111,15 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
       })
     );
+    if (floor === 1) {
+      // The front desk, between you and whoever's at it, and the shop's counter. Each sign sticks out over the
+      // lobby, so you can see it coming along the corridor.
+      out.push({ cell: GUIDE_CELL, look: 'desk', shift: [0, -0.22, 0], fixed: true });
+      // Close up, talking to someone, it would hang across the top of the picture.
+      if (!now.talking) out.push({ cell: GUIDE_CELL, look: 'signGuide', shift: [0, -0.62, 0.76], fixed: true });
+      out.push({ cell: SHOPKEEPER_CELL, look: 'counter', shift: [0, 0.26, 0], fixed: true });
+      out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.52, 0.76], fixed: true });
+    }
     if (floor === 4) {
       // One bed, seen from its foot: the head far enough back that she can tip onto the pillows without going
       // through it, the mattress flat from there to the rail in front.
@@ -178,7 +191,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   useEffect(() => {
     scene.current?.setSprites(spritesFor(pose.floor));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [found.length, bedside?.girlHere, bedside?.staffIn]);
+  }, [found.length, bedside?.girlHere, bedside?.staffIn, talking]);
 
   // The black bars of a scene, sliding in over the view while you come in and away once she speaks.
   const inScene = bedside?.arriving !== undefined;

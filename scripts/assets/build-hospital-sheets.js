@@ -66,8 +66,8 @@ const ITEMS = {
     { src: 'lying-turned', box: [125, 115, 895, 1024], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.547 },
     { src: 'lying-hand', box: [205, 45, 825, 1024], cell: { x: 0, y: 512, w: 512, h: 512 }, scale: 0.505 },
   ],
-  // The first day, with her hair down.
-  first: [
+  // The first day, with her hair down, and below it the lobby's furniture (drawn further down).
+  extra: [
     { src: 'lying-loose-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
     { src: 'lying-loose-turned', box: [185, 165, 890, 910], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.657 },
   ],
@@ -191,6 +191,47 @@ function cutEdge(sheet, cell, radius, paper = 244) {
   }
 }
 
+// The front desk, the shop counter and their signs: words have to be right, so these are drawn here and not generated.
+const FONT = 'font-family="Batang, serif" font-weight="700" text-anchor="middle" fill="rgb(26,26,26)"';
+const INK_LINE = 'stroke="rgb(26,26,26)" stroke-width="4" stroke-linejoin="round"';
+const FAINT = 'stroke="rgb(90,90,90)" stroke-width="2"';
+const hatchLines = (x, y, w, h, gap) => {
+  let d = '';
+  for (let i = gap; i < w; i += gap) d += `M${x + i} ${y + 2} l-3 ${h - 4} `;
+  return `<path d="${d}" fill="none" ${FAINT}/>`;
+};
+const sign = (word) => `<svg width="512" height="128"><path d="M110 10 V36 M402 10 V36" ${INK_LINE}/><rect x="24" y="34" width="464" height="84" rx="6" fill="rgb(238,238,238)" ${INK_LINE}/><text x="256" y="97" font-size="62" ${FONT}>${word}</text></svg>`;
+const FURNITURE = [
+  {
+    // a flat-topped desk: a screen's back, a stack of leaflets, a bell
+    cell: { x: 0, y: 512, w: 512, h: 256 },
+    svg: `<svg width="512" height="256">
+      <rect x="88" y="26" width="104" height="66" rx="4" fill="rgb(120,120,120)" ${INK_LINE}/><rect x="126" y="90" width="28" height="14" fill="rgb(90,90,90)" ${INK_LINE}/>
+      <rect x="250" y="82" width="84" height="22" fill="rgb(235,235,235)" ${INK_LINE}/><path d="M250 92 H334" ${FAINT}/>
+      <path d="M372 104 a24 24 0 0 1 48 0 Z" fill="rgb(200,200,200)" ${INK_LINE}/><circle cx="396" cy="77" r="4" fill="rgb(60,60,60)"/>
+      <rect x="44" y="124" width="424" height="120" fill="rgb(176,176,176)" ${INK_LINE}/>${hatchLines(44, 124, 424, 120, 26)}
+      <rect x="18" y="102" width="476" height="24" rx="3" fill="rgb(236,236,236)" ${INK_LINE}/>
+      <rect x="166" y="140" width="180" height="88" rx="4" fill="rgb(240,240,240)" ${INK_LINE}/><text x="256" y="205" font-size="62" ${FONT}>안내</text>
+    </svg>`,
+  },
+  {
+    // a low counter with the day's small things out on it
+    cell: { x: 512, y: 512, w: 512, h: 256 },
+    svg: `<svg width="512" height="256">
+      <g fill="rgb(214,214,214)" ${INK_LINE}><circle cx="62" cy="92" r="19"/><circle cx="100" cy="92" r="19"/><circle cx="81" cy="62" r="19"/></g>
+      <rect x="150" y="56" width="62" height="54" fill="rgb(120,120,120)" ${INK_LINE}/><path d="M150 76 H212" ${FAINT}/>
+      <rect x="236" y="44" width="40" height="66" rx="8" fill="rgb(236,236,236)" ${INK_LINE}/><rect x="244" y="30" width="24" height="16" fill="rgb(90,90,90)" ${INK_LINE}/>
+      <rect x="298" y="72" width="78" height="38" fill="rgb(224,224,224)" ${INK_LINE}/><path d="M298 86 H376 M322 72 V110" ${FAINT}/>
+      <path d="M398 110 L410 58 L466 58 L478 110 Z" fill="rgb(170,170,170)" ${INK_LINE}/>
+      <rect x="44" y="128" width="424" height="116" fill="rgb(128,128,128)" ${INK_LINE}/>${hatchLines(44, 128, 424, 116, 34)}
+      <rect x="18" y="108" width="476" height="24" rx="3" fill="rgb(232,232,232)" ${INK_LINE}/>
+      <rect x="176" y="146" width="160" height="80" rx="4" fill="rgb(240,240,240)" ${INK_LINE}/><text x="256" y="205" font-size="56" ${FONT}>매점</text>
+    </svg>`,
+  },
+  { cell: { x: 0, y: 768, w: 512, h: 128 }, svg: sign('안내') },
+  { cell: { x: 512, y: 768, w: 512, h: 128 }, svg: sign('매점') },
+];
+
 async function buildSheet(name) {
   const sheet = new Uint8Array(SHEET * SHEET);
   for (const item of ITEMS[name]) {
@@ -216,6 +257,18 @@ async function buildSheet(name) {
     }
     // The tree takes the window's light on whatever is bright: its margin stays under that, or it turns the colour of the day.
     cutEdge(sheet, item.cell, edge, item.solid ? 180 : 244);
+  }
+  if (name === 'extra') {
+    for (const f of FURNITURE) {
+      const { data } = await sharp(Buffer.from(f.svg)).extractChannel('red').raw().toBuffer({ resolveWithObject: true });
+      const a = await sharp(Buffer.from(f.svg)).extractChannel('alpha').raw().toBuffer();
+      for (let y = 0; y < f.cell.h; y++) {
+        for (let x = 0; x < f.cell.w; x++) {
+          if (a[y * f.cell.w + x] >= 128) sheet[(f.cell.y + y) * SHEET + f.cell.x + x] = Math.max(INK_FLOOR, data[y * f.cell.w + x]);
+        }
+      }
+      cutEdge(sheet, f.cell, EDGE);
+    }
   }
   if (name === 'girl') {
     // the mattress, plain enough to draw: it lies flat between the two ends of the bed, seen along its length
