@@ -30,8 +30,12 @@ export const TILES = {
 /** Top-left corner of a tile, in pixels. */
 export const tileAt = (t: number) => ({ x: (t % 5) * TILE, y: Math.floor(t / 5) * TILE });
 
-export type PersonLook = 'nurse' | 'worker' | 'elder' | 'child' | 'visitor' | 'patient' | 'shopkeeper' | 'doctor';
-export const PERSON_SLOT: Record<PersonLook, number> = { nurse: 0, worker: 1, elder: 2, child: 3, visitor: 4, patient: 5, shopkeeper: 6, doctor: 7 };
+type FirstPerson = 'nurse' | 'worker' | 'elder' | 'child' | 'visitor' | 'patient' | 'shopkeeper' | 'doctor';
+/** v0.74: the people who shared someone else's drawing until then, on a sheet of their own. */
+type SecondPerson = 'receptionist' | 'guard' | 'porter' | 'physio' | 'reader' | 'volunteer' | 'grandpa' | 'grandma';
+export type PersonLook = FirstPerson | SecondPerson;
+export const PERSON_SLOT: Record<FirstPerson, number> = { nurse: 0, worker: 1, elder: 2, child: 3, visitor: 4, patient: 5, shopkeeper: 6, doctor: 7 };
+export const PERSON2_SLOT: Record<SecondPerson, number> = { receptionist: 0, guard: 1, porter: 2, physio: 3, reader: 4, volunteer: 5, grandpa: 6, grandma: 7 };
 /** Slots on the people sheet: 4 across, 2 down. */
 export const SLOT_W = 256;
 export const SLOT_H = 512;
@@ -117,7 +121,26 @@ function paper(p: Pen, x: number, y: number, s: number, tone: number) {
   c.restore();
 }
 
+// The Gemini-drawn structure sheet (build-hospital-sheets.js), while paintStructure runs; null if it couldn't load.
+let drawn: Uint8Array | null = null;
+
+/** A tile's square from the drawn sheet, as it is. */
+function fromDrawn(c: CanvasRenderingContext2D, from: { x: number; y: number }, to: { x: number; y: number }) {
+  if (!drawn) return;
+  const img = c.createImageData(TILE, TILE);
+  for (let y = 0; y < TILE; y++) {
+    for (let x = 0; x < TILE; x++) {
+      const v = drawn[(from.y + y) * SHEET + from.x + x];
+      const i = (y * TILE + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+  }
+  c.putImageData(img, to.x, to.y);
+}
+
 function wallBase(p: Pen, x: number, y: number) {
+  if (drawn) return fromDrawn(p.c, { x, y }, { x, y });
   paper(p, x, y, TILE, 0.82);
   line(p, x, y + 118, x + TILE, y + 118, 2.4);
   hatch(p, x, y + 120, TILE, 62, 12, 0.42);
@@ -131,7 +154,17 @@ function doorShape(p: Pen, x: number, y: number) {
   line(p, x + 140, y + 104, x + 152, y + 104, 5, 0.06);
 }
 
-function paintStructure(c: CanvasRenderingContext2D) {
+// Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
+const DRAWN_TILES = [TILES.floor, TILES.shutDoor, TILES.window, TILES.lift, TILES.stairs, TILES.roomDoor, TILES.counter, TILES.yardWall, TILES.yardGround, TILES.water, TILES.treeline, TILES.pebbles];
+
+function paintStructure(c: CanvasRenderingContext2D, base: Uint8Array | null = null) {
+  drawn = base;
+  paintTiles(c);
+  for (const t of base ? DRAWN_TILES : []) fromDrawn(c, tileAt(t), tileAt(t));
+  drawn = null;
+}
+
+function paintTiles(c: CanvasRenderingContext2D) {
   const p: Pen = { c, r: seeded(11) };
   const at = (t: number) => tileAt(t);
 
@@ -438,7 +471,7 @@ function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   return out;
 }
 
-const SHEET_FILES = { people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
+const SHEET_FILES = { structure: '/hospital/sheet-structure.png', people2: '/hospital/sheet-people2.png', people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
 
 /** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
 function loadChannel(url: string): Promise<Uint8Array> {
@@ -451,6 +484,7 @@ function loadChannel(url: string): Promise<Uint8Array> {
 }
 
 export const loadSheets = async () => {
-  const [people, props, girl, lying, extra, furniture] = await Promise.all([loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture)]);
-  return { structure: toChannel(paintStructure), people, props, girl, lying, extra, furniture };
+  // Without the drawn walls the painted ones still do.
+  const [drawnWalls, people, people2, props, girl, lying, extra, furniture] = await Promise.all([loadChannel(SHEET_FILES.structure).catch(() => null), loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.people2), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture)]);
+  return { structure: toChannel((c) => paintStructure(c, drawnWalls)), people, people2, props, girl, lying, extra, furniture };
 };

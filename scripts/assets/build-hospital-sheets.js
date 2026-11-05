@@ -74,6 +74,17 @@ const ITEMS = {
   ],
   // Sofas, chairs and so on, drawn further down.
   furniture: [],
+  // v0.74: everyone who shared a drawing now has their own (hospitalArt.ts PERSON2_SLOT).
+  people2: [
+    { src: 'people-c', box: [420, 200, 615, 930], cell: slot(0), height: 470 },
+    { src: 'people-c', box: [675, 160, 940, 920], cell: slot(1), height: 480 },
+    { src: 'people-d', box: [88, 115, 315, 930], cell: slot(2), height: 480 },
+    { src: 'people-d', box: [395, 150, 635, 930], cell: slot(3), height: 465 },
+    { src: 'people-d', box: [735, 170, 940, 930], cell: slot(4), height: 465 },
+    { src: 'people-e', box: [95, 175, 330, 875], cell: slot(5), height: 450 },
+    { src: 'grandpa', box: [360, 75, 665, 960], cell: slot(6), height: 460 },
+    { src: 'people-e', box: [695, 290, 920, 875], cell: slot(7), height: 390 },
+  ],
   // The first day, with her hair down, and below it the lobby's furniture (drawn further down).
   extra: [
     { src: 'lying-loose-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
@@ -338,6 +349,85 @@ async function buildSheet(name) {
   console.log(`sheet-${name}.png`, fs.statSync(file).size);
 }
 
+// v0.74: the walls, floors and doors, drawn with Gemini (generate-hospital-art.js tex-*), cut into the tiles of the
+// structure sheet at hospitalArt.ts's places. Whatever tiles must also repeats seamlessly; the game still paints the
+// parts with writing (floor numbers, the floor guide) and the small marks on the walls over the top.
+const TILE = 200;
+const tileAt = (t) => ({ x: (t % 5) * TILE, y: Math.floor(t / 5) * TILE });
+const WALL = { src: 'tex-walls', box: [76, 76, 469, 466], seam: 'x' };
+const STRUCTURE = [
+  // the corridor wall four ways, so it doesn't look copied: as drawn, mirrored, moved half along, both
+  { tile: 0, ...WALL },
+  { tile: 1, ...WALL, flip: true },
+  { tile: 2, ...WALL, shift: true },
+  { tile: 3, ...WALL, flip: true, shift: true },
+  // under the parts the game writes on
+  { tile: 7, ...WALL },
+  { tile: 15, ...WALL },
+  { tile: 16, ...WALL },
+  { tile: 17, ...WALL },
+  { tile: 18, ...WALL },
+  { tile: 20, ...WALL },
+  // the floor softened, or its tile lines turn to noise down a corridor; the drawn ceiling came out in perspective
+  // and zigzags when repeated, so the ceiling stays painted in code
+  { tile: 4, src: 'tex-ground', box: [84, 84, 482, 472], seam: 'xy', soften: 0.5 },
+  { tile: 6, src: 'tex-doors', box: [29, 362, 328, 670] },
+  { tile: 11, src: 'tex-doors', box: [29, 362, 328, 670] },
+  { tile: 8, src: 'tex-window', box: [62, 309, 469, 726] },
+  { tile: 9, src: 'tex-doors', box: [366, 362, 660, 670] },
+  { tile: 10, src: 'tex-doors', box: [698, 362, 998, 670] },
+  { tile: 12, src: 'tex-water', box: [554, 316, 965, 710], seam: 'x' },
+  { tile: 13, src: 'tex-walls', box: [552, 76, 947, 466], seam: 'x' },
+  { tile: 14, src: 'tex-ground', box: [84, 546, 482, 939], seam: 'xy' },
+  { tile: 21, src: 'tex-water', box: [59, 316, 470, 710], seam: 'xy' },
+  { tile: 22, src: 'tex-walls', box: [76, 552, 469, 946], seam: 'x' },
+  { tile: 23, src: 'tex-ground', box: [551, 546, 942, 939], seam: 'xy' },
+];
+const SEAM = 40;
+
+async function buildStructure() {
+  const sheet = new Uint8Array(SHEET * SHEET);
+  for (const t of STRUCTURE) {
+    const [x0, y0, x1, y1] = t.box;
+    const n = TILE + SEAM;
+    // a little more than a tile: the extra goes into the cross-fade that makes the edges meet
+    let { data } = await sharp(path.join(RAW, `${t.src}-raw.png`))
+      .extract({ left: x0, top: y0, width: x1 - x0, height: y1 - y0 })
+      .resize(n, n, { fit: 'fill', kernel: 'lanczos3' })
+      .grayscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const at = (x, y) => data[y * n + x];
+    const out = new Uint8Array(TILE * TILE);
+    for (let y = 0; y < TILE; y++) {
+      for (let x = 0; x < TILE; x++) {
+        let v = at(x, y);
+        if (t.seam && x < SEAM) v = at(x + TILE, y) + (v - at(x + TILE, y)) * (x / SEAM);
+        if (t.seam === 'xy' && y < SEAM) {
+          let below = at(x, y + TILE);
+          if (x < SEAM) below = at(x + TILE, y + TILE) + (below - at(x + TILE, y + TILE)) * (x / SEAM);
+          v = below + (v - below) * (y / SEAM);
+        }
+        // a softened tile keeps its pattern at half the contrast, around a light grey
+        if (t.soften) v = 190 + (v - 190) * t.soften;
+        out[y * TILE + x] = Math.round(v);
+      }
+    }
+    const { x: ox, y: oy } = tileAt(t.tile);
+    for (let y = 0; y < TILE; y++) {
+      for (let x = 0; x < TILE; x++) {
+        let sx = t.flip ? TILE - 1 - x : x;
+        if (t.shift) sx = (sx + TILE / 2) % TILE;
+        // never exactly black: on the structure sheet that would read as "paint this one in code"
+        sheet[(oy + y) * SHEET + ox + x] = Math.max(1, out[y * TILE + sx]);
+      }
+    }
+  }
+  const file = path.join(SHEETS_OUT, 'sheet-structure.png');
+  await sharp(Buffer.from(sheet), { raw: { width: SHEET, height: SHEET, channels: 1 } }).toColourspace('b-w').png({ compressionLevel: 9, palette: false }).toFile(file);
+  console.log('sheet-structure.png', fs.statSync(file).size);
+}
+
 // The opening: grey like everything else, with the seal and her window as the only colours.
 const OPENING = [
   { name: 'op-hand', src: 'op-hand', crop: { left: 112, top: 0, width: 737, height: 1024 }, mark: `<circle cx="540" cy="540" r="17" fill="#a4263f"/>` },
@@ -356,5 +446,6 @@ async function buildOpening({ name, src, crop, mark }) {
 
 (async () => {
   for (const name of Object.keys(ITEMS)) await buildSheet(name);
+  await buildStructure();
   for (const item of OPENING) await buildOpening(item);
 })();

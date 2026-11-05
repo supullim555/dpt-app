@@ -88,6 +88,45 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.74: the walls, floors and doors themselves, in the same hand, cut into the structure sheet. Flat and square.
+  'tex-ground': `${SAME_STYLE} Four separate square texture swatches in a 2x2 grid with wide plain gaps between them, each seen straight
+from above. Each swatch completely filled edge to edge with one flat surface, no objects in front of it, evenly lit, no perspective, no vanishing lines. Top left: hospital vinyl floor tiles in a simple grid. Top right: a suspended ceiling of acoustic panels
+with one rectangular fluorescent light panel in the middle. Bottom left: outdoor stone paving slabs. Bottom right: small
+smooth river pebbles.`,
+  'tex-walls': `${SAME_STYLE} Four separate square texture swatches in a 2x2 grid with wide plain gaps between them, each seen straight
+on from the front. Each swatch completely filled edge to edge with one flat surface, no objects in front of it, evenly lit, no perspective, no vanishing lines. Top left: a plain hospital corridor wall, painted plaster above a darker wainscot panel along the
+bottom third and a skirting board at the very bottom. Top right: an old brick courtyard wall. Bottom left: the far bank of a
+river, a dense line of trees and bushes filling the lower two thirds against a pale summer sky. Bottom right: shallow clear
+river water seen from above with gentle ripples.`,
+  'tex-doors': `${SAME_STYLE} Three separate square panels side by side with wide plain gaps, each completely filled edge to edge,
+seen straight on from the front, no perspective, a plain hospital corridor wall around each opening: a closed hospital room
+door in its frame with a small wired-glass window and a lever handle; closed stainless steel elevator doors in their frame
+with a call button panel at the right; an open stairwell doorway showing a flight of stairs going up into shadow.`,
+  'tex-window': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to edge, seen
+straight on from the front, no perspective: a hospital corridor wall with one window in its upper half, a plain frame and
+sill, through the glass a courtyard with a large ginkgo tree in bright daylight; and the front of a hospital nurses'
+station, a long low counter with a ledge on top, the wall behind it above.`,
+  // Second tries: the first water came out as a whirlpool and the station's front was blank; the old man held a giant chess piece.
+  'tex-water': `${SAME_STYLE} Two separate square texture swatches side by side with a wide plain gap, each completely filled edge to
+edge, flat, no perspective: shallow river water seen from straight above, long gentle parallel ripples all running the same
+way, a few pebbles faintly visible beneath; and the front of a hospital nurses' station counter seen straight on, a wood-grain
+panelled front with a raised ledge along the top and a few papers and a pen holder on the ledge.`,
+  'grandpa': `${SAME_STYLE} One frail old man at a hospital, full body, standing, facing the viewer, feet visible, drawn tall and
+narrow: thin, bald on top with white hair at the sides, in hospital pajamas with a cardigan over them and slippers, holding
+one small flat octagonal wooden game piece between his fingers at chest height, a quiet patient expression.`,
+  // v0.74: everyone their own face. Same framing as people-a and people-b.
+  'people-c': `${SAME_STYLE} Three separate ordinary people at a hospital, each full body, standing, facing the viewer, feet
+visible, all drawn tall and narrow, each clearly different in face, age, build and hair: a tired young man nurse in plain
+scrubs with short messy hair; a neat middle-aged woman receptionist in a plain blazer with a lanyard and her hair in a low
+bun; a broad-shouldered older security guard in a plain uniform and cap.`,
+  'people-d': `${SAME_STYLE} Three separate ordinary people at a hospital, each full body, standing, facing the viewer, feet
+visible, all drawn tall and narrow, each clearly different in face, age, build and hair: a lanky young hospital porter in a
+plain short-sleeved work uniform; a sturdy woman physiotherapist in a polo shirt and track trousers with a small towel over
+one shoulder; a thin middle-aged woman in a long cardigan holding a paperback book against her chest.`,
+  'people-e': `${SAME_STYLE} Three separate older people at a hospital, each full body, standing, facing the viewer, feet
+visible, all drawn tall and narrow, each clearly different in face, build and hair: a kind older woman volunteer in a plain
+vest over a blouse, holding a small vase of flowers; a frail old man in hospital pajamas with a cardigan over them, holding
+a wooden game piece; a small old woman in a padded vest and a knitted hat, slightly stooped.`,
   // The first request's memory (v0.72): a summer riverside, walked through as the parent.
   river: `${SAME_STYLE} Five separate things for a summer riverside campsite, each whole and seen straight on from the
 front: a small plain family car seen from behind; a small dome camping tent; a cluster of large smooth river boulders,
