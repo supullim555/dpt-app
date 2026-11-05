@@ -386,6 +386,8 @@ async function buildSheet(name) {
 const TILE = 200;
 const tileAt = (t) => ({ x: (t % 5) * TILE, y: Math.floor(t / 5) * TILE });
 const WALL = { src: 'tex-walls', box: [76, 76, 469, 466], seam: 'x' };
+// the window and its sill, set into the same wall
+const WINDOW = { src: 'tex-window', box: [62, 309, 469, 726], keep: [[102, 310, 380, 590], [90, 582, 392, 622]] };
 const STRUCTURE = [
   // the corridor wall four ways, so it doesn't look copied: as drawn, mirrored, moved half along, both
   { tile: 0, ...WALL },
@@ -401,14 +403,14 @@ const STRUCTURE = [
   // the floor softened, or its tile lines turn to noise down a corridor; the drawn ceiling came out in perspective
   // and zigzags when repeated, so the ceiling stays painted in code
   { tile: 4, src: 'tex-ground', box: [84, 84, 482, 472], seam: 'xy', soften: 0.5 },
-  { tile: 6, src: 'tex-doors', box: [29, 362, 328, 670] },
+  { tile: 6, src: 'tex-doors', box: [29, 362, 328, 670], keep: [[86, 372, 272, 670]] },
   // a window per floor; the view through each is put in below (VIEWS)
-  { tile: 8, src: 'tex-window', box: [62, 309, 469, 726] },
-  { tile: 3, src: 'tex-window', box: [62, 309, 469, 726] },
-  { tile: 7, src: 'tex-window', box: [62, 309, 469, 726] },
-  { tile: 11, src: 'tex-window', box: [62, 309, 469, 726] },
-  { tile: 9, src: 'tex-doors', box: [366, 362, 660, 670] },
-  { tile: 10, src: 'tex-doors', box: [698, 362, 998, 670] },
+  { tile: 8, ...WINDOW },
+  { tile: 3, ...WINDOW },
+  { tile: 7, ...WINDOW },
+  { tile: 11, ...WINDOW },
+  { tile: 9, src: 'tex-doors', box: [366, 362, 660, 670], keep: [[405, 372, 617, 670], [625, 486, 654, 556]] },
+  { tile: 10, src: 'tex-doors', box: [698, 362, 998, 670], keep: [[741, 372, 937, 670]] },
   { tile: 12, src: 'tex-water', box: [554, 316, 965, 710], seam: 'x' },
   { tile: 13, src: 'tex-walls', box: [552, 76, 947, 466], seam: 'x' },
   { tile: 14, src: 'tex-ground', box: [84, 546, 482, 939], seam: 'xy' },
@@ -444,23 +446,18 @@ const MEMORY = [
 // The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
 // (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small
 // and far down; from the first it fills the glass.
-const GLASS = { x: 28, y: 8, w: 150, h: 144 };
+const GLASS = { x: 23, y: 7, w: 125, h: 120 };
 const VIEWS = [
-  { tile: 8, horizon: 30, x: 108, foot: 116, height: 56 },
-  { tile: 11, horizon: 56, x: 52, foot: 128, height: 82 },
-  { tile: 7, horizon: 86, x: 98, foot: 142, height: 112 },
-  { tile: 3, horizon: 124, x: 70, foot: 168, height: 190 },
+  { tile: 8, horizon: 25, x: 90, foot: 97, height: 47 },
+  { tile: 11, horizon: 47, x: 43, foot: 107, height: 68 },
+  { tile: 7, horizon: 72, x: 82, foot: 118, height: 93 },
+  { tile: 3, horizon: 103, x: 58, foot: 140, height: 158 },
 ];
 
-async function cutTiles(list, sheet) {
-  for (const t of list) {
-    if (t.flat) {
-      const { x: ox, y: oy } = tileAt(t.tile);
-      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) sheet[(oy + y) * SHEET + ox + x] = t.flat;
-      continue;
-    }
+/** One tile's pixels, TILE square. Only a tile that repeats is cut a little larger, for the cross-fade at its edges. */
+async function tilePixels(t) {
     const [x0, y0, x1, y1] = t.box;
-    const n = TILE + SEAM;
+    const n = t.seam ? TILE + SEAM : TILE;
     // a little more than a tile: the extra goes into the cross-fade that makes the edges meet
     let { data } = await sharp(path.join(RAW, `${t.src}-raw.png`))
       .extract({ left: x0, top: y0, width: x1 - x0, height: y1 - y0 })
@@ -483,6 +480,27 @@ async function cutTiles(list, sheet) {
         if (t.soften) v = 190 + (v - 190) * t.soften;
         out[y * TILE + x] = Math.round(v);
       }
+    }
+    return out;
+}
+
+async function cutTiles(list, sheet) {
+  for (const t of list) {
+    if (t.flat) {
+      const { x: ox, y: oy } = tileAt(t.tile);
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) sheet[(oy + y) * SHEET + ox + x] = t.flat;
+      continue;
+    }
+    const out = await tilePixels(t);
+    // A door, the lift, the stairs, a window: only the opening and its frame are kept; round them, the same corridor
+    // wall as the tiles either side, so the wainscot and the plaster run on unbroken.
+    if (t.keep) {
+      const wall = await tilePixels(WALL);
+      const [x0, y0, x1, y1] = t.box;
+      const toX = (rx) => ((rx - x0) / (x1 - x0)) * TILE;
+      const toY = (ry) => ((ry - y0) / (y1 - y0)) * TILE;
+      const inside = (x, y) => t.keep.some(([a, b, c, d]) => x >= toX(a) && x < toX(c) && y >= toY(b) && y < toY(d));
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) if (!inside(x, y)) out[y * TILE + x] = wall[y * TILE + x];
     }
     const { x: ox, y: oy } = tileAt(t.tile);
     for (let y = 0; y < TILE; y++) {
@@ -526,7 +544,7 @@ async function buildStructure() {
       }
     }
     // the bar down the middle of the window, over the view
-    for (let y = 0; y < GLASS.h; y++) for (const x of [59, 60]) sheet[(oy + GLASS.y + y) * SHEET + ox + GLASS.x + x] = 40;
+    for (let y = 0; y < GLASS.h; y++) for (const x of [49, 50]) sheet[(oy + GLASS.y + y) * SHEET + ox + GLASS.x + x] = 40;
   }
   const file = path.join(SHEETS_OUT, 'sheet-structure.png');
   await sharp(Buffer.from(sheet), { raw: { width: SHEET, height: SHEET, channels: 1 } }).toColourspace('b-w').png({ compressionLevel: 9, palette: false }).toFile(file);
