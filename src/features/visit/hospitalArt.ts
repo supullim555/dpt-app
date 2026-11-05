@@ -3,6 +3,8 @@
 // have to tile. People, props and the girl are drawings, cut out of paper by scripts/assets/build-hospital-sheets.js,
 // whose cells must match these; on those three sheets exactly black means nothing is there.
 
+import { SHEETS_URL, SHEET_ORDER } from './hospitalSheets';
+
 export const SHEET = 1024;
 export const TILE = 200;
 // v0.78: the wall down to two versions, the door frame drawn as wall and her door as any closed door, to make room for a
@@ -500,32 +502,68 @@ export const EXTRA_PART = {
 } as const;
 export type ExtraPart = keyof typeof EXTRA_PART;
 
+// One canvas for every sheet, painted and read back in turn.
+let board: CanvasRenderingContext2D | null = null;
 function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
-  const canvas = document.createElement('canvas');
-  canvas.width = SHEET;
-  canvas.height = SHEET;
-  const c = canvas.getContext('2d', { willReadFrequently: true })!;
+  if (!board) {
+    const canvas = document.createElement('canvas');
+    canvas.width = SHEET;
+    canvas.height = SHEET;
+    board = canvas.getContext('2d', { willReadFrequently: true })!;
+  }
+  const c = board;
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.clearRect(0, 0, SHEET, SHEET);
   paint(c);
+  c.restore();
   const rgba = c.getImageData(0, 0, SHEET, SHEET).data;
   const out = new Uint8Array(SHEET * SHEET);
   for (let i = 0; i < out.length; i++) out[i] = rgba[i * 4];
   return out;
 }
 
-const SHEET_FILES = { memory: '/hospital/sheet-memory.png', memoryProps: '/hospital/sheet-memoryprops.png', memoryProps2: '/hospital/sheet-memoryprops2.png', structure: '/hospital/sheet-structure.png', people2: '/hospital/sheet-people2.png', people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
+/** The pixels as they are in the file, with no colour management in the way. */
+async function decode(blob: Blob): Promise<CanvasImageSource> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+    } catch {
+      // an older browser that won't take the options: the plain way below
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`no ${SHEETS_URL}`));
+      img.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
-/** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
-function loadChannel(url: string): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    img.onload = () => resolve(toChannel((c) => c.drawImage(img, 0, 0)));
-    img.onerror = () => reject(new Error(`no ${url}`));
-    img.src = url;
-  });
+/** Fetched only on reaching the hospital, all the sheets in one file (scripts/assets/pack-hospital-sheets.js). If it
+ * can't be, the caller falls back to the floor plan. Once fetched it stays for the rest of the visit, so going in again
+ * fetches nothing. */
+let fetched: Promise<Record<(typeof SHEET_ORDER)[number], Uint8Array>> | null = null;
+function loadAll() {
+  fetched ??= (async () => {
+    const res = await fetch(SHEETS_URL);
+    if (!res.ok) throw new Error(`${SHEETS_URL}: HTTP ${res.status}`);
+    const img = await decode(await res.blob());
+    const out = {} as Record<(typeof SHEET_ORDER)[number], Uint8Array>;
+    SHEET_ORDER.forEach((name, i) => (out[name] = toChannel((c) => c.drawImage(img, 0, i * SHEET, SHEET, SHEET, 0, 0, SHEET, SHEET))));
+    if ('close' in img) img.close();
+    return out;
+  })();
+  fetched.catch(() => (fetched = null));
+  return fetched;
 }
 
 export const loadSheets = async () => {
-  // Without the drawn walls the painted ones still do.
-  const [drawnWalls, people, people2, props, girl, lying, extra, furniture, memory, memoryProps, memoryProps2] = await Promise.all([loadChannel(SHEET_FILES.structure).catch(() => null), loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.people2), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture), loadChannel(SHEET_FILES.memory), loadChannel(SHEET_FILES.memoryProps), loadChannel(SHEET_FILES.memoryProps2)]);
-  return { structure: toChannel((c) => paintStructure(c, drawnWalls)), people, people2, props, girl, lying, extra, furniture, memory, memoryProps, memoryProps2 };
+  const { structure: drawnWalls, ...sheets } = await loadAll();
+  return { ...sheets, structure: toChannel((c) => paintStructure(c, drawnWalls)) };
 };

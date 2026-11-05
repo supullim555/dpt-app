@@ -1,4 +1,4 @@
-// Cuts the Gemini drawings (scripts/assets/generate-hospital-art.js, generated/hospital-art/) into the three
+// Cuts the Gemini drawings (scripts/assets/generate-hospital-art.js, generated/hospital-art/) into the
 // one-channel sheets the hospital loads, and the opening's three pictures. No API calls: run it as often as you like.
 //   node scripts/assets/build-hospital-sheets.js
 // The cells here must match hospitalArt.ts. On a sheet, exactly black means nothing is there.
@@ -9,8 +9,8 @@ const { GENERATED_DIR, ROOT } = require('../lib/paths');
 
 const RAW = path.join(GENERATED_DIR, 'hospital-art');
 const OUT = path.join(ROOT, 'src', 'assets', 'visit');
-// Served as they are, and fetched only on reaching the hospital.
-const SHEETS_OUT = path.join(ROOT, 'public', 'hospital');
+// One by one here; pack-hospital-sheets.js stacks them into the one file the hospital fetches.
+const { pack, SINGLES: SHEETS_OUT } = require('./pack-hospital-sheets');
 const SHEET = 1024;
 const EDGE = 6;
 // The darkest ink a sheet may hold, so that hair isn't taken for nothing.
@@ -572,4 +572,5 @@ async function buildOpening({ name, src, crop, mark }) {
   await buildStructure();
   await buildMemory();
   for (const item of OPENING) await buildOpening(item);
+  await pack();
 })();

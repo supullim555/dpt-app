@@ -176,44 +176,56 @@ export function stepped(p: Pose, by: 1 | -1 = 1): Pose | null {
   return canStand(p.floor, x, y) ? { ...p, x, y } : null;
 }
 
-/** The direction of the first step of a shortest walk, or null if there's no way or you're already there. */
-export function firstStep(floor: FloorNo, from: Cell, to: Cell): Dir | null {
-  if (from.x === to.x && from.y === to.y) return null;
-  const prev = new Map<string, { from: string; dir: Dir }>();
-  const start = key(from.x, from.y);
+/** One search outward from `from`: for each cell reached, the direction of the step that reached it. Keyed by
+ * x + y * 1000, so no strings are made per cell. The last one is kept: the arrow and the minimap both ask from where
+ * you stand, and every redraw (each letter typed, too) asks again without your having moved. */
+let lastWalk: { cells: Set<string>; floor: FloorNo; x: number; y: number; reachedBy: Map<number, Dir> } | null = null;
+function walksFrom(floor: FloorNo, from: Cell): Map<number, Dir> {
+  const cells = walkable(floor);
+  if (lastWalk && lastWalk.cells === cells && lastWalk.floor === floor && lastWalk.x === from.x && lastWalk.y === from.y) return lastWalk.reachedBy;
+  const reachedBy = new Map<number, Dir>();
+  const start = from.x + from.y * 1000;
   const queue: Cell[] = [from];
   for (let i = 0; i < queue.length; i++) {
     const { x, y } = queue[i];
     for (let d = 0; d < 4; d++) {
       const nx = x + DX[d];
       const ny = y + DY[d];
-      const k = key(nx, ny);
-      if (!canStand(floor, nx, ny) || k === start || prev.has(k)) continue;
-      prev.set(k, { from: key(x, y), dir: d as Dir });
+      const k = nx + ny * 1000;
+      if (k === start || reachedBy.has(k) || !canStand(floor, nx, ny)) continue;
+      reachedBy.set(k, d as Dir);
       queue.push({ x: nx, y: ny });
     }
   }
-  let at = key(to.x, to.y);
-  let step = prev.get(at);
-  if (!step) return null;
-  while (step.from !== start) {
-    at = step.from;
-    step = prev.get(at)!;
-  }
-  return step.dir;
+  lastWalk = { cells, floor, x: from.x, y: from.y, reachedBy };
+  return reachedBy;
 }
 
-/** The cells of a shortest walk, not counting where you are; empty if there's no way or you're there. */
-export function pathTo(floor: FloorNo, from: Cell, to: Cell): Cell[] {
-  const out: Cell[] = [];
-  let at: Cell = from;
-  for (let i = 0; i < 200; i++) {
-    const d = firstStep(floor, at, to);
-    if (d === null) break;
-    at = { x: at.x + DX[d], y: at.y + DY[d] };
-    out.push(at);
+/** The directions of a shortest walk, first step first; empty if there's no way or you're already there. */
+function stepsTo(floor: FloorNo, from: Cell, to: Cell): Dir[] {
+  if (from.x === to.x && from.y === to.y) return [];
+  const reachedBy = walksFrom(floor, from);
+  const steps: Dir[] = [];
+  let x = to.x;
+  let y = to.y;
+  for (let d = reachedBy.get(x + y * 1000); d !== undefined; d = reachedBy.get(x + y * 1000)) {
+    steps.push(d);
+    x -= DX[d];
+    y -= DY[d];
   }
-  return out;
+  return x === from.x && y === from.y ? steps.reverse() : [];
+}
+
+/** The direction of the first step of a shortest walk, or null if there's no way or you're already there. */
+export function firstStep(floor: FloorNo, from: Cell, to: Cell): Dir | null {
+  return stepsTo(floor, from, to)[0] ?? null;
+}
+
+/** The cells of a shortest walk, not counting where you are; empty if there's no way or you're there. One search,
+ * not one per step: it's worked out again on every move. */
+export function pathTo(floor: FloorNo, from: Cell, to: Cell): Cell[] {
+  let at: Cell = from;
+  return stepsTo(floor, from, to).map((d) => (at = { x: at.x + DX[d], y: at.y + DY[d] }));
 }
 
 export type Goal = {

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { canStand, charAt, type Cell, type Pose } from './hospitalMap';
+import { memo } from 'react';
+import { canStand, charAt, pathTo, type Cell, type Pose } from './hospitalMap';
 
 // The cells around you, north up: where you are and which way you face, and the way to the goal as a line of dots
 // (docs/병원_지도.md). Nobody is marked on it: people are for finding by walking.
@@ -8,8 +9,8 @@ const SIZE = 9;
 const AMBER = '#d9a441';
 const ARROW = ['▲', '▶', '▼', '◀'];
 
-export default function Minimap({ pose, path, goal }: { pose: Pose; path: readonly Cell[]; goal: Cell | null }) {
-  const onPath = new Set(path.map((c) => `${c.x},${c.y}`));
+function Minimap({ pose, goal }: { pose: Pose; goal: Cell | null }) {
+  const onPath = new Set((goal ? pathTo(pose.floor, pose, goal) : []).map((c) => `${c.x},${c.y}`));
   const rows = [];
   for (let dy = -REACH; dy <= REACH; dy++) {
     const cells = [];
@@ -53,3 +54,7 @@ const styles = StyleSheet.create({
   goal: { width: 7, height: 7, backgroundColor: AMBER, borderWidth: 1, borderColor: '#000' },
   dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: AMBER },
 });
+
+// Drawn again only when you move or the goal does, not on every redraw of the screen around it.
+const same = (a: Cell | null, b: Cell | null) => a === b || (!!a && !!b && a.x === b.x && a.y === b.y);
+export default memo(Minimap, (a, b) => a.pose.floor === b.pose.floor && a.pose.dir === b.pose.dir && same(a.pose, b.pose) && same(a.goal, b.goal));

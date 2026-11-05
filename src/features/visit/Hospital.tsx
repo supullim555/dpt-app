@@ -3,7 +3,7 @@ import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, ALONG_THE_WALLS, arrival, arrowFor, pathTo, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
@@ -378,10 +378,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   }
 
   // What you wrote, to them: never sent if it sounds like a crisis; their answer replaces their line until you tap on.
-  const canWrite = aiOn && !memory && focused?.kind === 'person' && !!focused.talk && REQUESTS.some((r) => r.who === focused.id) && !breathing;
+  const canWrite = aiOn && !memory && focused?.kind === 'person' && !!focused.talk && REQUESTS.some((r) => r.who === focused.id) && !breathing && aside !== WRITE_WAITING;
   async function sendWritten() {
     const text = draft.trim();
-    if (!text || focused?.kind !== 'person') return;
+    // One at a time: a second tap while the first is on its way would be a second call for the same words.
+    if (!text || focused?.kind !== 'person' || aside === WRITE_WAITING) return;
     setDraft('');
     setWriting(false);
     if (soundsLikeCrisis(text)) {
@@ -639,7 +640,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               </TouchableOpacity>
               {!memory && (
                 <View style={[styles.minimap, VISIT_DEV && styles.belowDev]} pointerEvents="none">
-                  <Minimap pose={pose} goal={goalCell} path={goalCell ? pathTo(pose.floor, pose, goalCell) : []} />
+                  <Minimap pose={pose} goal={goalCell} />
                 </View>
               )}
             </>
