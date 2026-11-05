@@ -596,16 +596,20 @@ async function main() {
         }
         return false;
       };
-      const talk = async () => {
+      // `heard`: something she should say first, checked before the taps move her on
+      const talk = async (choice = '별일 없었어', heard = null) => {
         await toRoom();
         await tapUntil('아무 얘기나');
-        await t.clickText('별일 없었어');
+        await t.clickText(choice);
+        const said = heard ? await t.waitText(heard, 3000) : true;
+        if (heard) await t.shot('tell_story.png');
         for (let i = 0; i < 20; i++) {
-          if ((await t.hasText('뭐 들고 있어')) || (await t.hasText('오늘 얘기 잘 들었어'))) return;
+          if ((await t.hasText('뭐 들고 있어')) || (await t.hasText('오늘 얘기 잘 들었어'))) return said;
           if (await t.hasText('어떤 감정으로')) await t.clickText('잘 모르겠어요');
           else await t.click(195, 170);
           await sleep(300);
         }
+        return said;
       };
       const openMap = async () => {
         await t.clickText('지도');
@@ -647,6 +651,41 @@ async function main() {
       await tapUntil('병실 앞 복도');
       // the doctor's room comes first; the clue is the goal after it (check-visit-logic.mjs)
       t.note('병문안: 2회차에도 먼저 의사 선생님의 방', await t.hasText('4층 의사 선생님의 방에 가기'));
+
+      // the doctor's request: taken on, then talked through with questions, a breath together, and settled
+      await openMap();
+      await t.clickText('(시험) 의사 앞');
+      await sleep(400);
+      await t.clickText('의사 선생님에게 말 걸기');
+      t.note('병문안: 의사가 파국화에 빠진 보호자를 부탁', (await tapUntil('해 볼게요')) && (await t.hasText('오늘은 어려워요')));
+      await t.shot('request_doctor.png');
+      await t.clickText('해 볼게요');
+      t.note('병문안: 부탁을 받으면 어디로 갈지', await t.waitText('3층 휴게실이에요', 2000));
+      await stepBack();
+      t.note('병문안: 목표가 부탁 상대', await t.hasText('3층 지친 보호자와 이야기하기'));
+      await openMap();
+      await t.clickText('(시험) 부탁 상대 앞');
+      await sleep(500);
+      await t.clickText('지친 보호자에게 말 걸기');
+      t.note('병문안: 보호자가 최악을 말함', await tapUntil('괜찮을 거예요. 너무 걱정하지 마세요.'));
+      await t.shot('request_choices.png');
+      await t.clickText('괜찮을 거예요. 너무 걱정하지 마세요.');
+      t.note('병문안: 무조건 안심시키면 닫히고 다시 고름', (await t.waitText('그 말이 제일 안 들려요', 2000)) && (await t.hasText('의료진은 뭐라고 하던가요?')));
+      await t.clickText('열이 난다는 게 꼭 잘못됐다는 뜻일까요? 의료진은 뭐라고 하던가요?');
+      await tapUntil('가장 나쁜 경우, 가장 좋은 경우, 가장 그럴 법한 경우를 하나씩 떠올려 보면 어떨까요?');
+      await t.clickText('가장 나쁜 경우, 가장 좋은 경우, 가장 그럴 법한 경우를 하나씩 떠올려 보면 어떨까요?');
+      await tapUntil('전에도 이렇게 최악부터 떠올렸던 적이 있으세요? 그때는 어떻게 됐어요?');
+      await t.clickText('전에도 이렇게 최악부터 떠올렸던 적이 있으세요? 그때는 어떻게 됐어요?');
+      t.note('병문안: 그때의 사연', await tapUntil('물수제비를 뜨고 있었어요'));
+      t.note('병문안: 같이 숨 고르기를 권함', await tapUntil('같이 숨 좀 고르고 갈까요?'));
+      await t.clickText('같이 숨 좀 고르고 갈까요?');
+      t.note('병문안: 숨 고르기', await t.waitText('숨을 들이쉬어요', 2000));
+      await sleep(1500);
+      await t.shot('request_breathe.png');
+      await t.clickText('충분해요');
+      t.note('병문안: 부탁이 풀림', await t.waitText('머릿속이 좀 조용해졌어요', 2000));
+      await stepBack();
+      t.note('병문안: 풀고 나면 다음 목표', await t.hasText('1층에서 개목걸이 찾기'));
       await openMap();
       await t.clickText('요정의 쪽지');
       t.note('병문안: 2회차 지도에 요정의 쪽지', await t.waitText('1일째 · 1층 · 개목걸이', 2000));
@@ -668,7 +707,7 @@ async function main() {
 
       await nextDay();
       t.note('병문안: 2회차는 빛을 따라 기다리지 않고 다음 날', await t.hasText('2일째'));
-      await talk();
+      t.note('병문안: 다음 날 소녀에게 그 이야기', await talk('3층 보호자분 이야기', '최악부터 생각하는 거, 나도 잘해.'));
       t.note('병문안: 다음 날 선물과 단서를 고를 수 있음', (await t.hasText('귤')) && (await t.hasText('개목걸이')));
       await t.shot('visit_give.png');
       await t.clickText('귤');
@@ -710,7 +749,7 @@ async function main() {
       await nextDay();
       await talk();
       t.note('병문안: 4층 단서 회상', await showMemory('노래방 쿠폰', '소리 지르기', '나무까지 가 볼래'));
-      t.note('병문안: 단서를 다 보여 주면 해피엔딩', await t.hasText('같이 내려가 줘'));
+      t.note('병문안: 의사의 부탁을 다 풀면 해피엔딩', await t.hasText('같이 내려가 줘'));
       await tapUntil('그 아이의 수첩');
       for (let page = 2; page <= 7; page++) {
         await t.clickText('다음 장 ›');

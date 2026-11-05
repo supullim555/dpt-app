@@ -1,7 +1,8 @@
 // Plain assertions on the 병문안 rules: the ending table, keyword finding, the crisis check. Runs the
 // TypeScript directly (Node strips types); first step of `npm run verify` after the architecture check.
 import assert from 'node:assert/strict';
-import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked } from '../src/features/visit/progress.ts';
+import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked, REQUEST_DAYS } from '../src/features/visit/progress.ts';
+import { doctorTalk, personTalk, requestGoal, REQUESTS } from '../src/features/visit/requests.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
@@ -95,9 +96,35 @@ assert.equal(clueOn(1, 1)?.id, 'collar');
 assert.equal(clueOn(3, 3)?.id, 'snack');
 assert.equal(clueOn(2, 3), null);
 const allClues = CLUES.map((c) => c.id);
-assert.equal(happyUnlocked(1, allClues), false); // not before a first ending
-assert.equal(happyUnlocked(2, allClues), true);
-assert.equal(happyUnlocked(2, allClues.slice(1)), false);
+// the happy ending: the doctor's requests, every one; the clues no longer count
+assert.deepEqual([...REQUEST_DAYS], REQUESTS.map((r) => r.day));
+assert.equal(happyUnlocked([]), false);
+assert.equal(happyUnlocked(REQUEST_DAYS), true);
+void allClues;
+// every request's conversations lead somewhere real, can be settled, and are taken on at the doctor's
+for (const r of REQUESTS) {
+  for (const talk of [r.doctor, r.person]) {
+    assert.ok(talk.start, `${r.day}일 부탁: start`);
+    for (const [name, node] of Object.entries(talk)) {
+      for (const next of [...(node.choices ?? []).map((c) => c.to), ...(node.then ? [node.then] : [])]) assert.ok(talk[next], `${r.day}일 부탁 ${name} → ${next}`);
+      assert.ok(!(node.effect === 'breathe' && !node.then), `${r.day}일 부탁 ${name}: 숨 고르기 뒤`);
+    }
+  }
+  assert.ok(Object.values(r.doctor).some((n) => n.effect === 'accept'));
+  assert.ok(Object.values(r.person).some((n) => n.effect === 'solve'));
+  assert.ok(Object.values(r.person).some((n) => n.effect === 'breathe'));
+  const [floor, letter] = [Number(r.who[0]), r.who[1]];
+  assert.equal(charAt(floor, r.goal.cell.x + [0, 1, 0, -1][r.goal.face], r.goal.cell.y + [-1, 0, 1, 0][r.goal.face]), letter, `${r.day}일 부탁: 목표 앞에 그 사람`);
+  assert.ok(canStand(floor, r.goal.cell.x, r.goal.cell.y));
+}
+assert.equal(doctorTalk(1, [], []), REQUESTS[0].doctor);
+assert.ok(doctorTalk(1, [1], [])['start'].lines[0].includes('만나 보셨어요'));
+assert.equal(personTalk('3b', [], []), null);
+assert.equal(personTalk('3b', [1], []), REQUESTS[0].person);
+assert.deepEqual(personTalk('3b', [1], [1]).start.lines, REQUESTS[0].after);
+assert.equal(requestGoal([1], []).text, '3층 지친 보호자와 이야기하기');
+assert.equal(requestGoal([1], [1]), null);
+assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null, metDoctor: true, request: requestGoal([1], []) }).text, '3층 지친 보호자와 이야기하기');
 assert.equal(girlAppearsIn('happy'), true);
 
 for (const [text, want] of [

@@ -21,6 +21,7 @@ import type { TutorialStep } from './hospitalMap';
 import Opening from './Opening';
 import PaperButton from './PaperButton';
 import { dayInRun, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
+import { REQUESTS } from './requests';
 import { soundsLikeCrisis } from './safety';
 import {
   ARRIVAL_LINES,
@@ -88,9 +89,13 @@ type VisitState = {
   skippedDays: number;
   /** Days on which you went to the doctor's room after seeing her. */
   doctorDays: number[];
+  /** The doctor's requests (requests.ts) by their day: taken on, settled (and on which day), told to her. */
+  requestsAsked: number[];
+  requestsSolved: { request: number; on: number }[];
+  requestsTold: number[];
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, skippedDays: 0, doctorDays: [] };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
@@ -158,7 +163,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const finishDay = () => {
     const done = state.done.includes(day) ? state.done : [...state.done, day];
     if (day >= TOTAL_DAYS) {
-      setState({ ...state, done, ending: happyUnlocked(state.run, state.shown) ? 'happy' : endingFor(state.visited) });
+      setState({ ...state, done, ending: happyUnlocked(state.requestsSolved.map((r) => r.request)) ? 'happy' : endingFor(state.visited) });
       setPhase('ending');
     } else {
       setState({ ...state, done });
@@ -166,7 +171,18 @@ export default function VisitScreen(_props: VisitScreenProps) {
     }
   };
 
+  // Someone you helped, on a later day: something to tell her about.
+  const toTell = REQUESTS.filter((r) => state.requestsSolved.some((x) => x.request === r.day && x.on < day) && !state.requestsTold.includes(r.day));
+
   const tell = (text: string, typed: boolean) => {
+    const story = typed ? undefined : toTell.find((r) => r.girl.choice === text);
+    if (story) {
+      setState({ ...state, requestsTold: [...state.requestsTold, story.day], told: [...state.told.filter((t) => t.day !== day), { day, label: null, text: '' }] });
+      setReplyLines([...story.girl.lines, ...(DAY_LINES[day] ?? [])]);
+      setAskEmotion(day > 1);
+      setPhase('reply');
+      return;
+    }
     const crisis = typed && soundsLikeCrisis(text);
     const keyword = typed && !crisis ? findKeyword(text) : null;
     // What sounded like a crisis stays out of the notebook at the end: it shouldn't come back as a
@@ -485,7 +501,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
           </View>
         ) : (
           <View style={styles.choices}>
-            {TELL_QUESTION.choices.map((c) => (
+            {[...toTell.map((r) => r.girl.choice), ...TELL_QUESTION.choices].map((c) => (
               <PaperButton key={c} label={c} onPress={() => tell(c, false)} />
             ))}
             <PaperButton label="직접 쓸게요" onPress={() => setWriting(true)} />
@@ -532,6 +548,10 @@ export default function VisitScreen(_props: VisitScreenProps) {
           onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
           onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
           metDoctor={state.doctorDays.includes(day)}
+          asked={state.requestsAsked}
+          solved={state.requestsSolved.map((r) => r.request)}
+          onAccept={(request) => setState((s) => (s && !s.requestsAsked.includes(request) ? { ...s, requestsAsked: [...s.requestsAsked, request] } : s))}
+          onSolve={(request) => setState((s) => (s && !s.requestsSolved.some((r) => r.request === request) ? { ...s, requestsSolved: [...s.requestsSolved, { request, on: day }] } : s))}
           onMeetDoctor={() => setState((s) => (s && !s.doctorDays.includes(day) ? { ...s, doctorDays: [...s.doctorDays, day] } : s))}
           onTitle={() => setPhase('title')}
           tutorial={state.tutorial}

@@ -133,12 +133,6 @@ export const TUTORIAL_TELL = '고르거나 직접 써서 오늘 일을 들려주
 export const TUTORIAL_GIVE = '가져온 선물을 건네거나, 그냥 두어도 돼요.';
 export const TUTORIAL_SKIP = '튜토리얼 건너뛰기';
 export const TUTORIAL_OK = '알겠어요';
-// The doctor, once she's been seen. First draft (Claude's), until his requests are written (docs/계획서.md).
-export const DOCTOR_LINES = [
-  '앉으세요. 그 아이가 기다리던 분이 당신이군요.',
-  '저는 이 층 담당이에요. 하루 종일 병실을 돌아도, 보호자분들 마음까지 챙길 시간은 없어요.',
-  '혹시 괜찮으시면, 앞으로 부탁을 하나씩 드려도 될까요? 들어주지 않으셔도 괜찮아요.',
-];
 // Leaving by the front door once she's been seen.
 export const nextDayQuestion = (day: number) => `${day}일차를 진행하시겠습니까?`;
 export const untilTomorrow = (hours: number, minutes: number) => `다음 날은 자정에 열려요. ${hours}시간 ${minutes}분 남았어요.`;
@@ -302,7 +296,7 @@ export const ENDINGS: Record<EndingId, EndingScript> = {
   // She decides to go down herself; nothing here says wanting it is what heals her (docs/계획서.md).
   happy: {
     title: '나무 아래',
-    lines: ['네가 들고 온 것들 때문에 자꾸 옛날 생각이 났어.', '다 받아들인 줄 알았는데, 아니었나 봐.', '나무까지 가 볼래. 같이 내려가 줘.'],
+    lines: ['네가 들려준 병원 사람들 얘기, 계속 생각났어.', '다들 최악부터 생각하더라. 나도 그랬어. 다 받아들인 줄 알았는데, 먼저 포기한 거였나 봐.', '나무까지 가 볼래. 같이 내려가 줘.'],
   },
   normal: {
     title: '인사',
@@ -329,7 +323,8 @@ export const NOTEBOOK_PAGES: { day: number; tilt: number; scribble: number | nul
 export const FAIRY_LINES = [
   '어디선가 작은 빛이 나타나 말을 건다.',
   '"그 아이가 못 하게 된 일들이 병원 곳곳에 떨어져 있어. 날마다 다른 층에."',
-  '"주워서 그 아이에게 보여 줘. 전부 보여 주면 무슨 일이 생길지도 몰라."',
+  '"주워서 그 아이에게 보여 줘. 잊고 있던 걸 떠올릴 거야."',
+  '"그리고 의사 선생님의 부탁을 끝까지 들어줘 봐. 무슨 일이 생길지도 몰라."',
   '"이제 내 빛을 따라가면 기다리지 않고 다음 날로 갈 수 있어."',
   '"한 번 더 찾아가 볼래?"',
 ];

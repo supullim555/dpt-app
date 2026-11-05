@@ -48,7 +48,10 @@ export function clueOn(day: number, floor: number) {
   return CLUES.find((c) => c.day === day && c.floor === floor) ?? null;
 }
 
-/** The happy ending opens only after a first ending, with every clue shown to her. */
-export function happyUnlocked(run: number, shown: readonly ClueId[]): boolean {
-  return run >= 2 && CLUES.every((c) => shown.includes(c.id));
+/** The days the doctor has a request (REQUESTS in requests.ts; scripts/check-visit-logic.mjs keeps the two the same). */
+export const REQUEST_DAYS: readonly number[] = [1];
+
+/** The happy ending: every one of the doctor's requests settled by the last day (docs/의사의_부탁.md). */
+export function happyUnlocked(solved: readonly number[]): boolean {
+  return REQUEST_DAYS.every((d) => solved.includes(d));
 }

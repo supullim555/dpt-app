@@ -6,7 +6,9 @@ import { createHospitalScene, type FocusTarget, type HospitalScene, type Hospita
 import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, DOCTOR_LINES, nextDayQuestion, untilTomorrow } from './script';
+import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow } from './script';
+import { doctorTalk, personTalk, requestGoal, REQUESTS, type Talk } from './requests';
+import BreatheTogether from './BreatheTogether';
 
 const AMBER = '#d9a441';
 const LIFT_MS = 1100;
@@ -65,6 +67,11 @@ type Props = {
   /** Whether you've been to the doctor's room since she was seen today. */
   metDoctor: boolean;
   onMeetDoctor: () => void;
+  /** The doctor's requests by their day: taken on, and settled. */
+  asked: readonly number[];
+  solved: readonly number[];
+  onAccept: (request: number) => void;
+  onSolve: (request: number) => void;
   onTitle: () => void;
   tutorial: TutorialStep;
   onTutorial: (step: TutorialStep) => void;
@@ -75,7 +82,8 @@ type Props = {
 type Panel = 'none' | 'map' | 'lift' | 'stairs' | 'leave' | 'tomorrow';
 /** Who or what the view has come in close on, until you go back. */
 type Focused =
-  | { kind: 'person'; id: string; name: string; lines: string[]; index: number; shop: boolean }
+  // `talk`: a conversation with choices (requests.ts), at stretch `node`; `lines` are that stretch's.
+  | { kind: 'person'; id: string; name: string; lines: string[]; index: number; shop: boolean; talk?: Talk; node?: string }
   | { kind: 'thing'; text: string };
 
 const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean; fontScale: number; name?: string }) => (
@@ -93,7 +101,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, onTitle, tutorial, onTutorial, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, onTitle, tutorial, onTutorial, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -102,6 +110,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [hintOpen, setHintOpen] = useState(false);
   const [transit, setTransit] = useState('');
   const [noView, setNoView] = useState(false);
+  const [breathing, setBreathing] = useState(false);
   // The step whose explanation has been read in the middle of the screen; after that it waits small at the bottom.
   const [lessonRead, setLessonRead] = useState<TutorialStep | null>(null);
 
@@ -307,8 +316,19 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   // still stand at her bed, so she's left out by name rather than by phase.
   const thing: Thing | null = near?.kind === 'person' && !PEOPLE[near.id] ? null : facingShutDoor ? { kind: 'look', text: ROOM_SHUT, wall: true } : near?.kind === 'leave' && !doneToday ? null : near;
 
+  // Into a stretch of a conversation, doing what it does: taking a request on, breathing, settling it.
+  function enterNode(from: Extract<Focused, { kind: 'person' }>, node: string) {
+    const at = from.talk?.[node];
+    if (!at) return;
+    const request = REQUESTS.find((r) => r.who === from.id)?.day ?? REQUESTS.find((r) => r.doctor === from.talk)?.day;
+    if (at.effect === 'accept' && request !== undefined) onAccept(request);
+    if (at.effect === 'solve' && request !== undefined) onSolve(request);
+    if (at.effect === 'breathe') setBreathing(true);
+    setFocused({ ...from, node, lines: at.lines, index: 0 });
+  }
+
   const goBack = () => {
-    if (!focused) return;
+    if (!focused || breathing) return;
     busy.current = true;
     setFocused(null);
     setShopLine('');
@@ -336,7 +356,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       const firstVisit = thing.id === '1i' && (tutorial === 'goal' || tutorial === 'talk');
       const doctor = thing.id === '4r' && doneToday;
       if (doctor) onMeetDoctor();
-      setFocused({ kind: 'person', id: thing.id, name: person.name, lines: doctor ? DOCTOR_LINES : firstVisit ? GUIDE_FIRST_LINES : person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
+      const talk = doctor ? doctorTalk(day, asked, solved) : personTalk(thing.id, asked, solved);
+      const base = { kind: 'person' as const, id: thing.id, name: person.name, index: 0, shop: thing.id === '1m' };
+      if (talk) enterNode({ ...base, lines: [], talk }, 'start');
+      else setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : person.clue?.day === day ? [person.clue.line] : person.lines });
       if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
       else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
@@ -369,6 +392,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const goal = tutorialGoal(tutorial) ?? goalFor({
     doneToday,
     metDoctor: day < 7 ? metDoctor : undefined,
+    request: requestGoal(asked, solved),
     boughtToday,
     clueToFind: run >= 2 && todaysClue ? { floor: todaysClue.floor as FloorNo, name: CLUE_TEXT[todaysClue.id].name } : null,
   });
@@ -416,11 +440,18 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (bedside) return bedside.onPress?.();
     if (focused?.kind === 'person') {
       if (focused.index + 1 < focused.lines.length) setFocused({ ...focused, index: focused.index + 1 });
+      else if (focused.talk && focused.node && !breathing) {
+        const at = focused.talk[focused.node];
+        if (!at.choices && at.then && at.effect !== 'breathe') enterNode(focused, at.then);
+      }
       return;
     }
     if (!focused) useThing();
   };
-  const moreLines = focused?.kind === 'person' && focused.index + 1 < focused.lines.length;
+  const atNode = focused?.kind === 'person' && focused.talk && focused.node ? focused.talk[focused.node] : null;
+  const moreLines = focused?.kind === 'person' && (focused.index + 1 < focused.lines.length || (!!atNode?.then && !atNode.choices && atNode.effect !== 'breathe'));
+  // A choice once the stretch has been heard out.
+  const choices = focused?.kind === 'person' && atNode?.choices && focused.index + 1 >= focused.lines.length ? atNode.choices : null;
 
   return (
     <View style={styles.wrap}>
@@ -581,6 +612,14 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
                     <Text style={styles.devLink}>(시험) 병실 문 앞</Text>
                   </TouchableOpacity>
                 )}
+                <TouchableOpacity onPress={() => devJump({ floor: 4, ...DOCTOR_FRONT, dir: 2 })}>
+                  <Text style={styles.devLink}>(시험) 의사 앞</Text>
+                </TouchableOpacity>
+                {requestGoal(asked, solved) && (
+                  <TouchableOpacity onPress={() => { const g = requestGoal(asked, solved)!; devJump({ floor: g.floor, ...g.cell, dir: g.face }); }}>
+                    <Text style={styles.devLink}>(시험) 부탁 상대 앞</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={() => devJump({ floor: 1, ...SHOP_FRONT, dir: 0 })}>
                   <Text style={styles.devLink}>(시험) 매점 앞</Text>
                 </TouchableOpacity>
@@ -624,6 +663,13 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               )}
             </View>
           )}
+          {choices && (
+            <View style={styles.talkChoices}>
+              {choices.map((c) => (
+                <PaperButton key={c.label} wide label={c.label} onPress={() => focused?.kind === 'person' && enterNode(focused, c.to)} />
+              ))}
+            </View>
+          )}
           <TouchableOpacity style={styles.backButton} onPress={goBack}>
             <Text style={[styles.backText, { fontSize: 15 * fontScale }]}>뒤로가기</Text>
           </TouchableOpacity>
@@ -644,6 +690,17 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             <TurnButton glyph="↓" label="뒤돌기" onPress={() => rotate(2)} />
           </View>
         </View>
+      )}
+
+      {breathing && (
+        <BreatheTogether
+          fontScale={fontScale}
+          onDone={() => {
+            setBreathing(false);
+            const then = atNode?.then;
+            if (focused?.kind === 'person' && then) enterNode(focused, then);
+          }}
+        />
       )}
 
       {lessonOpen && (
@@ -753,6 +810,7 @@ const styles = StyleSheet.create({
   floorTextHere: { color: '#111', fontWeight: '700' },
   controls: { paddingHorizontal: 12, paddingTop: 8, gap: 8, backgroundColor: '#000' },
   shop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  talkChoices: { alignSelf: 'stretch', gap: 6 },
   backButton: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', height: 58, borderWidth: 2, borderColor: '#f2f2f2' },
   backText: { color: '#fff', fontFamily: 'serif' },
   thingButton: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', height: 42, backgroundColor: '#f2f2f2' },
