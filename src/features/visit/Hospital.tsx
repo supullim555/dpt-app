@@ -123,7 +123,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [transit, setTransit] = useState('');
   const [noView, setNoView] = useState(false);
   const [breathing, setBreathing] = useState(false);
-  const [relaxMode, setRelaxMode] = useState<'breath' | 'muscle'>('breath');
+  const [relaxMode, setRelaxMode] = useState<'breath' | 'muscle' | 'ground'>('breath');
   const [memory, setMemory] = useState<Memory | null>(null);
   // In someone's remembered day, what goes through their head: the newest, and the one before it, fainter.
   const [thoughts, setThoughts] = useState<string[]>([]);

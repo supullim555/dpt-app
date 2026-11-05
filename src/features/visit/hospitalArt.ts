@@ -162,7 +162,7 @@ function doorShape(p: Pen, x: number, y: number) {
 
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
 /** v0.79: the remembered places' own sheet of tiles (places.ts MemoryTile), the same layout as the structure sheet. */
-export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7, sand: 8, sea: 9 } as const;
+export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7, sand: 8, sea: 9, paving: 10, marketStreet: 11 } as const;
 /** And their things and people, cut out like the rest. */
 export const MEMORY_PART = {
   rehabBars: { x: 0, y: 0, w: 256, h: 256 },
@@ -174,6 +174,11 @@ export const MEMORY_PART = {
   beachBoat: { x: 512, y: 256, w: 256, h: 256 },
   beachBench: { x: 768, y: 256, w: 256, h: 256 },
   mother: { x: 0, y: 512, w: 256, h: 512 },
+  stallKeeper: { x: 256, y: 512, w: 256, h: 512 },
+  marketKid: { x: 512, y: 512, w: 256, h: 256 },
+  marketCrates: { x: 512, y: 768, w: 256, h: 256 },
+  fruitStall: { x: 768, y: 512, w: 256, h: 256 },
+  riceCakes: { x: 768, y: 768, w: 256, h: 256 },
 } as const;
 export type MemoryPart = keyof typeof MEMORY_PART;
 

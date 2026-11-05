@@ -50,7 +50,7 @@ export function clueOn(day: number, floor: number) {
 }
 
 /** The days the doctor has a request (REQUESTS in requests.ts; scripts/check-visit-logic.mjs keeps the two the same). */
-export const REQUEST_DAYS: readonly number[] = [1, 2, 3];
+export const REQUEST_DAYS: readonly number[] = [1, 2, 3, 4];
 
 /** The happy ending: every one of the doctor's requests settled by the last day (docs/의사의_부탁.md). */
 export function happyUnlocked(solved: readonly number[]): boolean {

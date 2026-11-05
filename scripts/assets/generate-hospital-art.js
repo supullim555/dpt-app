@@ -88,6 +88,16 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.81: the fourth request's memory, a traditional market at dusk
+  'market-scene': `${SAME_STYLE} Two separate things side by side with a wide plain gap. Left: one square panel completely
+filled edge to edge, flat, no frame: an old traditional market street at dusk seen straight across, a row of small shop
+fronts with cloth awnings and hanging bulbs along the lower half, the evening sky above. Right: a tall stack of wooden fruit
+crates, whole, seen straight on.`,
+  'market-props': `${SAME_STYLE} Five separate things, each whole and seen straight on: a small fruit stall with piles of
+tangerines and apples under a cloth awning; a vegetable stall with baskets of greens; a rice cake stall with trays on a low
+table; a middle-aged woman stall keeper in an apron and arm sleeves, full body, standing, facing the viewer, feet visible,
+friendly; and a child about nine in plain clothes holding a small coin purse, full body, standing, facing the viewer, feet
+visible, cheerful.`,
   // v0.80: the third request's memory, a summer beach with a mother
   'beach-tex': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to edge,
 flat, no frame: a sandy beach seen from straight above, fine sand with a few footprints and small shells, evenly lit; and

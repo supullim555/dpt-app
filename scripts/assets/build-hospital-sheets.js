@@ -86,6 +86,12 @@ const ITEMS = {
     { src: 'beach-props', box: [488, 636, 702, 732], cell: { x: 512, y: 256, w: 256, h: 256 } },
     { src: 'beach-props', box: [698, 664, 850, 750], cell: { x: 768, y: 256, w: 256, h: 256 } },
     { src: 'beach-props', box: [858, 362, 988, 766], cell: { x: 0, y: 512, w: 256, h: 512 }, height: 470 },
+    // v0.81: the market (the vegetable stall left out: its green leaves go with the green ground when cut)
+    { src: 'market-props', box: [720, 286, 856, 722], cell: { x: 256, y: 512, w: 256, h: 512 }, height: 470 },
+    { src: 'market-props', box: [878, 414, 990, 724], cell: { x: 512, y: 512, w: 256, h: 256 } },
+    { src: 'market-scene', box: [684, 258, 950, 780], cell: { x: 512, y: 768, w: 256, h: 256 } },
+    { src: 'market-props', box: [32, 372, 256, 680], cell: { x: 768, y: 512, w: 256, h: 256 } },
+    { src: 'market-props', box: [466, 512, 708, 702], cell: { x: 768, y: 768, w: 256, h: 256 } },
   ],
   // v0.74: everyone who shared a drawing now has their own (hospitalArt.ts PERSON2_SLOT).
   people2: [
@@ -415,6 +421,9 @@ const MEMORY = [
   // v0.80: the beach's sand, and the sea under its sky
   { tile: 8, src: 'beach-tex', box: [56, 300, 458, 590], seam: 'xy' },
   { tile: 9, src: 'beach-tex', box: [560, 294, 972, 696], seam: 'x' },
+  // v0.81: the market's paving, and its street at dusk
+  { tile: 10, src: 'tex-ground', box: [84, 546, 482, 939], seam: 'xy' },
+  { tile: 11, src: 'market-scene', box: [62, 264, 560, 776], seam: 'x' },
 ];
 // The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
 // (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small

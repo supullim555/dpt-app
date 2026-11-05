@@ -8,7 +8,7 @@
 type Spot = { x: number; y: number; dir: 0 | 1 | 2 | 3 };
 
 /** Tiles on the memory sheet (hospitalArt.ts MEMORY_TILES), by name. */
-export type MemoryTile = 'pebbles' | 'water' | 'woods' | 'farBank' | 'rehabFloor' | 'rehabWall' | 'plainWall' | 'ceiling' | 'sand' | 'sea';
+export type MemoryTile = 'pebbles' | 'water' | 'woods' | 'farBank' | 'rehabFloor' | 'rehabWall' | 'plainWall' | 'ceiling' | 'sand' | 'sea' | 'paving' | 'marketStreet';
 
 export type Place = {
   map: string[];
@@ -44,7 +44,7 @@ export type Place = {
   lostArrow: boolean;
 };
 
-export type PlaceId = 'river' | 'rehab' | 'beach';
+export type PlaceId = 'river' | 'rehab' | 'beach' | 'market';
 
 export const PLACES: Record<PlaceId, Place> = {
   // A summer riverside: C the car, A the tent, R thick bushes (nothing behind them shows), % rocks, ~ the river.
@@ -165,6 +165,43 @@ export const PLACES: Record<PlaceId, Place> = {
     people: { k: { name: '엄마', look: 'mother' }, j: { name: '엄마', look: 'mother' } },
     meetGoal: '파라솔 밑의 엄마에게 가기',
     lostGoal: '엄마 찾기',
+    lostArrow: false,
+  },
+  // An old market at dusk, years ago: S your own fruit stall, F another, T rice cakes, X stacked crates (the child who
+  // comes every day is behind them).
+  market: {
+    map: [
+      '###########',
+      '#..F..T...#',
+      '#.........#',
+      '#.S.k.....#',
+      '#.........#',
+      '#......XXj#',
+      '###########',
+    ],
+    outdoors: true,
+    start: { x: 3, y: 4, dir: 0 },
+    meet: { x: 3, y: 3, dir: 1 },
+    found: { x: 9, y: 4, dir: 2 },
+    // facing down the market, the way round: where she stood still blocks the row
+    lostAt: { x: 3, y: 3, dir: 2 },
+    stops: 'SFTX',
+    spread: '',
+    things: {
+      S: { look: 'fruitStall', text: '내 과일 좌판이다. 귤이 오늘도 그대로다.' },
+      F: { look: 'fruitStall', text: '건너편 과일 가게다. 저기도 한산하다.' },
+      T: { look: 'riceCakes', text: '떡집 좌판이다. 떡이 굳어 간다.' },
+      X: { look: 'marketCrates', text: '빈 과일 상자가 키보다 높이 쌓여 있다.' },
+    },
+    ground: 'paving',
+    wall: 'marketStreet',
+    wallHeight: 2.6,
+    span: 3,
+    fog: [0.62, 0.58, 0.52],
+    light: 1.04,
+    people: { k: { name: '옆 가게 아주머니', look: 'stallKeeper' }, j: { name: '꼬마', look: 'marketKid' } },
+    meetGoal: '옆 가게 아주머니에게 가기',
+    lostGoal: '시장 한 바퀴 돌기',
     lostArrow: false,
   },
 };

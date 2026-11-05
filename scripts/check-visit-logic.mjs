@@ -139,6 +139,8 @@ for (const [id, p] of Object.entries(PLACES)) {
   assert.ok(firstStep(0, p.start, p.meet) !== null || (p.start.x === p.meet.x && p.start.y === p.meet.y), `${id}: 시작에서 만남까지`);
   const from = p.lostAt ?? p.meet;
   assert.ok(firstStep(0, from, p.found) !== null, `${id}: 사건 뒤 다시 찾기까지`);
+  // right after the moment you can step the way you're facing, or you're looking at the empty place where k was
+  if (p.lostAt) assert.ok(stepped(at(p.lostAt)) !== null || thingAt(at(p.lostAt), false)?.id === '0k', `${id}: 사건 직후 앞으로 걷거나 빈자리를 봄`);
   for (const c of p.stops + p.spread) assert.ok(p.things[c], `${id}: ${c} 설명`);
 }
 for (const r of REQUESTS) assert.ok(PLACES[r.memory.place], `${r.day}일 부탁의 장소`);

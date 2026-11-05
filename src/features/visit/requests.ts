@@ -14,7 +14,7 @@ export type TalkNode = {
    */
   effect?: 'accept' | 'breathe' | 'solve' | 'memory' | 'lose' | 'return';
   /** With 'breathe': which way of unwinding together (BreatheTogether): slow breaths, or tensing and letting go. */
-  relax?: 'breath' | 'muscle';
+  relax?: 'breath' | 'muscle' | 'ground';
 };
 export type Talk = Record<string, TalkNode>;
 
@@ -39,7 +39,7 @@ export type Request = {
    * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
    */
   /** `opening`: what goes through their head on arriving, before anything happens. */
-  memory: { place: 'river' | 'rehab' | 'beach'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
+  memory: { place: 'river' | 'rehab' | 'beach' | 'market'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
   /** Who they are, for answering what the player writes themselves (Gemini, for those who turned AI on; api/chat.ts). */
   persona: string;
 };
@@ -354,6 +354,112 @@ export const REQUESTS: Request[] = [
     girl: {
       choice: '4층 옆 병실 보호자분 이야기',
       lines: ['너 탓 아니야. 그 말, 하기는 쉬운데 듣기는 어렵지.', '우리 엄마도 그런 얼굴 해. 나 볼 때.', '…나중에 엄마한테 그 말 해 줘야겠다. 내가.'],
+    },
+  },
+  {
+    day: 4,
+    who: '1o',
+    name: '1층 외래의 어르신',
+    distortion: '과잉일반화',
+    goal: { text: '1층 외래의 어르신과 이야기하기', floor: 1, cell: { x: 2, y: 2 }, face: 0 },
+    doctor: {
+      start: {
+        lines: [
+          '오셨어요. 오늘도 하나 부탁드려도 될까요?',
+          '1층 외래 대기실에 계신 어르신이요. 번호가 늦게 불리니까, 평생 자기 차례는 안 온다고 하세요.',
+          '몇 번 있었던 일을 모든 일로 넓혀 버리는 거죠. 과잉일반화라고 해요.',
+          '질문을 몇 개만 해 주세요. 안 하셔도 괜찮아요.',
+        ],
+        choices: [
+          { label: '해 볼게요', to: 'yes' },
+          { label: '오늘은 어려워요', to: 'no' },
+        ],
+      },
+      yes: { effect: 'accept', lines: ['고마워요. 1층 왼쪽 위 외래 대기실이에요.'] },
+      no: { lines: ['괜찮아요. 마음이 생기면 언제든 들러 주세요.'] },
+    },
+    person: {
+      start: {
+        lines: ['…의사 양반이 보냈구먼. 앉아요, 어차피 내 번호는 안 불려.', '평생 그랬어. 나는 원래 차례가 안 와. 장사할 때도 그랬고.', '나 같은 사람한테는 좋은 일이 안 와요.'],
+        choices: [
+          { label: '"평생 그랬다"고 하셨는데, 그렇지 않았던 날도 있었을까요?', to: 'exceptions' },
+          { label: '오늘은 금방 불릴 거예요.', to: 'reassured' },
+          { label: '그런 생각 하시면 더 우울해지세요.', to: 'corrected' },
+        ],
+      },
+      reassured: {
+        lines: ['허허, 다들 그러지.'],
+        choices: [
+          { label: '"평생 그랬다"고 하셨는데, 그렇지 않았던 날도 있었을까요?', to: 'exceptions' },
+          { label: '그런 생각 하시면 더 우울해지세요.', to: 'corrected' },
+        ],
+      },
+      corrected: {
+        lines: ['우울한 게 아니라 아는 거여.'],
+        choices: [
+          { label: '"평생 그랬다"고 하셨는데, 그렇지 않았던 날도 있었을까요?', to: 'exceptions' },
+          { label: '오늘은 금방 불릴 거예요.', to: 'reassured' },
+        ],
+      },
+      exceptions: {
+        lines: ['…글쎄. 있었겠지. 기억이 안 나서 그렇지.', '시장에서 과일 팔 때, 해 질 녘까지 손님 하나 없던 날이 수두룩했어.'],
+        choices: [
+          { label: '그런 날에도 들러 준 사람이 있었나요? 한 사람이라도요.', to: 'someone' },
+          { label: '그럼 장사가 잘 안 맞으셨나 봐요.', to: 'agreed' },
+        ],
+      },
+      agreed: {
+        lines: ['…그랬나 보지.'],
+        choices: [{ label: '그런 날에도 들러 준 사람이 있었나요? 한 사람이라도요.', to: 'someone' }],
+      },
+      someone: {
+        lines: ['…있었지. 매일 오던 꼬마가 하나.', '그걸 잊고 있었네.'],
+        choices: [
+          { label: '그날 얘기를 좀 더 들려주실래요? 해 질 녘 시장이요.', to: 'story' },
+          { label: '그럼 이제 생각이 좀 바뀌셨죠?', to: 'rushed' },
+        ],
+      },
+      rushed: {
+        lines: ['나이 먹으면 생각이 쉽게 안 바뀌어.'],
+        choices: [{ label: '그날 얘기를 좀 더 들려주실래요? 해 질 녘 시장이요.', to: 'story' }],
+      },
+      story: { lines: ['…그날도 해가 기울도록 개시를 못 했어.'], then: 'remembered' },
+      remembered: { effect: 'memory', lines: [] },
+      again: {
+        lines: ['…국밥집 할머니, 우체부, 그 꼬마. 셋이나 왔었네.', '안 오는 날만 세고 있었구먼. 온 날은 안 세고.', '번호도… 아까 앞사람 불렸으니, 곧 오겠지.'],
+        choices: [{ label: '잠깐 여기를 같이 둘러볼까요? 지금 이 대기실이요.', to: 'relax' }],
+      },
+      relax: { effect: 'breathe', relax: 'ground', lines: ['…그러지 뭐.'], then: 'done' },
+      done: { effect: 'solve', lines: ['…허허, 저 소리 들리지? 번호 부르는 소리.', '내 거는 아니어도, 곧 오겠지.'] },
+    },
+    memory: {
+      place: 'market',
+      title: '오래전, 해 질 녘의 시장',
+      opening: '오늘도 귤이 그대로다. 해가 벌써 기운다.',
+      lostTitle: '옆 가게가 셔터를 내린다. 오늘은 아무도 안 올 것 같다.',
+      returnTitle: '다시, 병원',
+      meet: {
+        start: {
+          lines: ['오늘 개시는 했어?', '…얼굴 보니 또 공쳤구먼.'],
+          choices: [{ label: '오늘도 공쳤어요. 저는 원래 안 돼요.', to: 'go' }],
+        },
+        go: { lines: ['원래 안 되는 사람이 어딨어. 한 바퀴 돌고 와. 바람이라도 쐬게.'], then: 'gone' },
+        gone: { effect: 'lose', lines: [] },
+      },
+      found: {
+        start: {
+          lines: ['아저씨! 오늘도 그 귤 있어요?', '엄마가 귤은 꼭 아저씨네 거 사 오래요. 제일 달다고.'],
+          choices: [{ label: '…있지. 제일 단 걸로 골라 줄게.', to: 'back' }],
+        },
+        back: { effect: 'return', lines: [] },
+      },
+      thoughts: ['아무도 안 사. 오늘도.', '…아니, 아침에 국밥집 할머니가 다녀갔지.', '점심엔 우체부도 하나 사 갔고.', '나는 원래 안 된다더니, 오늘만 둘이네.', '…저 상자 뒤에서 무슨 소리가.'],
+    },
+    persona: `1층 외래 대기실에서 번호를 기다리는 어르신. 칠십 대. 젊어서 시장에서 과일 장사를 했다. "나는 원래 차례가 안 와", "평생 그랬어"처럼 몇 번의 일을 모든 일로 넓힌다(과잉일반화). 느리고 정이 있는 말투로, 반말과 존댓말을 섞는다. 해 질 녘까지 개시를 못 한 날에도 국밥집 할머니, 우체부, 매일 오던 꼬마가 들렀던 일은, 플레이어가 예외나 들러 준 사람을 묻기 전에는 먼저 꺼내지 않는다.`,
+    after: ['어제 번호가 금방 불렸어요. 허허, 별일이지.'],
+    girl: {
+      choice: '1층 외래 어르신 이야기',
+      lines: ['안 오는 날만 세고, 온 날은 안 센다… 나도 그래.', '편지 답장 안 온 날만 세고 있었어. 근데 너는 왔잖아.', '…오늘도 셀게. 온 날로.'],
     },
   },
 ];
