@@ -36,7 +36,8 @@ export type Request = {
    * The day they remember, walked through as them: where it is, the talk before (`meet`) and after (`found`), and
    * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
    */
-  memory: { title: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
+  /** `opening`: what goes through their head on arriving, before anything happens. */
+  memory: { title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
   /** Who they are, for answering what the player writes themselves (Gemini, for those who turned AI on; api/chat.ts). */
   persona: string;
 };
@@ -113,6 +114,7 @@ export const REQUESTS: Request[] = [
     },
     memory: {
       title: '작년 여름, 강가',
+      opening: '애는 내리자마자 물가로 뛰어갔다. 텐트 칠 자리부터 봐 둬야지.',
       lostTitle: '텐트를 다 치고 돌아보니, 아이가 보이지 않는다.',
       returnTitle: '다시, 병원',
       meet: {

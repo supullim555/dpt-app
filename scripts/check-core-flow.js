@@ -704,6 +704,7 @@ async function main() {
       // their day by the river, walked through as them: the boy at the water, then gone, then found
       await tapUntil('강가의 아이에게 가기');
       t.note('병문안: 그때의 강가로 감', await t.waitText('강가의 아이에게 가기', 4000));
+      t.note('병문안: 강가에 닿으면 혼잣말', await t.hasText('애는 내리자마자 물가로 뛰어갔다. 텐트 칠 자리부터 봐 둬야지.'));
       await sleep(400);
       await t.shot('river_start.png');
       await press('앞으로', 3);
@@ -719,7 +720,8 @@ async function main() {
       await sleep(400);
       await press('왼쪽');
       await press('앞으로', 2);
-      t.note('병문안: 찾는 동안 최악의 생각', (await t.hasText('왜 눈을 뗐지. 텐트가 뭐라고.')) || (await t.hasText('소리라도 질렀으면 들렸을 텐데.')));
+      // the newest thought, and the one before it still there, fainter
+      t.note('병문안: 찾는 동안 최악의 생각, 바로 전 생각도 남음', (await t.hasText('소리라도 질렀으면 들렸을 텐데.')) && (await t.hasText('왜 눈을 뗐지. 텐트가 뭐라고.')));
       await t.shot('river_lost.png');
       // round the reeds: north, east along the top, then down to where they end
       await press('왼쪽');

@@ -123,6 +123,14 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [noView, setNoView] = useState(false);
   const [breathing, setBreathing] = useState(false);
   const [memory, setMemory] = useState<Memory | null>(null);
+  // In someone's remembered day, what goes through their head: the newest, and the one before it, fainter.
+  const [thoughts, setThoughts] = useState<string[]>([]);
+  const thoughtIn = useRef(new Animated.Value(1)).current;
+  const think = (line: string, keep = true) => {
+    setThoughts((t) => (keep ? [...t.slice(-1), line] : [line]));
+    thoughtIn.setValue(0);
+    Animated.timing(thoughtIn, { toValue: 1, duration: 600, useNativeDriver: false }).start();
+  };
   // Writing to someone yourself: the draft, and their answer (or that it's coming), shown in place of their line.
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
@@ -317,8 +325,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (memory?.stage === 'lost') {
       const step = memory.step + 1;
       setMemory({ ...memory, step });
-      const thoughts = memory.request.memory.thoughts;
-      setNote(thoughts[Math.min(step, thoughts.length - 1)]);
+      const lines = memory.request.memory.thoughts;
+      if (step < lines.length) think(lines[step]);
     }
   };
   const rotate = (by: number) => {
@@ -392,6 +400,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       latest.current.memory = m;
       setPose(RIVER_START);
       setNote('');
+      think(r.memory.opening, false);
       scene.current?.showFloor(0, spritesFor(0), RIVER_START, false);
       setTransit('');
       busy.current = false;
@@ -411,7 +420,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         scene.current.setSprites(spritesFor(0));
         scene.current.unfocus(pose, () => (busy.current = false));
       } else busy.current = false;
-      setNote(m.request.memory.thoughts[0]);
+      think(m.request.memory.thoughts[0], false);
       setTransit('');
     }, MEMORY_MS);
   }
@@ -422,6 +431,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     setTransit(m.request.memory.returnTitle);
     setTimeout(() => {
       setMemory(null);
+      setThoughts([]);
       latest.current.memory = null;
       setPose(m.back);
       setNote('');
@@ -616,6 +626,13 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               )}
             </>
           )
+        )}
+
+        {memory && !focused && thoughts.length > 0 && (
+          <View style={styles.thoughts} pointerEvents="none" accessibilityLiveRegion="polite">
+            {thoughts.length > 1 && <Text style={[styles.thoughtBefore, { fontSize: 13 * fontScale, lineHeight: 20 * fontScale }]}>{thoughts[0]}</Text>}
+            <Animated.Text style={[styles.thought, { fontSize: 17 * fontScale, lineHeight: 26 * fontScale, opacity: thoughtIn }]}>{thoughts[thoughts.length - 1]}</Animated.Text>
+          </View>
         )}
 
         <View style={styles.bottomStack} pointerEvents="box-none">
@@ -923,6 +940,10 @@ const styles = StyleSheet.create({
   mapButton: { position: 'absolute', right: 10, top: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2' },
   mapButtonText: { color: '#fff', fontSize: 14, fontFamily: 'serif' },
   bottomStack: { position: 'absolute', left: 14, right: 14, bottom: 12, gap: 8 },
+  // the remembered day's thoughts: across the middle of the view, on a soft dark band
+  thoughts: { position: 'absolute', left: 0, right: 0, top: '30%', paddingHorizontal: 22, paddingVertical: 14, gap: 6, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center' },
+  thought: { color: '#fff', fontFamily: 'serif', fontStyle: 'italic', textAlign: 'center', ...(Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as object) : {}) },
+  thoughtBefore: { color: 'rgba(255,255,255,0.5)', fontFamily: 'serif', fontStyle: 'italic', textAlign: 'center', ...(Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as object) : {}) },
   noteBox: { backgroundColor: 'rgba(0,0,0,0.78)', padding: 10 },
   lesson: { backgroundColor: 'rgba(0,0,0,0.88)', borderWidth: 1.5, borderColor: AMBER, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, gap: 2 },
   lessonText: { color: '#fff', fontFamily: 'serif' },
