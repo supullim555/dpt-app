@@ -70,8 +70,10 @@ async function waitFor(check, ms) {
 }
 
 async function main() {
+  // The earlier app, kept at ?old=1 since 병문안 became the front door (features/visit/flag.ts).
+  const OLD = `${BASE}/?old=1`;
   const { passed } = await withBrowser(
-    BASE,
+    OLD,
     async (t) => {
       // v0.28 entrance (§2 SG1: "열고 10초 안에 첫 질문"): one disclaimer tap, then the gate's
       // feeling question — no login screen, no AI choice, no breathing first.
@@ -207,7 +209,7 @@ async function main() {
       // The gate, full flow: reload lands back on it. Feeling first; a heavy weight (≤3) offers
       // breathing; accepting runs useBreathPacer (2 sighs here — one earlier visit was a skip,
       // features/gate/history.ts breathCyclesFor — ~6.4s each), then enters the app.
-      await t.navigate(BASE);
+      await t.navigate(OLD);
       t.note('관문: 새로고침 후 바로 감정 질문 (호흡이 먼저 오지 않음)', await t.waitText('지금 마음에 가까운 말이 있다면?', 6000));
       await t.clickText('분노');
       await sleep(400);
@@ -236,7 +238,7 @@ async function main() {
   // times ROOM_MAX_ASPECT 0.66 = 552 wide, centered in 1400.
   const WIDE = { width: 1400, height: 900, left: 424, right: 976 };
   const { passed: widePassed } = await withBrowser(
-    BASE,
+    OLD,
     async (t) => {
       await t.passStartupGates();
       const rectOf = (text) =>
@@ -255,9 +257,9 @@ async function main() {
     { shotDir: SHOT_DIR, width: WIDE.width, height: WIDE.height }
   );
 
-  // 병문안, behind ?visit=1 (features/visit/flag.ts). &dev=1 gives the day-skipping buttons.
+  // 병문안, the front door: the plain address, no ?visit=1 (features/visit/flag.ts). &dev=1 gives the day-skipping buttons.
   const { passed: visitPassed } = await withBrowser(
-    `${BASE}/?visit=1&dev=1`,
+    `${BASE}/?dev=1`,
     async (t) => {
       await t.waitText('시작하기 전에', 12000);
       await t.clickText('시작하기');
