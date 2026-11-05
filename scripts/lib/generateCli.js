@@ -39,7 +39,7 @@ async function runGenerateCli({ outDir, names: known, promptFor, refFor = () => 
       console.log('wrote', name, `(${buf.length} bytes)`);
     } catch (e) {
       failed++;
-      console.error('FAILED', name, '-', e.message);
+      console.error('FAILED', name, '-', e.message, e.cause?.code ?? e.cause?.message ?? '');
     }
   }
   if (failed) process.exit(1);

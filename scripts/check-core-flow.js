@@ -339,7 +339,7 @@ async function main() {
       await readTip();
       await t.clickText('안내 직원에게 말 걸기');
       t.note('병문안: 안내 직원이 처음엔 매점을 권함', await t.waitText('병문안 오셨어요?', 2000));
-      t.note('병문안: 튜토리얼이 뒤로가기를 설명', await t.hasText('다 들었으면'));
+      t.note('병문안: 튜토리얼이 뒤로가기를 설명', await t.waitText('다 들었으면', 2000));
       await readTip();
       await sleep(500);
       await t.clickText('병문안 오셨어요? 호스피스 병동은 4층이에요.');
@@ -437,13 +437,14 @@ async function main() {
       t.note('병문안: 하루가 끝나면 간호사가 나가 달라고 함', (await t.waitText('이제 치료 시간이에요', 3000)) && (await t.hasText('간호사')));
       await t.shot('visit_staff.png');
       await t.clickText('이제 치료 시간이에요. 보호자분 아니시죠? 오늘은 나가 주셔야 해요.');
+      t.note('병문안: 간호사가 의사 선생님 방으로 보냄', await t.waitText('의사 선생님이 잠깐 뵙자고', 2000));
+      await t.clickText('아, 그리고 의사 선생님이 잠깐 뵙자고 하셨어요. 복도 오른쪽 끝 방이에요.');
       t.note('병문안: 나가면 병실 앞 복도', await t.waitText('병실 앞 복도', 3000));
       t.note('병문안: 복도에선 다시 들어갈 수 없음', !(await t.hasText('들어가기')));
       t.note('병문안: 1회차엔 빛으로 날을 넘길 수 없음', !(await t.hasText('빛을 따라')));
-      t.note('병문안: 튜토리얼이 하루를 쓰는 법을 설명', await t.hasText('다음 날은 실제로 내일 열려요'));
-      await t.clickText('알겠어요');
-      await sleep(200);
-      t.note('병문안: 튜토리얼이 끝남', !(await t.hasText('다음 날은 실제로 내일 열려요')));
+      t.note('병문안: 튜토리얼이 의사 선생님 방을 권함', await t.hasText('의사 선생님 방에 들러'));
+      await readTip();
+      t.note('병문안: 목표가 의사 선생님의 방', await t.hasText('4층 의사 선생님의 방에 가기'));
       await sleep(300);
       await t.shot('visit_outside.png');
 
@@ -459,6 +460,44 @@ async function main() {
       t.note('병문안: 뒤로가기', await t.clickText('뒤로가기'));
       await sleep(600);
       t.note('병문안: 뒤로가면 다시 움직임', (await t.hasText('앞으로')) && !(await t.hasText('그래도 오늘 웃었어요')));
+
+      // the doctor's room at the end of her corridor: he's spoken to only from in front of his desk
+      await press('왼쪽');
+      await press('앞으로', 6);
+      await press('오른쪽');
+      await press('앞으로', 3);
+      await press('왼쪽');
+      await press('앞으로');
+      await press('오른쪽');
+      t.note('병문안: 의사 선생님의 방', await t.hasText('의사 선생님의 방'));
+      await sleep(400);
+      await t.shot('walk_doctor.png');
+      t.note('병문안: 책상 앞에서 의사 선생님에게 말 걸기', await t.clickText('의사 선생님에게 말 걸기'));
+      t.note('병문안: 의사 선생님이 부탁을 꺼냄', await t.waitText('그 아이가 기다리던 분이', 2000));
+      await sleep(500);
+      await t.shot('talk_doctor.png');
+      await t.clickText('뒤로가기');
+      await sleep(600);
+      t.note('병문안: 튜토리얼이 바로 다음 날을 할 수 있다고 설명', (await t.waitText('다음 날을 바로 이어서', 2000)) && (await t.hasText('꼭 그래야 하는 건 아니에요')));
+      await t.clickText('알겠어요');
+      await sleep(200);
+      t.note('병문안: 튜토리얼이 끝남', !(await t.hasText('다음 날을 바로 이어서')));
+
+      // the front door asks whether to go on to the next day
+      await t.clickText('지도');
+      await sleep(200);
+      await t.clickText('1층');
+      await sleep(1600);
+      await press('앞으로', 2);
+      await press('오른쪽');
+      await press('앞으로', 4);
+      t.note('병문안: 정문에서 병원 나가기', await t.clickText('병원 나가기'));
+      t.note('병문안: 다음 날을 진행할지 물음', (await t.waitText('2일차를 진행하시겠습니까?', 2000)) && (await t.hasText('아니오')));
+      await t.shot('leave_question.png');
+      await t.clickText('아니오');
+      t.note('병문안: 아니오면 다음 날까지 남은 시간', await t.waitText('자정에 열려요', 2000));
+      await t.clickText('병원에 더 있기');
+      await sleep(300);
 
       // day 2: after listening, she asks how the day felt
       const toRoom = async () => {
@@ -606,7 +645,8 @@ async function main() {
 
       await talk();
       await tapUntil('병실 앞 복도');
-      t.note('병문안: 2회차엔 목표로 단서를 알려 줌', await t.hasText('1층에서 개목걸이 찾기'));
+      // the doctor's room comes first; the clue is the goal after it (check-visit-logic.mjs)
+      t.note('병문안: 2회차에도 먼저 의사 선생님의 방', await t.hasText('4층 의사 선생님의 방에 가기'));
       await openMap();
       await t.clickText('요정의 쪽지');
       t.note('병문안: 2회차 지도에 요정의 쪽지', await t.waitText('1일째 · 1층 · 개목걸이', 2000));

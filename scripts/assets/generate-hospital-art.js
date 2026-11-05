@@ -88,6 +88,11 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // The doctor at his desk on her floor (v0.70): from the waist up, so a desk in the game hides where he'd sit.
+  doctor: `${SAME_STYLE} One middle-aged doctor in a plain white coat over a plain shirt, seated, seen straight on from the
+front, drawn from the waist up only, both forearms resting forward on an invisible desk, hands loosely together. Short
+greying hair, plain glasses, tired kind eyes, a small patient smile. Nothing below the waist, no desk, no chair, no
+stethoscope.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);

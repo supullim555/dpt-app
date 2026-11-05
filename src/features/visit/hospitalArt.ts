@@ -26,8 +26,8 @@ export const TILES = {
 /** Top-left corner of a tile, in pixels. */
 export const tileAt = (t: number) => ({ x: (t % 5) * TILE, y: Math.floor(t / 5) * TILE });
 
-export type PersonLook = 'nurse' | 'worker' | 'elder' | 'child' | 'visitor' | 'patient' | 'shopkeeper';
-export const PERSON_SLOT: Record<PersonLook, number> = { nurse: 0, worker: 1, elder: 2, child: 3, visitor: 4, patient: 5, shopkeeper: 6 };
+export type PersonLook = 'nurse' | 'worker' | 'elder' | 'child' | 'visitor' | 'patient' | 'shopkeeper' | 'doctor';
+export const PERSON_SLOT: Record<PersonLook, number> = { nurse: 0, worker: 1, elder: 2, child: 3, visitor: 4, patient: 5, shopkeeper: 6, doctor: 7 };
 /** Slots on the people sheet: 4 across, 2 down. */
 export const SLOT_W = 256;
 export const SLOT_H = 512;

@@ -9,7 +9,7 @@ const { execFileSync } = require('child_process');
 const FLOORS = {
   4: {
     title: '4층  호스피스·완화 병동',
-    rooms: { A: ['병실', 'closed'], B: ['병실', 'closed'], C: ['병실', 'closed'], D: ['가족\n면담실', 'closed'], L: ['보호자\n휴게실', 'open', [12.3, 2.45]], _: ['소녀의 병실', 'girl', [7.5, 9.5]], U: ['', 'girl'], W: ['창', 'open'] },
+    rooms: { A: ['병실', 'closed'], B: ['병실', 'closed'], C: ['병실', 'closed'], D: ['의사 선생님의\n방', 'open', [12.5, 6.6]], L: ['보호자\n휴게실', 'open', [12.3, 2.45]], _: ['소녀의 병실', 'girl', [7.5, 9.5]], U: ['', 'girl'], W: ['', 'open'] },
     clue: 'L',
   },
   3: {
@@ -29,7 +29,7 @@ const FLOORS = {
   },
 };
 
-const PEOPLE = { 4: 'npvg', 3: 'tcb', 2: 'dhky', 1: 'oimgb' };
+const PEOPLE = { 4: 'npvgr', 3: 'tcb', 2: 'dhky', 1: 'oimgb' };
 const TALK_AT_DESK = { 3: 'N' }; // the 3rd-floor nurse is behind the station, so the station is what you talk to
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const isSolid = (c) => '#=%NT_&^'.includes(c) || /[a-z]/.test(c);
@@ -195,7 +195,7 @@ function stackSvg() {
   return { width: 960, height: 3 * gap + 500, body: `<g transform="translate(40 40)">${out}</g><text x="40" y="${3 * gap + 480}" font-size="15" fill="#23211e">점선: 4층 소녀의 병실 창에서 내려다보는 1층 안뜰의 은행나무</text>` };
 }
 
-const ROOM_LABEL_AT = { 4: { L: [12.5, 1.25], U: [7.5, 6.5], D: [12, 7.5] }, 3: { R: [6, 9.25] }, 2: { Y: [6, 9.25], V: [11.75, 2.5], L: [10.5, 6] }, 1: { Y: [5.5, 11.5], O: [2, 2.3], M: [9, 1.5], X: [13, 1.14] } };
+const ROOM_LABEL_AT = { 4: { L: [12.5, 1.25], U: [7.5, 6.5], D: [12, 6.5] }, 3: { R: [6, 9.25] }, 2: { Y: [6, 9.25], V: [11.75, 2.5], L: [10.5, 6] }, 1: { Y: [5.5, 11.5], O: [2, 2.3], M: [9, 1.5], X: [13, 1.14] } };
 
 // The walls as you actually meet them, by the same rules as hospitalScene.ts, with who and what stands where.
 // Anything the map calls a room but leaves open to the corridor is marked, and printed.

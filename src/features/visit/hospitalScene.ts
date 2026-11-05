@@ -92,7 +92,8 @@ export type HospitalSprite = {
   face?: Dir;
 };
 /** What to look at: a point above a cell, from how far away. */
-export type FocusTarget = { cell: Cell; height: number; away: number; eye?: number };
+/** `side`: how far east of the middle of the cell to look. */
+export type FocusTarget = { cell: Cell; height: number; away: number; eye?: number; side?: number };
 
 export type HospitalScene = {
   showFloor: (floor: FloorNo, sprites: HospitalSprite[], pose: Pose, roomShut: boolean) => void;
@@ -199,6 +200,16 @@ const SOLIDS = {
       allOver([-0.3, -0.08], [0.38, 0.56], [-0.02, 0.02], 'screen'),
       allOver([0.04, 0.2], [0.38, 0.41], [-0.06, 0.08], 'leaflets'),
       allOver([0.27, 0.33], [0.38, 0.43], [-0.02, 0.04], 'boxDark'),
+    ],
+  },
+  // The doctor's: no sign on the front, and nothing tall on top, so his face stays clear.
+  doctorDeskBox: {
+    shadow: [1, 0.5],
+    boxes: [
+      { x: [-0.38, 0.38], y: [0, 0.34], z: [-0.13, 0.13], front: 'deskSide', rear: 'deskSide', side: 'deskSide', top: 'deskTop' },
+      allOver([-0.41, 0.41], [0.34, 0.38], [-0.16, 0.16], 'deskTop'),
+      allOver([-0.34, -0.12], [0.38, 0.41], [-0.08, 0.08], 'leaflets'),
+      allOver([0.26, 0.32], [0.38, 0.45], [-0.03, 0.03], 'boxDark'),
     ],
   },
   counterBox: {
@@ -685,7 +696,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     },
     focus: (target, ms = FOCUS_MS) => {
       const yaw = yawOf(heading);
-      const x = target.cell.x + 0.5 + Math.sin(yaw) * target.away;
+      const x = target.cell.x + 0.5 + (target.side ?? 0) + Math.sin(yaw) * target.away;
       const z = target.cell.y + 0.5 + Math.cos(yaw) * target.away;
       const y = target.eye ?? EYE + (target.height - EYE) * 0.4;
       const pitch = Math.atan2(target.height - y, target.away);

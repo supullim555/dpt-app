@@ -31,6 +31,8 @@ const ITEMS = {
     { src: 'people-b', box: [70, 185, 310, 885], cell: slot(4), height: 480 },
     { src: 'people-b', box: [430, 185, 620, 885], cell: slot(5), height: 470 },
     { src: 'people-b', box: [720, 200, 920, 880], cell: slot(6), height: 470 },
+    // from the waist up: he sits behind a desk, which hides the rest
+    { src: 'doctor', box: [200, 155, 820, 800], cell: slot(7), height: 236 },
   ],
   props: [
     { src: 'large', box: [5, 255, 365, 720], cell: { x: 0, y: 0, w: 512, h: 512 }, solid: true, tone: tree },

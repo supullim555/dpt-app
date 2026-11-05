@@ -3,15 +3,22 @@ import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 're
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE } from './script';
+import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, DOCTOR_LINES, nextDayQuestion, untilTomorrow } from './script';
 
 const AMBER = '#d9a441';
 const LIFT_MS = 1100;
 const STAIRS_MS = 700;
 const ARROWS = ['↑', '→', '↓', '←'];
+/** Hours and minutes left until the date changes here, when the next day opens. */
+function timeToMidnight(): [number, number] {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const minutes = Math.max(1, Math.ceil((midnight.getTime() - now.getTime()) / 60000));
+  return [Math.floor(minutes / 60), minutes % 60];
+}
 // A phone or tablet is told about the buttons on the screen; a computer about its keys as well.
 const TOUCH = Platform.OS !== 'web' || (typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches);
 // The letter keys by where they sit, so they still work with the keyboard set to Hangul.
@@ -28,6 +35,8 @@ const BUST_UP = 0.06;
 const LYING_FROM = -0.19;
 const BED_HEAD = 0.46;
 const BED_FOOT = -0.2;
+// Off the middle of the room, toward the wall with the window: her bed and everything on it.
+const BED_X = 0.4;
 // A chair backs onto the wall it's beside, facing the room.
 const awayFromWall = (across: number, along: number): Dir => (along > 0 ? 0 : along < 0 ? 2 : across > 0 ? 3 : 1);
 const GUIDE_CELL = { x: 5, y: 5 };
@@ -53,6 +62,9 @@ type Props = {
   onBuy: (gift: string) => void;
   onFind: (clue: ClueId) => void;
   onNextDay: () => void;
+  /** Whether you've been to the doctor's room since she was seen today. */
+  metDoctor: boolean;
+  onMeetDoctor: () => void;
   onTitle: () => void;
   tutorial: TutorialStep;
   onTutorial: (step: TutorialStep) => void;
@@ -60,7 +72,7 @@ type Props = {
   bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean; arriving?: string };
 };
 
-type Panel = 'none' | 'map' | 'lift' | 'stairs';
+type Panel = 'none' | 'map' | 'lift' | 'stairs' | 'leave' | 'tomorrow';
 /** Who or what the view has come in close on, until you go back. */
 type Focused =
   | { kind: 'person'; id: string; name: string; lines: string[]; index: number; shop: boolean }
@@ -81,7 +93,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, onTitle, tutorial, onTutorial, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, onTitle, tutorial, onTutorial, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -114,7 +126,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     HOSPITAL[floor].map.forEach((row, y) =>
       [...row].forEach((c, x) => {
         const person = PEOPLE[`${floor}${c}`];
-        if (person && c !== 'N') out.push({ cell: { x, y }, look: person.look });
+        if (person && c !== 'N' && `${floor}${c}` !== '4r') out.push({ cell: { x, y }, look: person.look });
         if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
         if (c === '&') out.push({ cell: { x, y }, look: 'sofaBox', face: floor === 4 ? 1 : 0 });
@@ -132,15 +144,18 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.52, 0.98], fixed: true });
     }
     if (floor === 4) {
+      // The doctor sits behind his desk, drawn from the waist up: you only ever see him from in front of it.
+      out.push({ cell: { x: DOCTOR_FRONT.x, y: DOCTOR_FRONT.y + 1 }, look: 'doctor', shift: [0, 0.06, 0.31] });
+      out.push({ cell: { x: DOCTOR_FRONT.x, y: DOCTOR_FRONT.y + 1 }, look: 'doctorDeskBox', shift: [0, -0.24, 0], face: 0 });
       // One bed, seen from its foot: the head far enough back that she can tip onto the pillows without going
       // through it, the mattress flat from there to the rail in front.
-      out.push({ cell: GIRL_CELL, look: 'bed', shift: [0, BED_HEAD, 0.28], fixed: true });
-      out.push({ cell: GIRL_CELL, look: 'mattress', shift: [0, BED_FOOT, 0.27], lean: -1.45, fixed: true });
-      out.push({ cell: GIRL_CELL, look: 'cabinetBox', shift: [0.72, BED_HEAD - 0.1, 0], face: 0 });
-      out.push({ cell: GIRL_CELL, look: 'chairBox', shift: [-0.78, -0.1, 0], face: 1 });
-      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [0, BED_FOOT, 0], fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'bed', shift: [BED_X, BED_HEAD, 0.28], fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'mattress', shift: [BED_X, BED_FOOT, 0.27], lean: -1.45, fixed: true });
+      out.push({ cell: GIRL_CELL, look: 'cabinetBox', shift: [BED_X - 0.72, BED_HEAD - 0.1, 0], face: 0 });
+      out.push({ cell: GIRL_CELL, look: 'chairBox', shift: [-0.9, -0.2, 0], face: 1 });
+      out.push({ cell: GIRL_CELL, look: 'bedFront', shift: [BED_X, BED_FOOT, 0], fixed: true });
       const g = girlOn(now.day);
-      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: g.body ? [0.3, 0.36, 0.33] : [0.24, 0.22, 0.5], fixed: true });
+      if (g.leaves) out.push({ cell: GIRL_CELL, look: 'leaves', shift: g.body ? [BED_X + 0.3, 0.36, 0.33] : [BED_X + 0.24, 0.22, 0.5], fixed: true });
       if (now.bedside?.girlHere !== false) {
         const look = turned.current ? g.headTo : g.headFrom;
         // Up the tipped paper, from her waist.
@@ -148,19 +163,19 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         // A lying drawing starts at the rail at the foot of the bed; a head and shoulders, just in front of her body.
         const [bustUp, bustBack] = g.body ? along(g.up, BUST_UP) : [g.up, 0];
         const y = g.body ? 0.02 + bustBack - 0.012 : LYING_FROM;
-        if (g.body) out.push({ cell: GIRL_CELL, look: g.body, shift: [0, 0.02, g.up - 0.04], lean: g.lean, fixed: true });
-        out.push({ cell: GIRL_CELL, look, id: 'head', shift: [0, y, bustUp], lean: g.lean, fixed: true });
+        if (g.body) out.push({ cell: GIRL_CELL, look: g.body, shift: [BED_X, 0.02, g.up - 0.04], lean: g.lean, fixed: true });
+        out.push({ cell: GIRL_CELL, look, id: 'head', shift: [BED_X, y, bustUp], lean: g.lean, fixed: true });
         const pin = PIN_ON[look];
         if (pin) {
           const [pinUp, pinBack] = along(bustUp, pin[1]);
-          out.push({ cell: GIRL_CELL, look: g.body ? 'pin' : 'pinSmall', id: 'pin', shift: [pin[0], y + pinBack - 0.012, pinUp], fixed: true });
+          out.push({ cell: GIRL_CELL, look: g.body ? 'pin' : 'pinSmall', id: 'pin', shift: [BED_X + pin[0], y + pinBack - 0.012, pinUp], fixed: true });
         }
         // over her lap, or the bottom of the drawing of her would show on the mattress
-        if (g.body) out.push({ cell: GIRL_CELL, look: 'blanket', shift: [0, -0.06, 0.12], fixed: true });
-        if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [-0.47, 0.3, 0], fixed: true });
-        if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [0.06, -0.14, 0.33], fixed: true });
+        if (g.body) out.push({ cell: GIRL_CELL, look: 'blanket', shift: [BED_X, -0.06, 0.12], fixed: true });
+        if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [BED_X - 0.47, 0.3, 0], fixed: true });
+        if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [BED_X + 0.06, -0.14, 0.33], fixed: true });
       }
-      if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.5, -0.32, 0] });
+      if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.55, -0.45, 0] });
     }
     const lying = clueOn(now.day, floor);
     if (lying && !now.found.includes(lying.id)) out.push({ cell: CLUE_CELLS[floor], look: lying.id });
@@ -169,7 +184,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   const herFocus = (): FocusTarget => {
     const g = girlOn(latest.current.day);
-    return { cell: GIRL_CELL, height: g.height, away: g.away, eye: g.eye };
+    return { cell: GIRL_CELL, side: BED_X, height: g.height, away: g.away, eye: g.eye };
   };
 
   useEffect(() => {
@@ -305,7 +320,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (!thing || blocked()) return;
     if (thing.kind === 'lift') setPanel('lift');
     else if (thing.kind === 'stairs') setPanel('stairs');
-    else if (thing.kind === 'leave') onTitle();
+    else if (thing.kind === 'leave') setPanel('leave');
     else if (thing.kind === 'clue' && clue) {
       setNote('');
       setFocused({ kind: 'thing', text: CLUE_TEXT[clue.id].found });
@@ -319,7 +334,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       const person = PEOPLE[thing.id];
       setNote('');
       const firstVisit = thing.id === '1i' && (tutorial === 'goal' || tutorial === 'talk');
-      setFocused({ kind: 'person', id: thing.id, name: person.name, lines: firstVisit ? GUIDE_FIRST_LINES : person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
+      const doctor = thing.id === '4r' && doneToday;
+      if (doctor) onMeetDoctor();
+      setFocused({ kind: 'person', id: thing.id, name: person.name, lines: doctor ? DOCTOR_LINES : firstVisit ? GUIDE_FIRST_LINES : person.clue?.day === day ? [person.clue.line] : person.lines, index: 0, shop: thing.id === '1m' });
       if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
       else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
@@ -351,6 +368,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const todaysClue = CLUES.find((c) => c.day === day && !found.includes(c.id)) ?? null;
   const goal = tutorialGoal(tutorial) ?? goalFor({
     doneToday,
+    metDoctor: day < 7 ? metDoctor : undefined,
     boughtToday,
     clueToFind: run >= 2 && todaysClue ? { floor: todaysClue.floor as FloorNo, name: CLUE_TEXT[todaysClue.id].name } : null,
   });
@@ -365,6 +383,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     bought: boughtToday,
     atBedside,
     doneToday,
+    metDoctor,
   });
   useEffect(() => {
     if (nextLesson !== tutorial) onTutorial(nextLesson);
@@ -374,7 +393,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const lesson = typeof tip === 'string' ? tip : tip?.[TOUCH ? 0 : 1];
   // Each new step is explained once in the middle of a darkened screen, like any game's tutorial.
   const lessonOpen = lesson !== undefined && lessonRead !== tutorial && !transit && panel === 'none';
-  const readLesson = () => (tutorial === 'day' ? onTutorial('done') : setLessonRead(tutorial));
+  const readLesson = () => (tutorial === 'nextDay' ? onTutorial('done') : setLessonRead(tutorial));
 
   const thingLabel = thing
     ? thing.kind === 'lift' ? '엘리베이터 타기'
@@ -382,7 +401,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     : thing.kind === 'clue' ? CLUE_SPOT
     : thing.kind === 'look' ? '살펴보기'
     : thing.kind === 'person' ? `${PEOPLE[thing.id].name}에게 말 걸기`
-    : '오늘은 돌아가기'
+    : '병원 나가기'
     : '';
 
   const devJump = (next: Pose) => {
@@ -445,7 +464,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             <View style={styles.lesson}>
               <Text style={[styles.lessonText, textSize]}>{lesson}</Text>
               <TouchableOpacity onPress={() => onTutorial('done')} style={styles.lessonLink}>
-                <Text style={[styles.lessonLinkText, { fontSize: 12 * fontScale }]}>{tutorial === 'day' ? TUTORIAL_OK : TUTORIAL_SKIP}</Text>
+                <Text style={[styles.lessonLinkText, { fontSize: 12 * fontScale }]}>{tutorial === 'nextDay' ? TUTORIAL_OK : TUTORIAL_SKIP}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -490,6 +509,24 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             </View>
             <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
               <Text style={[styles.linkText, textSize]}>그만두기</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {panel === 'leave' && (
+          <View style={styles.panel}>
+            <Text style={[styles.title, { fontSize: 20 * fontScale }]}>{nextDayQuestion(day + 1)}</Text>
+            <PaperButton label="예" onPress={() => { setPanel('none'); onNextDay(); }} />
+            <PaperButton label="아니오" onPress={() => setPanel('tomorrow')} />
+          </View>
+        )}
+
+        {panel === 'tomorrow' && (
+          <View style={styles.panel}>
+            <Text style={[styles.text, textSize]}>{untilTomorrow(...timeToMidnight())}</Text>
+            <PaperButton label="타이틀로" onPress={onTitle} />
+            <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
+              <Text style={[styles.linkText, textSize]}>병원에 더 있기</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -617,7 +654,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             <TouchableOpacity style={styles.lessonOk} onPress={readLesson}>
               <Text style={[styles.lessonOkText, { fontSize: 15 * fontScale }]}>{TUTORIAL_OK}</Text>
             </TouchableOpacity>
-            {tutorial !== 'day' && (
+            {tutorial !== 'nextDay' && (
               <TouchableOpacity onPress={() => onTutorial('done')} style={styles.lessonSkip}>
                 <Text style={[styles.lessonLinkText, { fontSize: 12 * fontScale }]}>{TUTORIAL_SKIP}</Text>
               </TouchableOpacity>

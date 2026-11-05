@@ -19,14 +19,14 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#AA#.#.#BB#&L##',
       '#=##.#.##=##+##',
       '#......@......#',
-      '###=#n#+#v#=#.#',
-      '#CCC##_U_##DD.#',
-      '#CCC##_U_##DD.#',
-      '#CCC##_g_##DD.#',
+      '###=#n#+#v#+###',
+      '#CCC##_U_##DDD#',
+      '#CCC##_U_##DDD#',
+      '#CCC##_g_##DrD#',
       '#CCC##___##DDW#',
       '###############',
     ],
-    rooms: { A: '병실', B: '병실', C: '병실', D: '가족 면담실', L: '보호자 휴게실', W: '복도 끝 창', U: '소녀의 병실' },
+    rooms: { A: '병실', B: '병실', C: '병실', D: '의사 선생님의 방', L: '보호자 휴게실', W: '의사 선생님의 방', U: '소녀의 병실' },
   },
   3: {
     map: [
@@ -105,6 +105,8 @@ export const ROOM_ENTRY: Cell = { x: 7, y: 5 };
 export const GIRL_FRONT: Cell = { x: 7, y: 7 };
 export const SHOP_FRONT: Cell = { x: 10, y: 2 };
 export const GUIDE_FRONT: Cell = { x: 5, y: 4 };
+/** In front of the doctor's desk, in his room at the end of her floor. */
+export const DOCTOR_FRONT: Cell = { x: 12, y: 7 };
 
 /** The start of each day: just inside the front door, looking down the lobby. */
 export const ENTRANCE: Pose = { floor: 1, x: 0, y: 4, dir: 1 };
@@ -189,8 +191,9 @@ export type Goal = {
   face?: Dir;
 };
 
-export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFind: { floor: FloorNo; name: string } | null }): Goal | null {
+export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFind: { floor: FloorNo; name: string } | null; metDoctor?: boolean }): Goal | null {
   if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: ROOM_ENTRY };
+  if (o.metDoctor === false) return { text: '4층 의사 선생님의 방에 가기', floor: 4, cell: DOCTOR_FRONT, face: 2 };
   if (o.clueToFind) return { text: `${o.clueToFind.floor}층에서 ${o.clueToFind.name} 찾기`, floor: o.clueToFind.floor, cell: null };
   if (!o.boughtToday) return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
   return null;
@@ -198,10 +201,12 @@ export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFin
 
 // The first walk in: how to move, what the goal means, how to talk to someone, the shop, then up to her floor.
 // Goes by what you've actually done, only ever forward, so wandering off never strands you in it.
-export type TutorialStep = 'walk' | 'goal' | 'talk' | 'back' | 'shop' | 'buy' | 'shopBack' | 'lift' | 'room' | 'inRoom' | 'day' | 'done';
+// After her room: the doctor's room, then that you may go on to the next day straight away.
+export type TutorialStep = 'walk' | 'goal' | 'talk' | 'back' | 'shop' | 'buy' | 'shopBack' | 'lift' | 'room' | 'inRoom' | 'day' | 'nextDay' | 'done';
 
-export function tutorialAfter(step: TutorialStep, o: { moved: boolean; facing: string | null; talkingTo: string | null; floor: FloorNo; bought: boolean; atBedside: boolean; doneToday: boolean }): TutorialStep {
-  if (step === 'done' || step === 'day') return step;
+export function tutorialAfter(step: TutorialStep, o: { moved: boolean; facing: string | null; talkingTo: string | null; floor: FloorNo; bought: boolean; atBedside: boolean; doneToday: boolean; metDoctor?: boolean }): TutorialStep {
+  if (step === 'done' || step === 'nextDay') return step;
+  if (step === 'day') return o.metDoctor && !o.talkingTo ? 'nextDay' : step;
   if (o.doneToday) return 'day';
   if (o.atBedside) return 'inRoom';
   if (step === 'inRoom' || step === 'room') return step;
@@ -256,6 +261,7 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   if (c === 'S') return { kind: 'stairs' };
   // Someone with furniture in front of them is spoken to from the one spot where the two go together (docs/병원_지도.md).
   if (p.floor === 1 && c === 'i' && p.dir !== 2) return { kind: 'look', text: p.dir === 0 ? '층별 안내판의 뒷면이다.' : '안내 데스크 옆이다. 말을 걸려면 앞으로 돌아가야 한다.', wall: p.dir === 0 };
+  if (p.floor === 4 && c === 'r' && p.dir !== 2) return { kind: 'look', text: '책상 옆이다. 말을 걸려면 앞으로 돌아가야 한다.' };
   if (p.floor === 1 && c === 'm' && p.dir !== 0) return { kind: 'look', text: '계산대 옆이다. 말을 걸려면 앞으로 돌아가야 한다.' };
   if (isPerson(c)) return { kind: 'person', id: `${p.floor}${c}` };
   if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'look', text: '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };

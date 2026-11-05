@@ -54,6 +54,17 @@ for (const floor of FLOOR_ORDER) {
   }
 }
 
+// after her room, the doctor's room comes before the shop; the tutorial then tells you about going on to the next day
+assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null, metDoctor: false }).text, '4층 의사 선생님의 방에 가기');
+assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null, metDoctor: true }).text, '1층 매점에서 선물 고르기');
+assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: { floor: 1, name: '개목걸이' }, metDoctor: true }).text, '1층에서 개목걸이 찾기');
+const afterRoom = { moved: true, facing: null, talkingTo: null, floor: 4, bought: true, atBedside: false, doneToday: true };
+assert.equal(tutorialAfter('day', { ...afterRoom, metDoctor: false }), 'day');
+assert.equal(tutorialAfter('day', { ...afterRoom, metDoctor: true, talkingTo: '4r' }), 'day');
+assert.equal(tutorialAfter('day', { ...afterRoom, metDoctor: true }), 'nextDay');
+assert.equal(thingAt({ floor: 4, x: 12, y: 7, dir: 2 }, false).kind, 'person');
+assert.equal(thingAt({ floor: 4, x: 11, y: 8, dir: 1 }, false).kind, 'look');
+
 assert.equal(endingFor([]), 'bad');
 assert.equal(endingFor([1, 2, 3]), 'bad'); // away 4 days, missed the last
 assert.equal(endingFor([1, 7]), 'withGirl'); // away 5 days, came on the last

@@ -87,6 +87,11 @@ export const STAFF_CALLS: Record<number, StaffCall> = {
   6: { who: '간호사', line: '치료 시간이에요. 내일 또 오세요.' },
 };
 // After the crisis lines being ordered out would read as a dismissal, so this one only sees you off.
+// Whoever sends you out then sends you on to the doctor's room (not after the crisis lines).
+export const DOCTOR_CALL: Record<StaffCall['who'], string> = {
+  간호사: '아, 그리고 의사 선생님이 잠깐 뵙자고 하셨어요. 복도 오른쪽 끝 방이에요.',
+  의사: '나가시는 길에 제 방에 잠깐 들러 주시겠어요? 복도 오른쪽 끝이에요.',
+};
 export const STAFF_CALL_GENTLE: StaffCall = { who: '간호사', line: '치료 시간이 됐어요. 오늘은 여기까지예요. 조심히 들어가세요.' };
 
 // The hospital. She's at the top; the higher the floor, the heavier. No one else's suffering is shown.
@@ -121,12 +126,22 @@ export const TUTORIAL_TIPS: Partial<Record<string, string | [string, string]>> =
     '이제 4층으로 올라가요. 화살표가 엘리베이터로 이끌어요. 앞에 서면 타는 버튼이 떠요. Enter 키로도 탈 수 있어요. 옆의 계단도 괜찮아요.',
   ],
   room: '한 번 가 본 층은 지도 버튼으로 바로 갈 수 있어요. 화살표를 따라 열린 문을 지나면 소녀를 만나요.',
-  day: '소녀는 하루에 한 번 만날 수 있어요. 남은 시간에는 병원을 둘러보며 사람들과 이야기해도 되고, 1층 정문에서 돌아가도 돼요. 다음 날은 실제로 내일 열려요.',
+  day: '소녀는 하루에 한 번 만날 수 있어요. 간호사 말대로 4층 끝의 의사 선생님 방에 들러 보세요. 들르지 않아도 괜찮아요.',
+  nextDay: '1층 정문으로 나가면 다음 날을 바로 이어서 할 수 있어요. 꼭 그래야 하는 건 아니에요. 하루에 하루씩 와도 돼요.',
 };
 export const TUTORIAL_TELL = '고르거나 직접 써서 오늘 일을 들려주세요. 쓰고 싶은 만큼만 쓰면 돼요.';
 export const TUTORIAL_GIVE = '가져온 선물을 건네거나, 그냥 두어도 돼요.';
 export const TUTORIAL_SKIP = '튜토리얼 건너뛰기';
 export const TUTORIAL_OK = '알겠어요';
+// The doctor, once she's been seen. First draft (Claude's), until his requests are written (docs/계획서.md).
+export const DOCTOR_LINES = [
+  '앉으세요. 그 아이가 기다리던 분이 당신이군요.',
+  '저는 이 층 담당이에요. 하루 종일 병실을 돌아도, 보호자분들 마음까지 챙길 시간은 없어요.',
+  '혹시 괜찮으시면, 앞으로 부탁을 하나씩 드려도 될까요? 들어주지 않으셔도 괜찮아요.',
+];
+// Leaving by the front door once she's been seen.
+export const nextDayQuestion = (day: number) => `${day}일차를 진행하시겠습니까?`;
+export const untilTomorrow = (hours: number, minutes: number) => `다음 날은 자정에 열려요. ${hours}시간 ${minutes}분 남았어요.`;
 export const TUTORIAL_TITLE = '도움말';
 // What the guide at the front desk says the first time, so the shop comes up on its own.
 export const GUIDE_FIRST_LINES = ['병문안 오셨어요? 호스피스 병동은 4층이에요.', '빈손이 쑥스러우시면 매점에 먼저 들러 보세요. 이 층에 있어요.'];
@@ -147,6 +162,7 @@ export const PEOPLE: Record<string, { name: string; look: PersonLook; lines: str
   '2k': { name: '심심한 아이', look: 'child', lines: ['끝말잇기 할래요? 이기면 재활실 어딘지 알려 줄게요.', '…사실 아래쪽 복도 가운데예요. 수레 때문에 옆으로 돌아가야 해요.'] },
   '2h': { name: '창가의 할아버지', look: 'elder', lines: ['둘 줄 몰라도 돼요. 앉아만 있어요.'] },
   '2y': { name: '물리치료사', look: 'worker', lines: ['천천히 하면 돼요. 여긴 다들 천천히 해요.'], clue: { day: 4, line: '저 끈이요? 퇴원하는 분이 두고 가셨어요. 찾으러 안 오시네요.' } },
+  '4r': { name: '의사 선생님', look: 'doctor', lines: ['아직 면회 전이시죠? 그 아이 먼저 보고 오세요.'] },
   '1i': { name: '안내 직원', look: 'nurse', lines: ['4층이요? 엘리베이터는 저쪽이에요. 층마다 표시가 있어요.'] },
   '1g': { name: '경비', look: 'worker', lines: ['정문은 늘 열려 있어요. 오는 사람보다 가는 사람이 더 천천히 걷죠.'], clue: { day: 1, line: '자판기 뒤에 뭐가 떨어졌던데, 손이 안 닿아요.' } },
   '1m': { name: '매점 주인', look: 'shopkeeper', lines: ['어서 와요. 오늘은 이것들이 있어요.'] },

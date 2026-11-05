@@ -43,6 +43,7 @@ import {
   keywordLine,
   RETURN_GREETING,
   STAFF_CALL_GENTLE,
+  DOCTOR_CALL,
   STAFF_CALLS,
   TELL_QUESTION,
   TUTORIAL_GIVE,
@@ -85,9 +86,11 @@ type VisitState = {
   fontScale: number;
   /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
   skippedDays: number;
+  /** Days on which you went to the doctor's room after seeing her. */
+  doctorDays: number[];
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, skippedDays: 0 };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, skippedDays: 0, doctorDays: [] };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
@@ -238,7 +241,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
             : phase === 'bye'
               ? [GOODBYE]
               : phase === 'staff' && staffCall
-                ? [staffCall.line]
+                ? staffCall === STAFF_CALL_GENTLE ? [staffCall.line] : [staffCall.line, DOCTOR_CALL[staffCall.who]]
                 : [];
 
   const afterLines = () => {
@@ -528,6 +531,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
           onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
           onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
           onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
+          metDoctor={state.doctorDays.includes(day)}
+          onMeetDoctor={() => setState((s) => (s && !s.doctorDays.includes(day) ? { ...s, doctorDays: [...s.doctorDays, day] } : s))}
           onTitle={() => setPhase('title')}
           tutorial={state.tutorial}
           onTutorial={(tutorial) => setState((s) => (s ? { ...s, tutorial } : s))}
