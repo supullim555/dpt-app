@@ -88,6 +88,24 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.82: the fifth request's memory, an autumn yard with a janggi board
+  'yard-scene': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to
+edge, flat, no frame: the far side of a traditional Korean house yard seen straight across, a low stone wall topped with
+dark roof tiles along the lower half, persimmon branches leaning over it, an autumn sky above; and a packed dirt yard seen
+from straight above, a few fallen leaves, evenly lit.`,
+  'yard-props': `${SAME_STYLE} Five separate things, each whole and seen straight on: a short section of a raised wooden
+veranda floor of a traditional Korean house; a low wooden table with a janggi board and its round wooden pieces on it; a
+persimmon tree with a few fruits on its branches; a closed wooden double gate in a small tiled gateway; and a boy about ten
+in a plain sweater holding a small paper bag, full body, standing, facing the viewer, feet visible, bright.`,
+  // v0.83: the sixth request's memory, a night alley to the postbox
+  'night-scene': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to
+edge, flat, no frame: a quiet residential alley at night seen straight across, a row of low houses with a few warmly lit
+windows and a utility pole along the lower half, a night sky with a small moon above; and the asphalt of a narrow alley
+seen from straight above, a faint painted line and a few cracks, evenly lit.`,
+  'night-props': `${SAME_STYLE} Four separate things, each whole and seen straight on: a round-topped street postbox on a short
+post, with no writing on it; a tall old streetlamp, lit; a low stone garden wall with a potted plant on top; and an old man
+in his seventies in a long cardigan over pajamas and slippers, thin, a gentle tired smile, full body, standing, facing the
+viewer, feet visible.`,
   // v0.81: the fourth request's memory, a traditional market at dusk
   'market-scene': `${SAME_STYLE} Two separate things side by side with a wide plain gap. Left: one square panel completely
 filled edge to edge, flat, no frame: an old traditional market street at dusk seen straight across, a row of small shop

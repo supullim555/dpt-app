@@ -93,6 +93,17 @@ const ITEMS = {
     { src: 'market-props', box: [32, 372, 256, 680], cell: { x: 768, y: 512, w: 256, h: 256 } },
     { src: 'market-props', box: [466, 512, 708, 702], cell: { x: 768, y: 768, w: 256, h: 256 } },
   ],
+  // v0.82: the yard and the night alley (hospitalArt.ts MEMORY2_PART)
+  memoryprops2: [
+    { src: 'yard-props', box: [16, 452, 284, 636], cell: { x: 0, y: 0, w: 256, h: 256 } },
+    { src: 'yard-props', box: [292, 526, 492, 646], cell: { x: 256, y: 0, w: 256, h: 256 } },
+    { src: 'yard-props', box: [678, 394, 872, 640], cell: { x: 512, y: 0, w: 256, h: 256 } },
+    { src: 'night-props', box: [56, 320, 224, 756], cell: { x: 768, y: 0, w: 256, h: 256 } },
+    { src: 'yard-props', box: [448, 348, 674, 644], cell: { x: 0, y: 256, w: 256, h: 512 }, height: 470 },
+    { src: 'yard-props', box: [890, 352, 990, 658], cell: { x: 256, y: 256, w: 256, h: 512 }, height: 400 },
+    { src: 'night-props', box: [296, 156, 402, 752], cell: { x: 512, y: 256, w: 256, h: 512 }, height: 490 },
+    { src: 'night-props', box: [794, 228, 970, 764], cell: { x: 768, y: 256, w: 256, h: 512 }, height: 470 },
+  ],
   // v0.74: everyone who shared a drawing now has their own (hospitalArt.ts PERSON2_SLOT).
   people2: [
     { src: 'people-c', box: [420, 200, 615, 930], cell: slot(0), height: 470 },
@@ -424,6 +435,11 @@ const MEMORY = [
   // v0.81: the market's paving, and its street at dusk
   { tile: 10, src: 'tex-ground', box: [84, 546, 482, 939], seam: 'xy' },
   { tile: 11, src: 'market-scene', box: [62, 264, 560, 776], seam: 'x' },
+  // v0.82: the yard's dirt and its wall under an autumn sky; the night alley's asphalt and its houses
+  { tile: 12, src: 'yard-scene', box: [557, 308, 973, 706], seam: 'xy' },
+  { tile: 13, src: 'yard-scene', box: [50, 308, 474, 706], seam: 'x' },
+  { tile: 14, src: 'night-scene', box: [600, 330, 880, 700], seam: 'xy' },
+  { tile: 15, src: 'night-scene', box: [88, 314, 476, 712], seam: 'x' },
 ];
 // The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
 // (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small

@@ -39,7 +39,7 @@ export type Request = {
    * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
    */
   /** `opening`: what goes through their head on arriving, before anything happens. */
-  memory: { place: 'river' | 'rehab' | 'beach' | 'market'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
+  memory: { place: 'river' | 'rehab' | 'beach' | 'market' | 'yard' | 'night'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
   /** Who they are, for answering what the player writes themselves (Gemini, for those who turned AI on; api/chat.ts). */
   persona: string;
 };
@@ -460,6 +460,218 @@ export const REQUESTS: Request[] = [
     girl: {
       choice: '1층 외래 어르신 이야기',
       lines: ['안 오는 날만 세고, 온 날은 안 센다… 나도 그래.', '편지 답장 안 온 날만 세고 있었어. 근데 너는 왔잖아.', '…오늘도 셀게. 온 날로.'],
+    },
+  },
+  {
+    day: 5,
+    who: '2h',
+    name: '2층 창가의 할아버지',
+    distortion: '독심술',
+    goal: { text: '2층 창가의 할아버지와 이야기하기', floor: 2, cell: { x: 12, y: 2 }, face: 0 },
+    doctor: {
+      start: {
+        lines: [
+          '오셨어요. 오늘도 하나 부탁드려도 될까요?',
+          '2층 창가 쉼터에서 혼자 장기 두시는 할아버님이요. 자식들이 안 오는 건 자기가 귀찮아서라고 단정하세요.',
+          '묻지도 않고 남의 속을 다 안다고 믿는 거죠. 독심술이라고 해요.',
+          '질문을 몇 개만 해 주세요. 안 하셔도 괜찮아요.',
+        ],
+        choices: [
+          { label: '해 볼게요', to: 'yes' },
+          { label: '오늘은 어려워요', to: 'no' },
+        ],
+      },
+      yes: { effect: 'accept', lines: ['고마워요. 2층 오른쪽 위 창가 쉼터예요.'] },
+      no: { lines: ['괜찮아요. 마음이 생기면 언제든 들러 주세요.'] },
+    },
+    person: {
+      start: {
+        lines: ['…의사 양반이? 허허. 둘 줄 몰라도 돼요. 앉아만 있어.', '애들이 안 오는 거? 내가 귀찮아서지. 다 알아.', '늙은이랑 있으면 지루하잖아. 말 안 해도 알아.'],
+        choices: [
+          { label: '"말 안 해도 안다"고 하셨는데, 직접 들으신 적이 있으세요?', to: 'heard' },
+          { label: '에이, 그럴 리가요. 다들 바빠서 그래요.', to: 'reassured' },
+          { label: '먼저 전화해 보세요.', to: 'advised' },
+        ],
+      },
+      reassured: {
+        lines: ['바쁜 거랑 귀찮은 거랑 같은 말이야.'],
+        choices: [
+          { label: '"말 안 해도 안다"고 하셨는데, 직접 들으신 적이 있으세요?', to: 'heard' },
+          { label: '먼저 전화해 보세요.', to: 'advised' },
+        ],
+      },
+      advised: {
+        lines: ['전화하면 귀찮아하지. 그것도 알아.'],
+        choices: [
+          { label: '"말 안 해도 안다"고 하셨는데, 직접 들으신 적이 있으세요?', to: 'heard' },
+          { label: '에이, 그럴 리가요. 다들 바빠서 그래요.', to: 'reassured' },
+        ],
+      },
+      heard: {
+        lines: ['…직접은 아니지. 근데 얼굴 보면 알아.', '손주 녀석도 장기 두다 말고 휙 뛰어나간 적이 있어. 말도 없이.'],
+        choices: [
+          { label: '그때 손주가 왜 뛰어나갔는지, 나중에 알게 되셨어요?', to: 'why' },
+          { label: '애들이 원래 그렇죠 뭐.', to: 'shrugged' },
+        ],
+      },
+      shrugged: {
+        lines: ['…그렇지. 다 그런 거지.'],
+        choices: [{ label: '그때 손주가 왜 뛰어나갔는지, 나중에 알게 되셨어요?', to: 'why' }],
+      },
+      why: {
+        lines: ['…그러고 보니 그날, 뭘 들고 들어왔었는데.'],
+        choices: [
+          { label: '그날 이야기를 들려주실래요?', to: 'story' },
+          { label: '그럼 이제 서운한 거 푸셨죠?', to: 'rushed' },
+        ],
+      },
+      rushed: {
+        lines: ['서운한 게 하루아침에 풀리나.'],
+        choices: [{ label: '그날 이야기를 들려주실래요?', to: 'story' }],
+      },
+      story: { lines: ['…가을이었어. 마당에서 장기를 두는데.'], then: 'remembered' },
+      remembered: { effect: 'memory', lines: [] },
+      again: {
+        lines: ['…박하사탕. 내가 좋아한다고, 그걸 사 오느라 뛰어갔던 거야.', '나는 그 녀석이 지루해서 간 줄 알았지. 물어보지도 않고.', '애들도… 물어보면 다른 얘기를 할지도 모르겠네.'],
+        choices: [{ label: '같이 천천히 숨 좀 쉬어요.', to: 'relax' }],
+      },
+      relax: { effect: 'breathe', relax: 'breath', lines: ['…그러지.'], then: 'done' },
+      done: { effect: 'solve', lines: ['…오늘 저녁에 아들한테 전화 한 통 해 볼까.', '귀찮아하는지 아닌지, 들어나 보게.'] },
+    },
+    memory: {
+      place: 'yard',
+      title: '그해 가을, 마당의 장기판',
+      opening: '볕 좋다. 녀석이 웬일로 장기를 두자고 하네.',
+      lostTitle: '장기를 두다 말고, 손주가 말도 없이 대문 밖으로 뛰어나간다.',
+      returnTitle: '다시, 병원',
+      meet: {
+        start: {
+          lines: ['할아버지 차례예요! 빨리요.', '…아, 잠깐만요!'],
+          choices: [{ label: '어디 가냐, 판 다 끝나지도 않았는데.', to: 'go' }],
+        },
+        go: { lines: ['금방 올게요! 판 그대로 두세요!'], then: 'gone' },
+        gone: { effect: 'lose', lines: [] },
+      },
+      found: {
+        start: {
+          lines: ['할아버지! 박하사탕! 할아버지 이거 좋아하잖아요.', '이거 사 오느라 뛰어갔어요. 판 안 건드렸죠? 제가 이길 차례였는데.'],
+          choices: [{ label: '…그래, 그대로다. 마저 두자.', to: 'back' }],
+        },
+        back: { effect: 'return', lines: [] },
+      },
+      thoughts: ['역시 늙은이랑 노는 게 지루했겠지.', '애들도 그래서 안 오는 거야.', '말도 없이 가 버리네.', '…내가 그렇게 귀찮은가.', '대문 쪽에서 뛰어오는 소리가.'],
+    },
+    persona: `2층 일반 병동 창가 쉼터의 할아버지. 팔십 대. 혼자 장기를 둔다. 자식들이 자주 안 오는 건 자기가 귀찮아서라고, 묻지도 않고 남의 속을 안다고 믿는다(독심술). 느긋하고 무뚝뚝하지만 정이 있다. 반말을 쓴다. 손주가 장기를 두다 말고 뛰어나갔는데 사실은 할아버지가 좋아하는 박하사탕을 사러 갔던 일은, 플레이어가 직접 물어봤는지나 그 이유를 묻기 전에는 먼저 꺼내지 않는다.`,
+    after: ['아들 녀석이 주말에 손주 데리고 온대. 장기판 닦아 놨어.'],
+    girl: {
+      choice: '2층 창가 할아버지 이야기',
+      lines: ['물어보지도 않고 다 안다고 생각하는 거, 그거 나야.', '편지 받은 사람들이 다 귀찮아할 줄 알았거든.', '…너는 안 귀찮았어? 아, 대답 안 해도 돼. 물어본 걸로 충분해.'],
+    },
+  },
+  {
+    day: 6,
+    who: '4v',
+    name: '4층 자원봉사자',
+    distortion: '당위적 사고',
+    goal: { text: '4층 자원봉사자와 이야기하기', floor: 4, cell: { x: 9, y: 4 }, face: 2 },
+    doctor: {
+      start: {
+        lines: [
+          '오셨어요. 이번 부탁이 마지막이에요.',
+          '이 층 자원봉사자분이요. 남편분을 보낼 때 더 해 줬어야 했다고, 아직도 자신을 다그치세요.',
+          '"해야 한다"는 기준으로 자신을 재는 거죠. 당위적 사고라고도 해요.',
+          '질문을 몇 개만 해 주세요. 안 하셔도 괜찮아요.',
+        ],
+        choices: [
+          { label: '해 볼게요', to: 'yes' },
+          { label: '오늘은 어려워요', to: 'no' },
+        ],
+      },
+      yes: { effect: 'accept', lines: ['고마워요. 바로 이 복도, 꽃병 있는 자리예요.'] },
+      no: { lines: ['괜찮아요. 마음이 생기면 언제든 들러 주세요.'] },
+    },
+    person: {
+      start: {
+        lines: ['아, 의사 선생님이요? …꽃병 물 갈던 중이에요.', '남편 보낼 때 더 해 줬어야 했어요. 그게 도리였는데.', '그래서 여기서라도 해야 할 일을 하는 거예요.'],
+        choices: [
+          { label: '"해야 했다"는 그 기준은, 누가 정한 걸까요?', to: 'standard' },
+          { label: '충분히 하셨을 거예요.', to: 'reassured' },
+          { label: '이제 그만 내려놓으세요.', to: 'advised' },
+        ],
+      },
+      reassured: {
+        lines: ['남들은 다 그렇게 말하죠.'],
+        choices: [
+          { label: '"해야 했다"는 그 기준은, 누가 정한 걸까요?', to: 'standard' },
+          { label: '이제 그만 내려놓으세요.', to: 'advised' },
+        ],
+      },
+      advised: {
+        lines: ['내려놓는 게 그렇게 쉬우면요.'],
+        choices: [
+          { label: '"해야 했다"는 그 기준은, 누가 정한 걸까요?', to: 'standard' },
+          { label: '충분히 하셨을 거예요.', to: 'reassured' },
+        ],
+      },
+      standard: {
+        lines: ['…제가요. 아니, 엄마한테 배운 것 같아요. 아내는 그래야 한다고.', '근데 남편은 그런 말 한 번도 안 했어요.'],
+        choices: [
+          { label: '남편분은 그때 무엇을 고마워하셨을까요?', to: 'thanks' },
+          { label: '기준이 너무 높으셨네요.', to: 'judged' },
+        ],
+      },
+      judged: {
+        lines: ['…그런가요.'],
+        choices: [{ label: '남편분은 그때 무엇을 고마워하셨을까요?', to: 'thanks' }],
+      },
+      thanks: {
+        lines: ['…글쎄요. 편지 부쳐 준 거? 그런 사소한 거요.'],
+        choices: [
+          { label: '그날 이야기를 들려주시겠어요?', to: 'story' },
+          { label: '그럼 이제 마음이 좀 덜 무거우시죠?', to: 'rushed' },
+        ],
+      },
+      rushed: {
+        lines: ['그렇게 쉽게는요.'],
+        choices: [{ label: '그날 이야기를 들려주시겠어요?', to: 'story' }],
+      },
+      story: { lines: ['…밤에 편지를 부치러 간 날이 있었어요. 남편이 친구한테 쓴 거였어요.'], then: 'remembered' },
+      remembered: { effect: 'memory', lines: [] },
+      again: {
+        lines: ['…그이가 그랬어요. 해 줘야 할 일 말고, 하고 싶어서 해 준 것들이 고마웠다고.', '"해야 했다"만 세고 있었네요. 해 준 건 안 세고.', '여기 꽃병 물도… 해야 해서가 아니라, 하고 싶어서 하는 거였어요.'],
+        choices: [{ label: '잠깐 같이 어깨 힘 좀 빼고 가요.', to: 'relax' }],
+      },
+      relax: { effect: 'breathe', relax: 'muscle', lines: ['…네.'], then: 'done' },
+      done: { effect: 'solve', lines: ['…손이 가벼워요.', '그 아이 편지도 제가 부쳐 줬어요. 그건 하고 싶어서 한 거예요.'] },
+    },
+    memory: {
+      place: 'night',
+      title: '그 밤, 우체통 가는 길',
+      opening: '그이가 편지를 부탁했다. 이 밤에 혼자 내보내기는 싫었겠지.',
+      lostTitle: '편지를 들고 혼자 나선다. 우체통까지는 멀다.',
+      returnTitle: '다시, 병원',
+      meet: {
+        start: {
+          lines: ['이 편지 좀 부쳐 줄래? 오래된 친구한테 쓴 거야.', '밤길이니까 천천히 가.'],
+          choices: [{ label: '금방 다녀올게요. 들어가 있어요.', to: 'go' }],
+        },
+        go: { lines: ['…응.'], then: 'gone' },
+        gone: { effect: 'lose', lines: [] },
+      },
+      found: {
+        start: {
+          lines: ['…당신 걸음이 빨라서, 지름길로 왔지.', '해 줘야 할 일 말고, 당신이 하고 싶어서 해 준 것들. 그게 다 고마웠어.', '당신은 할 만큼 했어. 아니, 그보다 더.'],
+          choices: [{ label: '…같이 부치고 들어가요.', to: 'back' }],
+        },
+        back: { effect: 'return', lines: [] },
+      },
+      thoughts: ['진작 큰 병원에 데려갔어야 했어.', '그날 화내지 말았어야 했는데.', '아내라면 더 해 줬어야지.', '…해야 했던 일만 세고 있네.', '저기, 우체통.'],
+    },
+    persona: `4층 호스피스 병동의 자원봉사자. 육십 대 여성. 남편을 먼저 보낸 뒤 봉사를 한다. "더 해 줬어야 했다", "그게 도리였다"처럼 자신에게 해야 한다는 기준을 들이댄다(당위적 사고). 다정하고 단정한 존댓말을 쓴다. 남편이 "해 줘야 할 일 말고 하고 싶어서 해 준 것들이 고마웠다"고 했던 밤의 일은, 플레이어가 그 기준이나 남편이 고마워했던 것을 묻기 전에는 먼저 꺼내지 않는다. 소녀의 편지를 부쳐 준 사람이기도 하다.`,
+    after: ['오늘은 꽃을 하나 더 꽂았어요. 그냥 예뻐서요.'],
+    girl: {
+      choice: '4층 자원봉사자 이야기',
+      lines: ['해야 하는 일 말고 하고 싶은 일… 내 편지도 그분이 부쳐 줬대.', '나도 "해야 한다"가 많았어. 괜찮은 척해야 한다, 같은 거.', '…오늘은 안 해도 되는 날로 할래.'],
     },
   },
 ];

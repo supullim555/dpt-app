@@ -2,7 +2,7 @@
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, currentPlace, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
 import type { Place } from './places';
-import { MEMORY_PART, MEMORY_TILES, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type MemoryPart, type SkinFace } from './hospitalArt';
+import { MEMORY2_PART, MEMORY_PART, MEMORY_TILES, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -83,7 +83,7 @@ void main() {
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
-export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart | FurniturePart | MemoryPart | SolidLook;
+export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart | FurniturePart | MemoryPart | Memory2Part | SolidLook;
 export type HospitalSprite = {
   cell: Cell;
   look: SpriteLook;
@@ -146,6 +146,14 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   marketCrates: { w: 1.0, h: 1.0 },
   fruitStall: { w: 1.0, h: 1.0 },
   riceCakes: { w: 0.85, h: 0.85 },
+  maru: { w: 1.3, h: 1.3 },
+  janggiTable: { w: 0.8, h: 0.8 },
+  yardGate: { w: 1.2, h: 1.2 },
+  postbox: { w: 0.8, h: 0.8 },
+  persimmonTree: { w: 0.9, h: 1.8 },
+  grandson: { w: 0.4, h: 0.8 },
+  streetLamp: { w: 0.55, h: 1.1 },
+  husband: { w: 0.4, h: 0.8 },
   collar: { w: 0.24, h: 0.24 },
   snack: { w: 0.24, h: 0.24 },
   laces: { w: 0.24, h: 0.24 },
@@ -284,7 +292,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), people2: texture(sheets.people2), memory: texture(sheets.memory), memoryProps: texture(sheets.memoryProps), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), people2: texture(sheets.people2), memory: texture(sheets.memory), memoryProps: texture(sheets.memoryProps), memoryProps2: texture(sheets.memoryProps2), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -298,7 +306,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const buildingDim = { value: 1 };
   const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }) =>
     new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), people2: material(textures.people2, true, { value: 1 }), memory: material(textures.memory, false, buildingDim), memoryProps: Object.assign(material(textures.memoryProps, true, { value: 1 }), { side: THREE.DoubleSide }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }) };
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), people2: material(textures.people2, true, { value: 1 }), memory: material(textures.memory, false, buildingDim), memoryProps: Object.assign(material(textures.memoryProps, true, { value: 1 }), { side: THREE.DoubleSide }), memoryProps2: Object.assign(material(textures.memoryProps2, true, { value: 1 }), { side: THREE.DoubleSide }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }) };
   // A soft dark spot on the floor under each cutout, so they stand on it instead of floating over it.
   const shadowMaterial = new THREE.ShaderMaterial({
     transparent: true,
@@ -528,7 +536,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const extra = EXTRA_PART[look as ExtraPart];
     const furniture = FURNITURE_PART[look as FurniturePart];
     const remembered = MEMORY_PART[look as keyof typeof MEMORY_PART];
-    const px = prop ?? part ?? lying ?? extra ?? furniture ?? remembered ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
+    const remembered2 = MEMORY2_PART[look as keyof typeof MEMORY2_PART];
+    const px = prop ?? part ?? lying ?? extra ?? furniture ?? remembered ?? remembered2 ?? { x: (slot % 4) * SLOT_W, y: Math.floor(slot / 4) * SLOT_H, w: SLOT_W, h: SLOT_H };
     // In from the cell's edge, or the next drawing on the sheet shows as a line along this one's.
     const u0 = (px.x + UV_INSET) / SHEET;
     const u1 = (px.x + px.w - UV_INSET) / SHEET;
@@ -542,7 +551,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const lit = look === 'tree' ? 1 : look === 'pin' || look === 'pinSmall' ? 2 : 0;
     geometry.setAttribute('aLit', new THREE.Float32BufferAttribute([lit, lit, lit, lit], 1));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : extra ? materials.extra : furniture ? materials.furniture : remembered ? materials.memoryProps : second !== undefined ? materials.people2 : materials.people);
+    const mesh = new THREE.Mesh(geometry, prop ? materials.props : part ? materials.girl : lying ? materials.lying : extra ? materials.extra : furniture ? materials.furniture : remembered ? materials.memoryProps : remembered2 ? materials.memoryProps2 : second !== undefined ? materials.people2 : materials.people);
     mesh.frustumCulled = false;
     mesh.rotation.order = 'YXZ';
     return mesh;
@@ -720,7 +729,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       const fog = place?.fog ?? FOG_COLOR[floor];
       shared.uFloorLight.value = place?.light ?? FLOOR_LIGHT[floor];
       shared.uFog.value.set(fog[0], fog[1], fog[2]);
-      shared.uFogFar.value = place?.outdoors ? 2 : 1;
+      shared.uFogFar.value = place?.outdoors && !place.thickFog ? 2 : 1;
       renderer.setClearColor(new THREE.Color(fog[0], fog[1], fog[2]));
       buildFloor(floor, roomShut);
       buildSprites(sprites, pose);

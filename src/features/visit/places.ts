@@ -8,7 +8,7 @@
 type Spot = { x: number; y: number; dir: 0 | 1 | 2 | 3 };
 
 /** Tiles on the memory sheet (hospitalArt.ts MEMORY_TILES), by name. */
-export type MemoryTile = 'pebbles' | 'water' | 'woods' | 'farBank' | 'rehabFloor' | 'rehabWall' | 'plainWall' | 'ceiling' | 'sand' | 'sea' | 'paving' | 'marketStreet';
+export type MemoryTile = 'pebbles' | 'water' | 'woods' | 'farBank' | 'rehabFloor' | 'rehabWall' | 'plainWall' | 'ceiling' | 'sand' | 'sea' | 'paving' | 'marketStreet' | 'yardDirt' | 'yardWall' | 'asphalt' | 'nightAlley';
 
 export type Place = {
   map: string[];
@@ -36,6 +36,8 @@ export type Place = {
   /** How many cells one drawing of the wall runs on across (a backdrop); 1 for an ordinary wall. */
   span: number;
   fog: [number, number, number];
+  /** Out of doors but with the full fog, not a haze: at night. */
+  thickFog?: boolean;
   light: number;
   people: { k: { name: string; look: string }; j: { name: string; look: string } };
   /** The goal while meeting k, and while the moment lasts; `lostArrow`: whether the way to j is shown then. */
@@ -44,7 +46,7 @@ export type Place = {
   lostArrow: boolean;
 };
 
-export type PlaceId = 'river' | 'rehab' | 'beach' | 'market';
+export type PlaceId = 'river' | 'rehab' | 'beach' | 'market' | 'yard' | 'night';
 
 export const PLACES: Record<PlaceId, Place> = {
   // A summer riverside: C the car, A the tent, R thick bushes (nothing behind them shows), % rocks, ~ the river.
@@ -203,5 +205,76 @@ export const PLACES: Record<PlaceId, Place> = {
     meetGoal: '옆 가게 아주머니에게 가기',
     lostGoal: '시장 한 바퀴 돌기',
     lostArrow: false,
+  },
+  // An autumn yard of an old house: M the veranda, P a persimmon tree, B the low table with the janggi board, G the gate
+  // (the grandson comes back through it).
+  yard: {
+    map: [
+      '###########',
+      '#.M....P..#',
+      '#.........#',
+      '#..Bk.....#',
+      '#.........#',
+      '#.......Gj#',
+      '###########',
+    ],
+    outdoors: true,
+    start: { x: 2, y: 2, dir: 1 },
+    meet: { x: 4, y: 2, dir: 2 },
+    found: { x: 9, y: 4, dir: 2 },
+    lostAt: { x: 4, y: 2, dir: 1 },
+    stops: 'MPBG',
+    spread: '',
+    things: {
+      M: { look: 'maru', text: '마루다. 볕이 들어 따뜻하다.' },
+      P: { look: 'persimmonTree', text: '감나무다. 감이 몇 개 남아 있다.' },
+      B: { look: 'janggiTable', text: '장기판이다. 판이 두다 만 그대로다.' },
+      G: { look: 'yardGate', text: '나무 대문이다. 조금 열려 있다.' },
+    },
+    ground: 'yardDirt',
+    wall: 'yardWall',
+    wallHeight: 2.6,
+    span: 3,
+    fog: [0.78, 0.76, 0.72],
+    light: 1.12,
+    people: { k: { name: '손주', look: 'grandson' }, j: { name: '손주', look: 'grandson' } },
+    meetGoal: '장기판 앞에 앉기',
+    lostGoal: '마당 둘러보기',
+    lostArrow: false,
+  },
+  // A night alley to the postbox: L streetlamps, P the postbox. k is the husband at the front door, j the same man,
+  // who took the short way and got there first.
+  night: {
+    map: [
+      '###########',
+      '#.....L...#',
+      '#k........#',
+      '#.........#',
+      '#..L....j.#',
+      '#........P#',
+      '###########',
+    ],
+    outdoors: true,
+    thickFog: true,
+    start: { x: 3, y: 2, dir: 3 },
+    meet: { x: 2, y: 2, dir: 3 },
+    found: { x: 9, y: 4, dir: 3 },
+    lostAt: { x: 2, y: 2, dir: 1 },
+    stops: 'LP',
+    spread: '',
+    things: {
+      L: { look: 'streetLamp', text: '가로등이다. 불빛 아래만 환하다.' },
+      P: { look: 'postbox', text: '우체통이다. 편지 넣는 구멍이 생각보다 좁다.' },
+    },
+    ground: 'asphalt',
+    wall: 'nightAlley',
+    wallHeight: 2.6,
+    span: 3,
+    fog: [0.11, 0.11, 0.14],
+    light: 0.98,
+    people: { k: { name: '남편', look: 'husband' }, j: { name: '남편', look: 'husband' } },
+    meetGoal: '현관의 남편에게 가기',
+    lostGoal: '우체통까지 걷기',
+    lostArrow: true,
   },
 };

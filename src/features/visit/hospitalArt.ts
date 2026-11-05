@@ -162,7 +162,7 @@ function doorShape(p: Pen, x: number, y: number) {
 
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
 /** v0.79: the remembered places' own sheet of tiles (places.ts MemoryTile), the same layout as the structure sheet. */
-export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7, sand: 8, sea: 9, paving: 10, marketStreet: 11 } as const;
+export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7, sand: 8, sea: 9, paving: 10, marketStreet: 11, yardDirt: 12, yardWall: 13, asphalt: 14, nightAlley: 15 } as const;
 /** And their things and people, cut out like the rest. */
 export const MEMORY_PART = {
   rehabBars: { x: 0, y: 0, w: 256, h: 256 },
@@ -181,6 +181,18 @@ export const MEMORY_PART = {
   riceCakes: { x: 768, y: 768, w: 256, h: 256 },
 } as const;
 export type MemoryPart = keyof typeof MEMORY_PART;
+/** v0.82: the second sheet of them, the yard's and the night alley's. */
+export const MEMORY2_PART = {
+  maru: { x: 0, y: 0, w: 256, h: 256 },
+  janggiTable: { x: 256, y: 0, w: 256, h: 256 },
+  yardGate: { x: 512, y: 0, w: 256, h: 256 },
+  postbox: { x: 768, y: 0, w: 256, h: 256 },
+  persimmonTree: { x: 0, y: 256, w: 256, h: 512 },
+  grandson: { x: 256, y: 256, w: 256, h: 512 },
+  streetLamp: { x: 512, y: 256, w: 256, h: 512 },
+  husband: { x: 768, y: 256, w: 256, h: 512 },
+} as const;
+export type Memory2Part = keyof typeof MEMORY2_PART;
 
 /** Which window each floor looks out of: the higher, the further down onto the tree. */
 export const WINDOW_TILE: Record<number, number> = { 1: TILES.windowF1, 2: TILES.windowF2, 3: TILES.windowF3, 4: TILES.window };
@@ -500,7 +512,7 @@ function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   return out;
 }
 
-const SHEET_FILES = { memory: '/hospital/sheet-memory.png', memoryProps: '/hospital/sheet-memoryprops.png', structure: '/hospital/sheet-structure.png', people2: '/hospital/sheet-people2.png', people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
+const SHEET_FILES = { memory: '/hospital/sheet-memory.png', memoryProps: '/hospital/sheet-memoryprops.png', memoryProps2: '/hospital/sheet-memoryprops2.png', structure: '/hospital/sheet-structure.png', people2: '/hospital/sheet-people2.png', people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
 
 /** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
 function loadChannel(url: string): Promise<Uint8Array> {
@@ -514,6 +526,6 @@ function loadChannel(url: string): Promise<Uint8Array> {
 
 export const loadSheets = async () => {
   // Without the drawn walls the painted ones still do.
-  const [drawnWalls, people, people2, props, girl, lying, extra, furniture, memory, memoryProps] = await Promise.all([loadChannel(SHEET_FILES.structure).catch(() => null), loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.people2), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture), loadChannel(SHEET_FILES.memory), loadChannel(SHEET_FILES.memoryProps)]);
-  return { structure: toChannel((c) => paintStructure(c, drawnWalls)), people, people2, props, girl, lying, extra, furniture, memory, memoryProps };
+  const [drawnWalls, people, people2, props, girl, lying, extra, furniture, memory, memoryProps, memoryProps2] = await Promise.all([loadChannel(SHEET_FILES.structure).catch(() => null), loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.people2), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture), loadChannel(SHEET_FILES.memory), loadChannel(SHEET_FILES.memoryProps), loadChannel(SHEET_FILES.memoryProps2)]);
+  return { structure: toChannel((c) => paintStructure(c, drawnWalls)), people, people2, props, girl, lying, extra, furniture, memory, memoryProps, memoryProps2 };
 };
