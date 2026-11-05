@@ -686,7 +686,8 @@ async function main() {
       await t.fillTextarea('아이 열은 언제부터 났어요?');
       await sleep(150);
       await t.clickText('말하기');
-      t.note('병문안: 답을 못 받으면 선택지로 안내', await t.waitText('(지금은 답을 받을 수 없어요. 아래에서 골라 주세요.)', 50000));
+      // locally there's no relay, so the notice; on the live site Gemini answers as them (one billed text call)
+      t.note('병문안: 직접 쓴 말에 답이 오거나, 못 받으면 선택지로 안내', await waitFor(async () => (await t.hasText('(지금은 답을 받을 수 없어요. 아래에서 골라 주세요.)')) || !(await t.centerOfText('…')), 50000));
       await t.shot('request_written.png');
       await t.click(195, 170);
       await sleep(200);
