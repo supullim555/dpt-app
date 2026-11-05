@@ -88,6 +88,10 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.78: the way out, looking like a hospital's front door
+  'tex-entrance': `${SAME_STYLE} One square panel completely filled edge to edge, seen straight on from inside, no perspective: a
+hospital's main entrance, a pair of wide automatic sliding glass doors in a plain metal frame, closed, bright daylight
+outside showing a short path and a few trees beyond the glass, a mat on the floor in front. No text, no signs, no letters.`,
   // v0.76: a riverside that looks like one: the far bank with its sky as one tall backdrop, moving water, and bushes
   // thick enough to hide a child.
   'river-scene': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to edge,

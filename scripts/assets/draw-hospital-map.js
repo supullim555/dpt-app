@@ -248,9 +248,7 @@ function detail(f, ox, oy, s, { HOSPITAL, ALONG_THE_WALLS, walkable, CLUE_CELLS,
       const nx = x + DX[d];
       const ny = y + DY[d];
       const n = charAt(f, nx, ny);
-      const behindDesk = f === 1 && x === 5 && ((y === 5 && d === 2) || (y === 6 && d === 0));
-      if (behindDesk) out += face(x, y, d, '#2a2825', 7);
-      else if (open.has(`${nx},${ny}`)) {
+      if (open.has(`${nx},${ny}`)) {
         if (c === '.' && rooms[n] && !'WUXY'.includes(n)) {
           out += `<line x1="${px(x + 0.5)}" y1="${py(y + 0.5)}" x2="${px(nx + 0.5)}" y2="${py(ny + 0.5)}" stroke="#ff5a00" stroke-width="6" stroke-dasharray="7 5"/>`;
           problems.push(`${f}층 ${rooms[n]}: ${x},${y} → ${nx},${ny}`);
@@ -275,7 +273,7 @@ function detail(f, ox, oy, s, { HOSPITAL, ALONG_THE_WALLS, walkable, CLUE_CELLS,
   }));
   for (const [x, y, look, across, along] of ALONG_THE_WALLS[f]) out += thing(x + 0.5 + across, y + 0.5 + along, NAME[look], look === 'plant' ? '#5d8a35' : look === 'chairBox' ? '#3f7d6e' : '#6b5b8c', look === 'wheelchair' ? 0.62 : 0.5);
   if (f === 1) {
-    out += thing(5.5, 5.2, '데스크', '#8a6a44', 0.78, 0.24);
+    out += thing(5.5, 6.2, '데스크', '#8a6a44', 0.78, 0.24);
     out += thing(10.5, 1.8, '계산대', '#8a6a44', 0.78, 0.24);
     out += thing(0.5, 4.5, '정문', '#a3263f', 0.72, 0.34);
   }

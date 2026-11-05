@@ -87,8 +87,8 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#OO#.#.#MMM#.%#',
       '#+##.#.##+##.##',
       '@.............#',
-      '#^...i..&&.g.^#',
-      '#.............#',
+      '#^......&&.g.^#',
+      '#....i........#',
       '###+###+###=###',
       '#HHH###.###RRR#',
       '#HHH###.###RRR#',
@@ -123,7 +123,9 @@ export const STAIRS_FRONT: Cell = { x: 6, y: 2 };
 export const ROOM_ENTRY: Cell = { x: 7, y: 5 };
 export const GIRL_FRONT: Cell = { x: 7, y: 7 };
 export const SHOP_FRONT: Cell = { x: 10, y: 2 };
-export const GUIDE_FRONT: Cell = { x: 5, y: 4 };
+export const GUIDE_FRONT: Cell = { x: 5, y: 5 };
+/** The way out, once there's nothing left to do. */
+export const FRONT_DOOR: Cell = { x: 0, y: 4 };
 /** In front of the doctor's desk, in his room at the end of her floor. */
 export const DOCTOR_FRONT: Cell = { x: 12, y: 7 };
 
@@ -240,7 +242,8 @@ export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFin
   if (!o.boughtToday) return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
   // Before the fairy says what it is, only that something of hers is on that floor.
   if (o.somethingOfHers) return { text: `${o.somethingOfHers}층 어딘가에서 그 아이의 물건 찾기`, floor: o.somethingOfHers, cell: null };
-  return null;
+  // Nothing left: the front door, where you can go home or straight on to the next day.
+  return { text: '1층 정문으로 나가기', floor: 1, cell: FRONT_DOOR };
 }
 
 // The first walk in: how to move, what the goal means, how to talk to someone, the shop, then up to her floor.

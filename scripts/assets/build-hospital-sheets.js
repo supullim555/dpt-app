@@ -359,11 +359,10 @@ const WALL = { src: 'tex-walls', box: [76, 76, 469, 466], seam: 'x' };
 const STRUCTURE = [
   // the corridor wall four ways, so it doesn't look copied: as drawn, mirrored, moved half along, both
   { tile: 0, ...WALL },
-  { tile: 1, ...WALL, flip: true },
-  { tile: 2, ...WALL, shift: true },
-  { tile: 3, ...WALL, flip: true, shift: true },
+  { tile: 1, ...WALL, flip: true, shift: true },
+  // v0.78: the front door
+  { tile: 2, src: 'tex-entrance', box: [345, 280, 680, 700] },
   // under the parts the game writes on
-  { tile: 7, ...WALL },
   { tile: 15, ...WALL },
   { tile: 16, ...WALL },
   { tile: 17, ...WALL },
@@ -373,8 +372,11 @@ const STRUCTURE = [
   // and zigzags when repeated, so the ceiling stays painted in code
   { tile: 4, src: 'tex-ground', box: [84, 84, 482, 472], seam: 'xy', soften: 0.5 },
   { tile: 6, src: 'tex-doors', box: [29, 362, 328, 670] },
-  { tile: 11, src: 'tex-doors', box: [29, 362, 328, 670] },
+  // a window per floor; the view through each is put in below (VIEWS)
   { tile: 8, src: 'tex-window', box: [62, 309, 469, 726] },
+  { tile: 3, src: 'tex-window', box: [62, 309, 469, 726] },
+  { tile: 7, src: 'tex-window', box: [62, 309, 469, 726] },
+  { tile: 11, src: 'tex-window', box: [62, 309, 469, 726] },
   { tile: 9, src: 'tex-doors', box: [366, 362, 660, 670] },
   { tile: 10, src: 'tex-doors', box: [698, 362, 998, 670] },
   { tile: 12, src: 'tex-water', box: [554, 316, 965, 710], seam: 'x' },
@@ -387,6 +389,16 @@ const STRUCTURE = [
   { tile: 23, src: 'tex-ground', box: [551, 546, 942, 939], seam: 'xy' },
 ];
 const SEAM = 40;
+// The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
+// (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small
+// and far down; from the first it fills the glass.
+const GLASS = { x: 28, y: 8, w: 150, h: 144 };
+const VIEWS = [
+  { tile: 8, horizon: 30, x: 108, foot: 116, height: 56 },
+  { tile: 11, horizon: 56, x: 52, foot: 128, height: 82 },
+  { tile: 7, horizon: 86, x: 98, foot: 142, height: 112 },
+  { tile: 3, horizon: 124, x: 70, foot: 168, height: 190 },
+];
 
 async function buildStructure() {
   const sheet = new Uint8Array(SHEET * SHEET);
@@ -425,6 +437,27 @@ async function buildStructure() {
         sheet[(oy + y) * SHEET + ox + x] = Math.max(1, out[y * TILE + sx]);
       }
     }
+  }
+  // each floor's view of the ginkgo
+  const ginkgo = await cut({ src: 'large', box: [5, 255, 365, 720], solid: true, tone: tree });
+  for (const v of VIEWS) {
+    const { x: ox, y: oy } = tileAt(v.tile);
+    for (let y = 0; y < GLASS.h; y++) for (let x = 0; x < GLASS.w; x++) sheet[(oy + GLASS.y + y) * SHEET + ox + GLASS.x + x] = y < v.horizon ? 236 : y === v.horizon ? 130 : 204;
+    const width = Math.round((ginkgo.trim.width * v.height) / ginkgo.trim.height);
+    const { data, info } = await sharp(ginkgo.la, { raw: { width: ginkgo.w, height: ginkgo.h, channels: 2 } }).extract(ginkgo.trim).resize({ width, height: v.height }).raw().toBuffer({ resolveWithObject: true });
+    const left = GLASS.x + v.x - Math.round(width / 2);
+    const top = GLASS.y + v.foot - v.height;
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < info.width; x++) {
+        const gx = left + x;
+        const gy = top + y;
+        if (gx < GLASS.x || gx >= GLASS.x + GLASS.w || gy < GLASS.y || gy >= GLASS.y + GLASS.h) continue;
+        const i = (y * info.width + x) * info.channels;
+        if (data[i + info.channels - 1] >= 128) sheet[(oy + gy) * SHEET + ox + gx] = Math.max(1, data[i]);
+      }
+    }
+    // the bar down the middle of the window, over the view
+    for (let y = 0; y < GLASS.h; y++) for (const x of [59, 60]) sheet[(oy + GLASS.y + y) * SHEET + ox + GLASS.x + x] = 40;
   }
   const file = path.join(SHEETS_OUT, 'sheet-structure.png');
   await sharp(Buffer.from(sheet), { raw: { width: SHEET, height: SHEET, channels: 1 } }).toColourspace('b-w').png({ compressionLevel: 9, palette: false }).toFile(file);

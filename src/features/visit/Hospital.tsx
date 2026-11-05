@@ -50,7 +50,8 @@ const BED_FOOT = -0.2;
 const BED_X = 0.4;
 // A chair backs onto the wall it's beside, facing the room.
 const awayFromWall = (across: number, along: number): Dir => (along > 0 ? 0 : along < 0 ? 2 : across > 0 ? 3 : 1);
-const GUIDE_CELL = { x: 5, y: 5 };
+// Against the lobby's south wall, the floor guide on the wall behind (v0.78; it stood out in the middle before).
+const GUIDE_CELL = { x: 5, y: 6 };
 const SHOPKEEPER_CELL = { x: 10, y: 1 };
 const SHOP_DOOR = { x: 9, y: 3 };
 // Further back, so whoever came in to send you out is in the picture too.

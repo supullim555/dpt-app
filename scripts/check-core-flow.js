@@ -340,6 +340,7 @@ async function main() {
       await readTip();
       await press('앞으로', 4);
       await press('오른쪽');
+      await press('앞으로');
       t.note('병문안: 튜토리얼이 말 걸기를 설명', await t.hasText('흰 버튼'));
       t.note('병문안: 컴퓨터엔 Enter 키도 알려 줌', await t.hasText('Enter 키로 말을'));
       await readTip();
@@ -355,7 +356,10 @@ async function main() {
       t.note('병문안: 목표가 매점으로 바뀜', await t.waitText('1층 매점에서 선물 고르기', 2000));
       await readTip();
       await t.shot('tutorial_shop.png');
-      await press('왼쪽');
+      // back out from the desk to the lobby's middle row, then on as before
+      await press('뒤돌기');
+      await press('앞으로');
+      await press('오른쪽');
       await press('앞으로', 4);
       await press('왼쪽');
       await press('앞으로', 2);

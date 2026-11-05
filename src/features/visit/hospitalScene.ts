@@ -1,7 +1,7 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
-import { EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type SkinFace } from './hospitalArt';
+import { WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type SkinFace } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -31,6 +31,8 @@ const SHADOW_OPACITY = 0.34;
 const UV_INSET = 3;
 // Her window: to one side of the head of the bed, where lying there she can look out of it.
 const WINDOW_X = GIRL_FRONT.x + 1;
+// Below her floor, a window at the east end of each south corridor, onto the same courtyard.
+const SOUTH_WINDOW_ROW: Record<number, number> = { 1: 6, 2: 7, 3: 7 };
 const INK = [0.09, 0.08, 0.06];
 const PAPER = [0.93, 0.9, 0.84];
 // v0.74: each a little brighter, so the drawn walls read without the quiet going out of the upper floors.
@@ -76,7 +78,8 @@ void main() {
   if (uCutout > 0.5 && v < 0.05) discard;
   vec3 c = mix(uInk, uPaper, v) * vShade * uFloorLight;
   if (vLit > 1.5) c = vec3(0.64, 0.15, 0.25) * v;
-  else if (vLit > 0.5 && v > 0.75) c = uDayLight * v;
+  // the day's light through the glass: its colour, but over the paper, so a grey day still reads as daylight (v0.78)
+  else if (vLit > 0.5 && v > 0.75) c = mix(uPaper, min(uDayLight * 1.5, vec3(1.0)), 0.6) * v;
   float fog = smoothstep(1.2, 6.5 * uFogFar, vDist) * (uFogFar > 1.5 ? 0.35 : 1.0);
   // the window's light stays when the room dims around whoever you're looking at
   if (vLit > 0.5 && vLit < 1.5 && v > 0.75) gl_FragColor = vec4(c, 1.0);
@@ -447,38 +450,38 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         // While she's being treated her door is shut, so the room behind it is out of reach.
         const shutHere = roomShut && floor === 4 && x === ROOM_ENTRY.x && y === ROOM_ENTRY.y && d === 2;
         // The front desk has a wall behind it, seen from either side, though the map leaves that gap open.
-        const behindDesk = floor === 1 && x === 5 && ((y === 5 && d === 2) || (y === 6 && d === 0));
-        if (open.has(`${nx},${ny}`) && !shutHere && !behindDesk) continue;
+        if (open.has(`${nx},${ny}`) && !shutHere) continue;
         const c = charAt(floor, nx, ny);
         // the riverside's far trees, lower than the courtyard's walls
         const h = floor === 0 ? RIVER_TREES_H : yard ? YARD_WALL_H : WALL_H;
-        let tile: number = TILES.wall + Math.floor(hash(x, y, d) * 4);
+        let tile: number = TILES.wall + Math.floor(hash(x, y, d) * 2);
         let flip = hash(y, x, d) < 0.5;
         let lit = false;
-        if (shutHere) tile = TILES.roomDoor;
+        if (shutHere) tile = TILES.shutDoor;
         else if (c === '=') tile = TILES.shutDoor;
         else if (c === 'E') tile = TILES.lift;
         else if (c === 'S') tile = TILES.stairs;
         else if (c === 'N') tile = TILES.counter;
-        else if (here === '+') tile = TILES.jamb;
+        // the way out: the hospital's glass front doors
+        else if (floor === 1 && here === '@' && d === 3) tile = TILES.entrance;
         else if (floor === 1 && (here === 'M' || here === 'm')) tile = TILES.shelf;
         else if (floor === 1 && here === 'i' && d === 2) tile = TILES.floorGuide;
         // across the river, the far bank; on the other sides the woods
         else if (floor === 0) tile = d === 2 ? TILES.farBank : TILES.treeline;
         else if (yard) tile = TILES.yardWall;
         // windows: the end of her floor's corridor, above her bed, and the sitting room on the second
-        else if ((here === 'W' && d === 2) || (floor === 4 && here === '_' && x === WINDOW_X && d === 2) || (floor === 2 && here === 'V' && d === 0)) {
-          tile = TILES.window;
+        else if ((here === 'W' && d === 2) || (floor === 4 && here === '_' && x === WINDOW_X && d === 2) || (floor === 2 && here === 'V' && d === 0) || (floor < 4 && x === 13 && y === SOUTH_WINDOW_ROW[floor] && d === 2)) {
+          tile = WINDOW_TILE[floor];
           lit = true;
         } else if (floor > 0 && (((x === 4 || x === 6) && y === 2 && d % 2 === 1) || (x === 4 && y === 4 && d === 2))) {
           tile = TILES.number + floor - 1;
           flip = false;
         }
-        if (tile === TILES.shutDoor || tile === TILES.lift || tile === TILES.stairs || tile === TILES.roomDoor || tile === TILES.window || tile === TILES.floorGuide) flip = false;
+        if (tile === TILES.shutDoor || tile === TILES.lift || tile === TILES.stairs || tile === TILES.entrance || tile === WINDOW_TILE[floor] || tile === TILES.floorGuide) flip = false;
         // the riverside's woods and far bank run on across three cells, so they don't repeat cell by cell
         const along = d === 0 ? x : d === 2 ? -x - 1 : d === 1 ? y : -y - 1;
         const part: [number, number] | undefined = floor === 0 ? [((along % RIVER_SPAN) + RIVER_SPAN) % RIVER_SPAN, RIVER_SPAN] : undefined;
-        quad(wallCorners(x, y, d, h), tile, { shade: SIDE_SHADE[d], flip: floor === 0 ? false : flip, lit: lit || tile === TILES.roomDoor, part });
+        quad(wallCorners(x, y, d, h), tile, { shade: SIDE_SHADE[d], flip: floor === 0 ? false : flip, lit: lit || shutHere, part });
       }
     }
 

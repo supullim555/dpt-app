@@ -35,11 +35,10 @@ import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRA
   assert.equal(tutorialGoal('walk').face, 2);
   assert.equal(tutorialGoal('shop').cell, SHOP_FRONT);
   assert.equal(tutorialGoal('lift'), null);
-  assert.deepEqual(thingAt({ floor: 1, x: 5, y: 4, dir: 2 }, false), { kind: 'person', id: '1i' });
+  assert.deepEqual(thingAt({ floor: 1, x: 5, y: 5, dir: 2 }, false), { kind: 'person', id: '1i' });
   // the guide and the shopkeeper only from the front, where they and their furniture go together
-  assert.equal(thingAt({ floor: 1, x: 5, y: 6, dir: 0 }, false).kind, 'look');
-  assert.equal(thingAt({ floor: 1, x: 4, y: 5, dir: 1 }, false).kind, 'look');
-  assert.equal(thingAt({ floor: 1, x: 6, y: 5, dir: 3 }, false).kind, 'look');
+  assert.equal(thingAt({ floor: 1, x: 4, y: 6, dir: 1 }, false).kind, 'look');
+  assert.equal(thingAt({ floor: 1, x: 6, y: 6, dir: 3 }, false).kind, 'look');
   assert.deepEqual(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false), { kind: 'person', id: '1m' });
   assert.equal(thingAt({ floor: 1, x: 9, y: 1, dir: 1 }, false).kind, 'look');
   assert.ok(canStand(4, 11, 1) && canStand(4, 12, 2) && !canStand(4, 11, 2)); // the sofa on her floor leaves the room and its clue open
@@ -217,7 +216,11 @@ assert.equal(girlOn(8), GIRL_DAYS[7]); // an ending after the week
 assert.ok(!PIN_ON[GIRL_DAYS[2].headTo] && PIN_ON[GIRL_DAYS[3].headTo]); // the pin comes with the third day's hair
 assert.equal(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 7 }), 1); // the gurney: the long way round
 assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null }).text, '1층 매점에서 선물 고르기');
-assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }), null);
+assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }).text, '1층 정문으로 나가기');
+assert.deepEqual(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }).cell, ENTRANCE && { x: ENTRANCE.x, y: ENTRANCE.y });
+// the guide stands against the lobby's south wall, spoken to from the one cell in front of the desk
+assert.equal(charAt(1, 5, 7), '#');
+assert.equal(thingAt({ floor: 1, x: 5, y: 5, dir: 2 }, false).id, '1i');
 const findIt = goalFor({ doneToday: true, boughtToday: false, clueToFind: { floor: 2, name: '운동화 끈' } });
 assert.equal(arrowFor(arrival(2, LIFT_FRONT), findIt), null); // on the floor it's up to you
 console.log('✓ visit logic: endings, keywords, crisis check, hospital map');

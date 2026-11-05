@@ -5,16 +5,20 @@
 
 export const SHEET = 1024;
 export const TILE = 200;
+// v0.78: the wall down to two versions, the door frame drawn as wall and her door as any closed door, to make room for a
+// window on every floor (each with its own view of the ginkgo) and the front door.
 export const TILES = {
-  wall: 0, // to 3: four versions
+  wall: 0, // and 1: two versions
+  entrance: 2,
+  windowF1: 3,
   floor: 4,
   ceiling: 5,
   shutDoor: 6,
-  jamb: 7,
-  window: 8,
+  windowF2: 7,
+  window: 8, // the fourth floor's
   lift: 9,
   stairs: 10,
-  roomDoor: 11,
+  windowF3: 11,
   counter: 12,
   yardWall: 13,
   yardGround: 14,
@@ -157,7 +161,10 @@ function doorShape(p: Pen, x: number, y: number) {
 }
 
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
-const DRAWN_TILES = [TILES.floor, TILES.shutDoor, TILES.window, TILES.lift, TILES.stairs, TILES.roomDoor, TILES.counter, TILES.yardWall, TILES.yardGround, TILES.water, TILES.treeline, TILES.pebbles, TILES.farBank];
+/** Which window each floor looks out of: the higher, the further down onto the tree. */
+export const WINDOW_TILE: Record<number, number> = { 1: TILES.windowF1, 2: TILES.windowF2, 3: TILES.windowF3, 4: TILES.window };
+
+const DRAWN_TILES = [TILES.floor, TILES.shutDoor, TILES.window, TILES.windowF1, TILES.windowF2, TILES.windowF3, TILES.entrance, TILES.lift, TILES.stairs, TILES.counter, TILES.yardWall, TILES.yardGround, TILES.water, TILES.treeline, TILES.pebbles, TILES.farBank];
 
 function paintStructure(c: CanvasRenderingContext2D, base: Uint8Array | null = null) {
   drawn = base;
@@ -170,7 +177,7 @@ function paintTiles(c: CanvasRenderingContext2D) {
   const p: Pen = { c, r: seeded(11) };
   const at = (t: number) => tileAt(t);
 
-  for (let v = 0; v < 4; v++) {
+  for (let v = 0; v < 2; v++) {
     const { x, y } = at(TILES.wall + v);
     wallBase(p, x, y);
     if (v === 1) {
@@ -212,21 +219,26 @@ function paintTiles(c: CanvasRenderingContext2D) {
   c.fillRect(t.x + 72, t.y + 32, 56, 42);
   box(p, t.x + 72, t.y + 32, 56, 42, 2);
 
-  t = at(TILES.jamb);
-  wallBase(p, t.x, t.y);
-  hatch(p, t.x, t.y, TILE, TILE, 14, 0.36);
+  // painted only if the drawn sheet can't be had: the ginkgo through each floor's window, lower down the higher you are
+  for (const [f, tile] of Object.entries(WINDOW_TILE)) {
+    t = at(tile);
+    wallBase(p, t.x, t.y);
+    c.fillStyle = grey(1);
+    c.fillRect(t.x + 30, t.y + 22, 140, 92);
+    c.fillStyle = grey(0.68);
+    c.beginPath();
+    c.arc(t.x + 70 + Number(f) * 15, t.y + 100 - Number(f) * 8, 14 + (5 - Number(f)) * 6, 0, Math.PI * 2);
+    c.fill();
+    box(p, t.x + 30, t.y + 22, 140, 92, 4);
+    line(p, t.x + 100, t.y + 22, t.x + 100, t.y + 114, 3);
+  }
 
-  t = at(TILES.window);
+  t = at(TILES.entrance);
   wallBase(p, t.x, t.y);
-  c.fillStyle = grey(1);
-  c.fillRect(t.x + 30, t.y + 22, 140, 92);
-  // the same ginkgo every south window looks down on
-  c.fillStyle = grey(0.68);
-  c.beginPath();
-  c.arc(t.x + 136, t.y + 88, 24, 0, Math.PI * 2);
-  c.fill();
-  box(p, t.x + 30, t.y + 22, 140, 92, 4);
-  line(p, t.x + 100, t.y + 22, t.x + 100, t.y + 114, 3);
+  c.fillStyle = grey(0.95);
+  c.fillRect(t.x + 24, t.y + 20, 152, 180);
+  box(p, t.x + 24, t.y + 20, 152, 180, 4);
+  line(p, t.x + 100, t.y + 20, t.x + 100, t.y + 200, 3);
 
   t = at(TILES.lift);
   paper(p, t.x, t.y, TILE, 0.5);
@@ -246,12 +258,6 @@ function paintTiles(c: CanvasRenderingContext2D) {
     c.fillRect(t.x + inset, y, TILE - inset * 2, h);
     box(p, t.x + inset, y, TILE - inset * 2, h, 1.6);
   }
-
-  t = at(TILES.roomDoor);
-  doorShape(p, t.x, t.y);
-  c.fillStyle = grey(1);
-  c.fillRect(t.x + 72, t.y + 32, 56, 42);
-  box(p, t.x + 72, t.y + 32, 56, 42, 2);
 
   t = at(TILES.counter);
   wallBase(p, t.x, t.y);
