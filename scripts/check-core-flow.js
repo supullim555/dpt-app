@@ -835,11 +835,60 @@ async function main() {
       t.note('병문안: 2일차 부탁이 풀림', await t.waitText('다리가 좀 제 거 같네요', 2000));
       await stepBack();
 
+      // the doctor's request for the day, taken on, and the questions that lead to the story (each request below)
+      const request = async (who, questions) => {
+        await openMap();
+        await t.clickText('(시험) 의사 앞');
+        await sleep(400);
+        await t.clickText('의사 선생님에게 말 걸기');
+        await tapUntil('해 볼게요');
+        await t.clickText('해 볼게요');
+        await sleep(300);
+        await stepBack();
+        await openMap();
+        await t.clickText('(시험) 부탁 상대 앞');
+        await sleep(500);
+        await t.clickText(`${who}에게 말 걸기`);
+        for (const q of questions) {
+          await tapUntil(q);
+          await t.clickText(q);
+        }
+      };
+
       await nextDay();
       await talk();
       await tapUntil('병실 앞 복도');
       await toClue();
       await pickClue();
+      await stepBack();
+      // day 3's request: the daughter whose mother is dying, and the beach they went to
+      await request('옆 병실 보호자', ['어머니가 아프시게 된 데에는 어떤 일들이 함께 있었을까요?', '같은 일이 친구에게 있었다면, 그 친구에게도 그렇게 말할 거예요?', '어머니는 이 일을 어떻게 생각하실까요? 둘이 함께한 기억 중에 떠오르는 게 있어요?']);
+      t.note('병문안: 엄마와의 바다로 감', await tapUntil('파라솔 밑의 엄마에게 가기'));
+      await sleep(500);
+      await t.shot('beach_start.png');
+      await press('앞으로', 2);
+      await press('왼쪽');
+      t.note('병문안: 파라솔 밑의 엄마', await t.clickText('엄마에게 말 걸기'));
+      await tapUntil('금방 다녀올게요.');
+      await t.shot('beach_meet.png');
+      await t.clickText('금방 다녀올게요.');
+      t.note('병문안: 돌아오니 엄마가 없음', await tapUntil('엄마 찾기'));
+      await sleep(500);
+      await t.shot('beach_lost.png');
+      await press('오른쪽');
+      await press('앞으로', 6);
+      t.note('병문안: 찾는 동안 자기 탓', (await t.hasText('다 내 탓이야.')) || (await t.hasText('…저기, 매점 뒤에.')));
+      await press('오른쪽');
+      t.note('병문안: 매점 뒤의 엄마', await t.clickText('엄마에게 말 걸기'));
+      t.note('병문안: 엄마는 네 탓이 아니라고', await t.waitText('어, 왔니? 매점 뒤에 조개가 많길래.', 2000));
+      await t.shot('beach_found.png');
+      await tapUntil('…같이 앉아 있어요, 엄마.');
+      await t.clickText('…같이 앉아 있어요, 엄마.');
+      t.note('병문안: 보호자가 그날을 돌아봄', await tapUntil('같이 천천히 숨 좀 쉬고 가요.', 30));
+      await t.clickText('같이 천천히 숨 좀 쉬고 가요.');
+      await t.waitText('숨을 들이쉬어요', 2000);
+      await t.clickText('충분해요');
+      t.note('병문안: 3일차 부탁이 풀림', await t.waitText('좀 가벼워졌어요', 2000));
       await stepBack();
       await nextDay();
       await talk();

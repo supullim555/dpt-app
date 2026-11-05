@@ -8,7 +8,7 @@
 type Spot = { x: number; y: number; dir: 0 | 1 | 2 | 3 };
 
 /** Tiles on the memory sheet (hospitalArt.ts MEMORY_TILES), by name. */
-export type MemoryTile = 'pebbles' | 'water' | 'woods' | 'farBank' | 'rehabFloor' | 'rehabWall' | 'plainWall' | 'ceiling';
+export type MemoryTile = 'pebbles' | 'water' | 'woods' | 'farBank' | 'rehabFloor' | 'rehabWall' | 'plainWall' | 'ceiling' | 'sand' | 'sea';
 
 export type Place = {
   map: string[];
@@ -44,7 +44,7 @@ export type Place = {
   lostArrow: boolean;
 };
 
-export type PlaceId = 'river' | 'rehab';
+export type PlaceId = 'river' | 'rehab' | 'beach';
 
 export const PLACES: Record<PlaceId, Place> = {
   // A summer riverside: C the car, A the tent, R thick bushes (nothing behind them shows), % rocks, ~ the river.
@@ -125,5 +125,46 @@ export const PLACES: Record<PlaceId, Place> = {
     meetGoal: '물리치료사에게 가기',
     lostGoal: '평행봉 끝까지 걷기',
     lostArrow: true,
+  },
+  // A summer beach, a mother and her grown-up daughter: U the umbrella, B a bench, K a closed snack kiosk (she's found
+  // behind it), O a rowboat on the sand, ~ the sea.
+  beach: {
+    map: [
+      '###########',
+      '#..U......#',
+      '#..k......#',
+      '#.........#',
+      '#.B.....Kj#',
+      '#......O..#',
+      '#~~~~~~~~~#',
+      '#~~~~~~~~~#',
+      '###########',
+    ],
+    outdoors: true,
+    start: { x: 1, y: 3, dir: 1 },
+    meet: { x: 3, y: 3, dir: 0 },
+    found: { x: 9, y: 3, dir: 2 },
+    lostAt: { x: 3, y: 3, dir: 0 },
+    stops: 'UBKO~',
+    spread: '~',
+    things: {
+      U: { look: 'beachUmbrella', text: '파라솔이다. 그늘이 아직 따뜻하다.' },
+      B: { look: 'beachBench', text: '나무 벤치다. 모래가 잔뜩 묻어 있다.' },
+      K: { look: 'beachKiosk', text: '문 닫은 매점이다. 그 뒤가 보이지 않는다.' },
+      O: { look: 'beachBoat', text: '모래에 끌어올린 나룻배다.' },
+      '~': { text: '파도가 발치까지 왔다가 돌아간다.' },
+    },
+    ground: 'sand',
+    groundOn: { '~': 'water' },
+    wall: 'woods',
+    southWall: 'sea',
+    wallHeight: 2.6,
+    span: 3,
+    fog: [0.84, 0.84, 0.82],
+    light: 1.16,
+    people: { k: { name: '엄마', look: 'mother' }, j: { name: '엄마', look: 'mother' } },
+    meetGoal: '파라솔 밑의 엄마에게 가기',
+    lostGoal: '엄마 찾기',
+    lostArrow: false,
   },
 };

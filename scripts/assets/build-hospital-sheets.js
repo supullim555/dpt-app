@@ -80,6 +80,12 @@ const ITEMS = {
     { src: 'rehab-props', box: [330, 470, 530, 670], cell: { x: 256, y: 0, w: 256, h: 256 } },
     { src: 'rehab-props', box: [542, 538, 756, 674], cell: { x: 512, y: 0, w: 256, h: 256 } },
     { src: 'rehab-props', box: [768, 418, 1000, 678], cell: { x: 768, y: 0, w: 256, h: 256 } },
+    // v0.80: the beach
+    { src: 'beach-props', box: [12, 438, 270, 750], cell: { x: 0, y: 256, w: 256, h: 256 } },
+    { src: 'beach-props', box: [278, 498, 528, 748], cell: { x: 256, y: 256, w: 256, h: 256 } },
+    { src: 'beach-props', box: [488, 636, 702, 732], cell: { x: 512, y: 256, w: 256, h: 256 } },
+    { src: 'beach-props', box: [698, 664, 850, 750], cell: { x: 768, y: 256, w: 256, h: 256 } },
+    { src: 'beach-props', box: [858, 362, 988, 766], cell: { x: 0, y: 512, w: 256, h: 512 }, height: 470 },
   ],
   // v0.74: everyone who shared a drawing now has their own (hospitalArt.ts PERSON2_SLOT).
   people2: [
@@ -406,6 +412,9 @@ const MEMORY = [
   { tile: 5, src: 'rehab-tex', box: [556, 294, 966, 712], seam: 'x' },
   { tile: 6, ...WALL },
   { tile: 7, flat: 224 },
+  // v0.80: the beach's sand, and the sea under its sky
+  { tile: 8, src: 'beach-tex', box: [56, 300, 458, 590], seam: 'xy' },
+  { tile: 9, src: 'beach-tex', box: [560, 294, 972, 696], seam: 'x' },
 ];
 // The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
 // (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small

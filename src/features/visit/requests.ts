@@ -39,7 +39,7 @@ export type Request = {
    * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
    */
   /** `opening`: what goes through their head on arriving, before anything happens. */
-  memory: { place: 'river' | 'rehab'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
+  memory: { place: 'river' | 'rehab' | 'beach'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
   /** Who they are, for answering what the player writes themselves (Gemini, for those who turned AI on; api/chat.ts). */
   persona: string;
 };
@@ -248,6 +248,112 @@ export const REQUESTS: Request[] = [
     girl: {
       choice: '2층 청년 이야기',
       lines: ['넘어지는 거랑 못 걷는 거는 다르다… 그 말 좋다.', '나는 요즘 넘어질 일도 없어. 누워만 있으니까.', '…그래도 그 말은 가지고 있을게.'],
+    },
+  },
+  {
+    day: 3,
+    who: '4p',
+    name: '4층 옆 병실 보호자',
+    distortion: '개인화',
+    goal: { text: '4층 옆 병실 보호자와 이야기하기', floor: 4, cell: { x: 12, y: 1 }, face: 1 },
+    doctor: {
+      start: {
+        lines: [
+          '오셨어요. 오늘도 하나 부탁드려도 될까요?',
+          '이 층 보호자 휴게실에 계신 분이요. 어머니가 아프신 게 전부 자기 탓이라고 믿고 계세요.',
+          '일어난 일을 모두 자기 탓으로 가져가는 거죠. 개인화라고 해요.',
+          '질문을 몇 개만 해 주세요. 안 하셔도 괜찮아요.',
+        ],
+        choices: [
+          { label: '해 볼게요', to: 'yes' },
+          { label: '오늘은 어려워요', to: 'no' },
+        ],
+      },
+      yes: { effect: 'accept', lines: ['고마워요. 4층 보호자 휴게실이에요. 오른쪽 위쪽 방.'] },
+      no: { lines: ['괜찮아요. 마음이 생기면 언제든 들러 주세요.'] },
+    },
+    person: {
+      start: {
+        lines: ['…아, 의사 선생님이 보내셨어요? 저 괜찮아요.', '엄마가 이렇게 된 건 제 탓이에요. 제가 더 자주 왔어야 했어요.', '바쁘다는 핑계로 한 달에 한 번. 그게 다였어요.'],
+        choices: [
+          { label: '어머니가 아프시게 된 데에는 어떤 일들이 함께 있었을까요?', to: 'causes' },
+          { label: '그렇게 자책하지 마세요.', to: 'dismissed' },
+          { label: '지금부터 자주 오시면 되죠.', to: 'advised' },
+        ],
+      },
+      dismissed: {
+        lines: ['자책이 아니라 사실이에요.'],
+        choices: [
+          { label: '어머니가 아프시게 된 데에는 어떤 일들이 함께 있었을까요?', to: 'causes' },
+          { label: '지금부터 자주 오시면 되죠.', to: 'advised' },
+        ],
+      },
+      advised: {
+        lines: ['…지금은 와도 소용없을까 봐요.'],
+        choices: [
+          { label: '어머니가 아프시게 된 데에는 어떤 일들이 함께 있었을까요?', to: 'causes' },
+          { label: '그렇게 자책하지 마세요.', to: 'dismissed' },
+        ],
+      },
+      causes: {
+        lines: ['…병이요. 나이도 있고요. 엄마가 검진을 몇 번 미루기도 했어요.', '근데 그것도 제가 챙겼어야죠.'],
+        choices: [
+          { label: '같은 일이 친구에게 있었다면, 그 친구에게도 그렇게 말할 거예요?', to: 'friend' },
+          { label: '맞아요, 좀 더 챙기셨으면 좋았겠네요.', to: 'agreed' },
+        ],
+      },
+      agreed: {
+        lines: ['…역시 그렇죠.'],
+        choices: [{ label: '같은 일이 친구에게 있었다면, 그 친구에게도 그렇게 말할 거예요?', to: 'friend' }],
+      },
+      friend: {
+        lines: ['…아니요. 너 탓 아니라고 했겠죠.', '이상하네요. 저한테만 그게 안 돼요.'],
+        choices: [
+          { label: '어머니는 이 일을 어떻게 생각하실까요? 둘이 함께한 기억 중에 떠오르는 게 있어요?', to: 'story' },
+          { label: '그럼 이제 마음이 좀 편하시죠?', to: 'rushed' },
+        ],
+      },
+      rushed: {
+        lines: ['그렇게 금방은 안 돼요.'],
+        choices: [{ label: '어머니는 이 일을 어떻게 생각하실까요? 둘이 함께한 기억 중에 떠오르는 게 있어요?', to: 'story' }],
+      },
+      story: { lines: ['…작년 여름에 엄마랑 바다에 갔어요. 둘이서는 처음이었어요.'], then: 'remembered' },
+      remembered: { effect: 'memory', lines: [] },
+      again: {
+        lines: ['…그때 엄마가 그랬어요. 엄마 몸은 엄마가 챙기는 거라고. 나는 와 주는 걸로 충분하다고.', '그 말을 잊고 있었어요. 아니, 안 믿었던 것 같아요.', '제 탓인 것도 조금은 있겠죠. 근데 전부는 아니었네요.'],
+        choices: [{ label: '같이 천천히 숨 좀 쉬고 가요.', to: 'relax' }],
+      },
+      relax: { effect: 'breathe', relax: 'breath', lines: ['…네.'], then: 'done' },
+      done: { effect: 'solve', lines: ['…좀 가벼워졌어요.', '오늘은 엄마 손 잡고 바다 얘기 해 드릴게요.'] },
+    },
+    memory: {
+      place: 'beach',
+      title: '작년 여름, 엄마와 바다',
+      opening: '엄마랑 둘이 바다라니. 몇 년 만이지.',
+      lostTitle: '길 건너 가게에서 물을 사 오니, 엄마가 자리에 없다.',
+      returnTitle: '다시, 병원',
+      meet: {
+        start: {
+          lines: ['바다 오니까 좋다. 너랑 둘이 이렇게 온 거 얼마 만이니.', '목마르다. 길 건너 가게에서 물 좀 사다 줄래?'],
+          choices: [{ label: '금방 다녀올게요.', to: 'go' }],
+        },
+        go: { lines: ['천천히 와. 엄마 여기 있을게.'], then: 'gone' },
+        gone: { effect: 'lose', lines: [] },
+      },
+      found: {
+        start: {
+          lines: ['어, 왔니? 매점 뒤에 조개가 많길래.', '…얼굴이 왜 그래. 검진 미룬 거, 그건 엄마가 고집부린 거야. 너 탓 아니야.', '엄마 몸은 엄마가 챙기는 거야. 너는 와 주는 걸로 충분해.'],
+          choices: [{ label: '…같이 앉아 있어요, 엄마.', to: 'back' }],
+        },
+        back: { effect: 'return', lines: [] },
+      },
+      thoughts: ['또 혼자 뒀어.', '내가 더 자주 왔으면 이렇게까지 아프진 않았을 텐데.', '검진 날짜도 내가 챙겼어야 했는데.', '다 내 탓이야.', '…저기, 매점 뒤에.'],
+    },
+    persona: `4층 호스피스 병동 옆 병실의 보호자. 사십 대 여성. 말기의 어머니를 돌보며, 어머니가 아픈 게 자기가 자주 오지 않았기 때문이라고 믿는다(개인화). 조용하고 지쳐 있다. 작년 여름 어머니와 둘이 바다에 갔을 때 어머니가 "엄마 몸은 엄마가 챙기는 거야. 너는 와 주는 걸로 충분해"라고 했던 일은, 플레이어가 함께한 기억을 묻기 전에는 먼저 꺼내지 않는다.`,
+    after: ['어제 엄마랑 바다 얘기 했어요. 엄마가 웃었어요.'],
+    girl: {
+      choice: '4층 옆 병실 보호자분 이야기',
+      lines: ['너 탓 아니야. 그 말, 하기는 쉬운데 듣기는 어렵지.', '우리 엄마도 그런 얼굴 해. 나 볼 때.', '…나중에 엄마한테 그 말 해 줘야겠다. 내가.'],
     },
   },
 ];

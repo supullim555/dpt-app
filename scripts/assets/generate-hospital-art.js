@@ -88,6 +88,15 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.80: the third request's memory, a summer beach with a mother
+  'beach-tex': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to edge,
+flat, no frame: a sandy beach seen from straight above, fine sand with a few footprints and small shells, evenly lit; and
+the sea seen straight out from the beach, the upper half an open summer sky with a few soft clouds, the horizon across the
+middle, gentle waves and a strip of wet sand along the bottom edge.`,
+  'beach-props': `${SAME_STYLE} Five separate things, each whole and seen straight on: a striped beach umbrella planted in the
+sand; a small seaside snack kiosk with an awning and no writing; a small wooden rowboat pulled up on the sand, seen from
+the side; a low wooden bench; and a woman in her late sixties in a wide sun hat, a light cardigan and a long skirt, full
+body, standing, facing the viewer, feet visible, a gentle smile.`,
   // v0.79: the second request's memory, a rehabilitation room on the first day of walking again
   'rehab-tex': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to edge,
 flat, no perspective, evenly lit: a rehabilitation room floor of soft rubber floor tiles seen from straight above; and a
