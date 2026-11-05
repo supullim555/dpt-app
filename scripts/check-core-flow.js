@@ -272,6 +272,9 @@ async function main() {
       t.note('병문안: 타이틀에 설정 버튼', await t.clickText('설정'));
       t.note('병문안: 설정 화면에 글자 크기', await t.waitText('글자 크기', 3000));
       t.note('병문안: 설정에 처음부터 다시 시작', await t.hasText('처음부터 다시 시작'));
+      t.note('병문안: 설정에 AI와 직접 대화, 전송된다는 안내', (await t.hasText('AI와 직접 대화')) && (await t.hasText('켜면 병원 사람에게 직접 쓴 말을 Google Gemini가 그 사람으로서 받아요. 쓴 말은 이 기기가 아니라 Gemini 서버로 전송돼요. 꺼도 선택지로 끝까지 할 수 있어요.')));
+      await t.clickText('켜기');
+      await sleep(200);
       await t.shot('visit_settings.png');
       await t.clickText('크게');
       await sleep(200);
@@ -669,6 +672,24 @@ async function main() {
       await t.clickText('지친 보호자에게 말 걸기');
       t.note('병문안: 보호자가 최악을 말함', await tapUntil('괜찮을 거예요. 너무 걱정하지 마세요.'));
       await t.shot('request_choices.png');
+      // AI on: write to them yourself. A crisis is never sent; with no relay here, the choices still carry it
+      t.note('병문안: AI를 켜면 직접 말하기', await t.clickText('직접 말하기'));
+      await sleep(300);
+      await t.fillTextarea('요즘 죽고 싶어');
+      await sleep(150);
+      await t.clickText('말하기');
+      t.note('병문안: 직접 쓴 위기 표현은 보내지 않고 안내', await t.waitText('그 말은 그냥 넘기고 싶지 않아요. 혼자 견디지 말고, 아래 번호로 전화해 보세요. 24시간 받아 줘요.', 2000));
+      await t.click(195, 170);
+      await sleep(200);
+      await t.clickText('직접 말하기');
+      await sleep(300);
+      await t.fillTextarea('아이 열은 언제부터 났어요?');
+      await sleep(150);
+      await t.clickText('말하기');
+      t.note('병문안: 답을 못 받으면 선택지로 안내', await t.waitText('(지금은 답을 받을 수 없어요. 아래에서 골라 주세요.)', 50000));
+      await t.shot('request_written.png');
+      await t.click(195, 170);
+      await sleep(200);
       await t.clickText('괜찮을 거예요. 너무 걱정하지 마세요.');
       t.note('병문안: 무조건 안심시키면 닫히고 다시 고름', (await t.waitText('그 말이 제일 안 들려요', 2000)) && (await t.hasText('의료진은 뭐라고 하던가요?')));
       await t.clickText('열이 난다는 게 꼭 잘못됐다는 뜻일까요? 의료진은 뭐라고 하던가요?');

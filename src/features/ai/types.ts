@@ -18,7 +18,10 @@ export type ChatRequest = {
    * asks for a short, non-interpretive recap of `history` — see systemPrompt.ts's
    * SUMMARY_SYSTEM_PROMPT and memory.ts's recordAiSummary, the save-to-메모 feature this
    * exists for. */
-  mode?: 'chat' | 'summarize';
+  mode?: 'chat' | 'summarize' | 'persona';
+  /** For mode 'persona': who answers, by floor and map letter (src/features/visit/requests.ts). The server, not the
+   * client, decides what that person is told. */
+  persona?: string;
 };
 
 /** What api/chat.ts sends back. Exactly one of these shapes, never both. */

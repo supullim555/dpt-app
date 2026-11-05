@@ -134,6 +134,11 @@ export const TUTORIAL_TELL = '고르거나 직접 써서 오늘 일을 들려주
 export const TUTORIAL_GIVE = '가져온 선물을 건네거나, 그냥 두어도 돼요.';
 export const TUTORIAL_SKIP = '튜토리얼 건너뛰기';
 export const TUTORIAL_OK = '알겠어요';
+// Writing to someone yourself (AI on): what shows while waiting, when there's no answer, and instead of sending at all.
+export const WRITE_OWN = '직접 말하기';
+export const WRITE_WAITING = '…';
+export const WRITE_FAILED = '(지금은 답을 받을 수 없어요. 아래에서 골라 주세요.)';
+export const WRITE_CRISIS = '그 말은 그냥 넘기고 싶지 않아요. 혼자 견디지 말고, 아래 번호로 전화해 보세요. 24시간 받아 줘요.';
 // Leaving by the front door once she's been seen.
 export const nextDayQuestion = (day: number) => `${day}일차를 진행하시겠습니까?`;
 export const untilTomorrow = (hours: number, minutes: number) => `다음 날은 자정에 열려요. ${hours}시간 ${minutes}분 남았어요.`;

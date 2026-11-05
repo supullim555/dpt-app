@@ -25,6 +25,14 @@ export async function summarizeChat(history: ChatMessage[]): Promise<string> {
   return callRelay({ history, mode: 'summarize' });
 }
 
+/**
+ * 병문안: an answer from someone in the hospital to what the player wrote (src/features/visit/requests.ts). Who they
+ * are and how they speak is set on the server; only their id, the conversation so far and the new message are sent.
+ */
+export async function sendPersonaMessage(persona: string, history: ChatMessage[], message: string): Promise<string> {
+  return callRelay({ history, message, mode: 'persona', persona });
+}
+
 async function callRelay(body: ChatRequest): Promise<string> {
   if (!AI_CHAT_UI_ENABLED) {
     throw new Error('AI chat is not enabled (src/features/ai/config.ts: AI_CHAT_UI_ENABLED is false).');

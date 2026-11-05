@@ -15,11 +15,12 @@
 // configured at all, are separate facts.
 
 import { SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT } from '../src/features/ai/systemPrompt';
+import { personaPrompt, REQUESTS } from '../src/features/visit/requests';
 
 export const config = { runtime: 'edge' };
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string };
-type ChatRequest = { history?: ChatMessage[]; message?: string; mode?: 'chat' | 'summarize' };
+type ChatRequest = { history?: ChatMessage[]; message?: string; mode?: 'chat' | 'summarize' | 'persona'; persona?: string };
 
 // Keep in sync with src/features/ai/config.ts's AI_CHAT_MODEL. gemini-2.5-flash (tried first) returned
 // HTTP 404 "no longer available to new users" for this project's key — Google's own error
@@ -77,7 +78,12 @@ export default async function handler(req: Request): Promise<Response> {
     const message = body.message?.trim();
     if (!message) return json({ error: 'message is required.' }, 400);
     if (message.length > MAX_MESSAGE_LENGTH) return json({ error: 'message is too long.' }, 400);
-    systemPrompt = SYSTEM_PROMPT;
+    // 병문안: someone in the hospital answers. Who they are comes from here, never from the request.
+    if (body.mode === 'persona') {
+      const who = REQUESTS.find((r) => r.who === body.persona);
+      if (!who) return json({ error: 'Unknown persona.' }, 400);
+      systemPrompt = personaPrompt(who);
+    } else systemPrompt = SYSTEM_PROMPT;
     contents = [...history.map(toContent), { role: 'user', parts: [{ text: message }] }];
   }
 

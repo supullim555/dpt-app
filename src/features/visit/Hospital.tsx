@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
 import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, RIVER_FOUND, RIVER_MEET, RIVER_START, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow } from './script';
+import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
 import { doctorTalk, personTalk, requestGoal, REQUESTS, type Request, type Talk } from './requests';
 import BreatheTogether from './BreatheTogether';
+import { soundsLikeCrisis } from './safety';
+import { sendPersonaMessage, type ChatMessage } from '@/features/ai';
+import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
 
 const AMBER = '#d9a441';
 const LIFT_MS = 1100;
@@ -77,6 +80,8 @@ type Props = {
   solved: readonly number[];
   onAccept: (request: number) => void;
   onSolve: (request: number) => void;
+  /** Turned AI on: whoever a request is about can also be written to, and Gemini answers as them. */
+  aiOn: boolean;
   onTitle: () => void;
   tutorial: TutorialStep;
   onTutorial: (step: TutorialStep) => void;
@@ -106,7 +111,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, onTitle, tutorial, onTutorial, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -117,6 +122,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [noView, setNoView] = useState(false);
   const [breathing, setBreathing] = useState(false);
   const [memory, setMemory] = useState<Memory | null>(null);
+  // Writing to someone yourself: the draft, and their answer (or that it's coming), shown in place of their line.
+  const [writing, setWriting] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [aside, setAside] = useState<string | null>(null);
+  const written = useRef<ChatMessage[]>([]);
   // The step whose explanation has been read in the middle of the screen; after that it waits small at the bottom.
   const [lessonRead, setLessonRead] = useState<TutorialStep | null>(null);
 
@@ -342,10 +352,32 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (at.effect === 'accept' && request !== undefined) onAccept(request);
     if (at.effect === 'solve' && request !== undefined) onSolve(request);
     if (at.effect === 'breathe') setBreathing(true);
+    setAside(null);
     if (at.effect === 'memory' && r) return remember(r);
     if (at.effect === 'lose' && memory) return loseHim(memory);
     if (at.effect === 'return' && memory) return comeBack(memory);
     setFocused({ ...from, node, lines: at.lines, index: 0 });
+  }
+
+  // What you wrote, to them: never sent if it sounds like a crisis; their answer replaces their line until you tap on.
+  const canWrite = aiOn && !memory && focused?.kind === 'person' && !!focused.talk && REQUESTS.some((r) => r.who === focused.id) && !breathing;
+  async function sendWritten() {
+    const text = draft.trim();
+    if (!text || focused?.kind !== 'person') return;
+    setDraft('');
+    setWriting(false);
+    if (soundsLikeCrisis(text)) {
+      setAside(WRITE_CRISIS);
+      return;
+    }
+    setAside(WRITE_WAITING);
+    try {
+      const reply = await sendPersonaMessage(focused.id, written.current, text);
+      written.current = [...written.current, { role: 'user' as const, text }, { role: 'assistant' as const, text: reply }].slice(-12);
+      setAside(reply.trim());
+    } catch {
+      setAside(WRITE_FAILED);
+    }
   }
 
   // Into their remembered day, as them: from just out of the car.
@@ -404,6 +436,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   const goBack = () => {
     if (!focused || breathing) return;
+    setWriting(false);
+    setAside(null);
+    written.current = [];
     busy.current = true;
     setFocused(null);
     setShopLine('');
@@ -457,7 +492,12 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   };
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    const onKey = (e: KeyboardEvent) => keys.current(KEY_AT[e.code] ?? e.key.toLowerCase());
+    const onKey = (e: KeyboardEvent) => {
+      // typing into a box isn't walking
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT')) return;
+      keys.current(KEY_AT[e.code] ?? e.key.toLowerCase());
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
@@ -517,6 +557,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   const onViewPress = () => {
     if (bedside) return bedside.onPress?.();
+    if (focused?.kind === 'person' && aside !== null) {
+      if (aside !== WRITE_WAITING) setAside(null);
+      return;
+    }
     if (focused?.kind === 'person') {
       if (focused.index + 1 < focused.lines.length) setFocused({ ...focused, index: focused.index + 1 });
       else if (focused.talk && focused.node && !breathing) {
@@ -592,7 +636,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         {bedside?.bubble ? <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none"><Bubble text={bedside.bubble} more={bedside.more} fontScale={fontScale} /></View> : null}
         {focused?.kind === 'person' && (
           <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none">
-            <Bubble name={focused.name} text={shopLine || focused.lines[focused.index]} more={moreLines} fontScale={fontScale} />
+            <Bubble name={focused.name} text={aside ?? (shopLine || focused.lines[focused.index])} more={aside === null && moreLines} fontScale={fontScale} />
           </View>
         )}
         {focused?.kind === 'thing' && (
@@ -742,7 +786,27 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               )}
             </View>
           )}
-          {choices && (
+          {writing && canWrite ? (
+            <View style={styles.talkChoices}>
+              <TextInput
+                style={[styles.writeInput, { fontSize: 15 * fontScale }]}
+                value={draft}
+                onChangeText={setDraft}
+                onKeyPress={makeSubmitOnEnterHandler(() => void sendWritten())}
+                placeholder="하고 싶은 말"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                multiline
+                autoFocus
+              />
+              <PaperButton wide label={draft.trim() ? '말하기' : '돌아가기'} onPress={() => (draft.trim() ? void sendWritten() : setWriting(false))} />
+            </View>
+          ) : null}
+          {!writing && canWrite && aside !== WRITE_WAITING && (
+            <View style={styles.talkChoices}>
+              <PaperButton wide label={WRITE_OWN} onPress={() => setWriting(true)} />
+            </View>
+          )}
+          {choices && !writing && (
             <View style={styles.talkChoices}>
               {choices.map((c) => (
                 <PaperButton key={c.label} wide label={c.label} onPress={() => focused?.kind === 'person' && enterNode(focused, c.to)} />
@@ -891,6 +955,7 @@ const styles = StyleSheet.create({
   hidden: { opacity: 0 },
   shop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   talkChoices: { alignSelf: 'stretch', gap: 6 },
+  writeInput: { alignSelf: 'stretch', minHeight: 64, color: '#fff', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)', padding: 10, fontFamily: 'serif', textAlignVertical: 'top' },
   backButton: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', height: 58, borderWidth: 2, borderColor: '#f2f2f2' },
   backText: { color: '#fff', fontFamily: 'serif' },
   thingButton: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', height: 42, backgroundColor: '#f2f2f2' },

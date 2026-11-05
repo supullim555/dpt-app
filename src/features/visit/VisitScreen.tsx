@@ -22,6 +22,7 @@ import Opening from './Opening';
 import PaperButton from './PaperButton';
 import { dayInRun, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
 import { REQUESTS } from './requests';
+import { loadAiOptIn, setAiOptIn, type AiOptIn } from '@/features/ai';
 import { soundsLikeCrisis } from './safety';
 import {
   ARRIVAL_LINES,
@@ -126,6 +127,12 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const [memory, setMemory] = useState<ClueId>('collar');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
+  // The app's own AI switch (the same one as its free chat): on, and people a request is about can be written to.
+  const [ai, setAi] = useState<AiOptIn>('unset');
+  useAsyncEffect(async (isCancelled) => {
+    const v = await loadAiOptIn();
+    if (!isCancelled()) setAi(v);
+  }, []);
 
   useAsyncEffect(async (isCancelled) => {
     const saved = await loadEntryOr<unknown>(STORAGE_KEY, null);
@@ -357,6 +364,31 @@ export default function VisitScreen(_props: VisitScreenProps) {
               ))}
             </View>
 
+            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>AI와 직접 대화</Text>
+            <Text style={[styles.settingsNote, { fontSize: 12 * scale, lineHeight: 18 * scale }]}>
+              켜면 병원 사람에게 직접 쓴 말을 Google Gemini가 그 사람으로서 받아요. 쓴 말은 이 기기가 아니라 Gemini 서버로 전송돼요. 꺼도 선택지로 끝까지 할 수 있어요.
+            </Text>
+            <View style={styles.settingsRow}>
+              {[
+                { label: '끄기', value: 'off' as const },
+                { label: '켜기', value: 'on' as const },
+              ].map((o) => {
+                const on = (ai === 'on') === (o.value === 'on');
+                return (
+                  <TouchableOpacity
+                    key={o.label}
+                    style={[styles.option, on && styles.optionOn]}
+                    onPress={() => {
+                      setAi(o.value);
+                      void setAiOptIn(o.value);
+                    }}
+                  >
+                    <Text style={[styles.optionText, on && styles.optionTextOn]}>{o.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <TouchableOpacity style={styles.settingsLink} onPress={() => setPhase('opening')}>
               <Text style={[styles.settingsLinkText, { fontSize: 14 * scale }]}>오프닝 다시 보기</Text>
             </TouchableOpacity>
@@ -550,6 +582,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
           metDoctor={state.doctorDays.includes(day)}
           asked={state.requestsAsked}
           solved={state.requestsSolved.map((r) => r.request)}
+          aiOn={ai === 'on'}
           onAccept={(request) => setState((s) => (s && !s.requestsAsked.includes(request) ? { ...s, requestsAsked: [...s.requestsAsked, request] } : s))}
           onSolve={(request) => setState((s) => (s && !s.requestsSolved.some((r) => r.request === request) ? { ...s, requestsSolved: [...s.requestsSolved, { request, on: day }] } : s))}
           onMeetDoctor={() => setState((s) => (s && !s.doctorDays.includes(day) ? { ...s, doctorDays: [...s.doctorDays, day] } : s))}
@@ -592,6 +625,7 @@ const styles = StyleSheet.create({
   titleLine: { color: 'rgba(255,255,255,0.65)', fontSize: 14, marginBottom: 18, fontFamily: 'serif' },
   settingsHeading: { color: '#fff', fontFamily: 'serif', marginBottom: 10 },
   settingsLabel: { color: 'rgba(255,255,255,0.75)', fontFamily: 'serif' },
+  settingsNote: { color: 'rgba(255,255,255,0.55)', fontFamily: 'serif', textAlign: 'center' },
   settingsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   option: { paddingHorizontal: 20, paddingVertical: 9, borderWidth: 2, borderColor: '#f2f2f2' },
   optionOn: { backgroundColor: '#f2f2f2' },
