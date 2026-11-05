@@ -6,12 +6,16 @@ import { createHospitalScene, type FocusTarget, type HospitalScene, type Hospita
 import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS } from './script';
+import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE } from './script';
 
 const AMBER = '#d9a441';
 const LIFT_MS = 1100;
 const STAIRS_MS = 700;
 const ARROWS = ['↑', '→', '↓', '←'];
+// A phone or tablet is told about the buttons on the screen; a computer about its keys as well.
+const TOUCH = Platform.OS !== 'web' || (typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches);
+// The letter keys by where they sit, so they still work with the keyboard set to Hangul.
+const KEY_AT: Record<string, string> = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
 const GIRL_CELL = { x: GIRL_FRONT.x, y: GIRL_FRONT.y + 1 };
 // However long the camera takes to come in from the door, and when she turns to you: after it's there, so you
@@ -86,6 +90,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [hintOpen, setHintOpen] = useState(false);
   const [transit, setTransit] = useState('');
   const [noView, setNoView] = useState(false);
+  // The step whose explanation has been read in the middle of the screen; after that it waits small at the bottom.
+  const [lessonRead, setLessonRead] = useState<TutorialStep | null>(null);
 
   const host = useRef<View>(null);
   const scene = useRef<HospitalScene | null>(null);
@@ -322,16 +328,21 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   // Web keyboards: the arrow keys or WASD, Enter or Space for what's in front of you, Escape to go back.
   const keys = useRef((_key: string) => {});
   keys.current = (key: string) => {
-    if (key === 'ArrowUp' || key === 'w') forward();
-    else if (key === 'ArrowLeft' || key === 'a') rotate(-1);
-    else if (key === 'ArrowRight' || key === 'd') rotate(1);
-    else if (key === 'ArrowDown' || key === 's') rotate(2);
-    else if (key === 'Enter' || key === ' ') useThing();
-    else if (key === 'Escape' || key === 'Backspace') goBack();
+    if (lessonOpen) {
+      if (key === 'enter' || key === ' ' || key === 'escape') readLesson();
+      return;
+    }
+    if ((key === 'enter' || key === ' ') && focused?.kind === 'person') onViewPress();
+    else if (key === 'arrowup' || key === 'w') forward();
+    else if (key === 'arrowleft' || key === 'a') rotate(-1);
+    else if (key === 'arrowright' || key === 'd') rotate(1);
+    else if (key === 'arrowdown' || key === 's') rotate(2);
+    else if (key === 'enter' || key === ' ') useThing();
+    else if (key === 'escape' || key === 'backspace') goBack();
   };
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    const onKey = (e: KeyboardEvent) => keys.current(e.key);
+    const onKey = (e: KeyboardEvent) => keys.current(KEY_AT[e.code] ?? e.key.toLowerCase());
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
@@ -359,7 +370,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (nextLesson !== tutorial) onTutorial(nextLesson);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextLesson, tutorial]);
-  const lesson = !bedside && focused?.kind !== 'thing' ? TUTORIAL_TIPS[tutorial] : undefined;
+  const tip = !bedside && focused?.kind !== 'thing' ? TUTORIAL_TIPS[tutorial] : undefined;
+  const lesson = typeof tip === 'string' ? tip : tip?.[TOUCH ? 0 : 1];
+  // Each new step is explained once in the middle of a darkened screen, like any game's tutorial.
+  const lessonOpen = lesson !== undefined && lessonRead !== tutorial && !transit && panel === 'none';
+  const readLesson = () => (tutorial === 'day' ? onTutorial('done') : setLessonRead(tutorial));
 
   const thingLabel = thing
     ? thing.kind === 'lift' ? '엘리베이터 타기'
@@ -426,7 +441,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               <Text style={[styles.note, textSize]}>{note}</Text>
             </View>
           )}
-          {lesson !== undefined && (
+          {lesson !== undefined && !lessonOpen && (
             <View style={styles.lesson}>
               <Text style={[styles.lessonText, textSize]}>{lesson}</Text>
               <TouchableOpacity onPress={() => onTutorial('done')} style={styles.lessonLink}>
@@ -593,6 +608,23 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           </View>
         </View>
       )}
+
+      {lessonOpen && (
+        <View style={styles.lessonShade} accessibilityViewIsModal>
+          <View style={styles.lessonCard}>
+            <Text style={[styles.lessonTitle, { fontSize: 13 * fontScale }]}>{TUTORIAL_TITLE}</Text>
+            <Text style={[styles.lessonCenterText, { fontSize: 16 * fontScale, lineHeight: 26 * fontScale }]}>{lesson}</Text>
+            <TouchableOpacity style={styles.lessonOk} onPress={readLesson}>
+              <Text style={[styles.lessonOkText, { fontSize: 15 * fontScale }]}>{TUTORIAL_OK}</Text>
+            </TouchableOpacity>
+            {tutorial !== 'day' && (
+              <TouchableOpacity onPress={() => onTutorial('done')} style={styles.lessonSkip}>
+                <Text style={[styles.lessonLinkText, { fontSize: 12 * fontScale }]}>{TUTORIAL_SKIP}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -647,6 +679,14 @@ const styles = StyleSheet.create({
   lesson: { backgroundColor: 'rgba(0,0,0,0.88)', borderWidth: 1.5, borderColor: AMBER, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, gap: 2 },
   lessonText: { color: '#fff', fontFamily: 'serif' },
   lessonLink: { alignSelf: 'flex-end', paddingVertical: 4, paddingLeft: 12 },
+  // Dark and blurred behind; it takes every touch, so nothing moves until it's read.
+  lessonShade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.62)', alignItems: 'center', justifyContent: 'center', padding: 24, ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' } as object) : {}) },
+  lessonCard: { maxWidth: 420, width: '100%', alignItems: 'center', gap: 14 },
+  lessonTitle: { color: AMBER, fontFamily: 'serif', letterSpacing: 2 },
+  lessonCenterText: { color: '#fff', fontFamily: 'serif', textAlign: 'center', ...(Platform.OS === 'web' ? ({ wordBreak: 'keep-all' } as object) : {}) },
+  lessonOk: { borderWidth: 1.5, borderColor: AMBER, paddingHorizontal: 28, paddingVertical: 9, marginTop: 6 },
+  lessonOkText: { color: AMBER, fontFamily: 'serif' },
+  lessonSkip: { paddingVertical: 4 },
   lessonLinkText: { color: AMBER, textDecorationLine: 'underline', fontFamily: 'serif' },
   caption: { position: 'absolute', left: 14, right: 14, bottom: 14, backgroundColor: 'rgba(0,0,0,0.85)', borderWidth: 1.5, borderColor: '#f2f2f2', padding: 12 },
   note: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },

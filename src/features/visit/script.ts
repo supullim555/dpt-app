@@ -98,15 +98,28 @@ export const FLOORS: Record<number, { name: string; line: string; open?: string 
   1: { name: '1층 로비', line: '사람이 가장 많다. 유리문 너머 안뜰에 은행나무가 서 있다.' },
 };
 // The first walk in (hospitalMap.ts). First draft: how each thing works, in the fewest words that do it.
-export const TUTORIAL_TIPS: Partial<Record<string, string>> = {
-  walk: '아래 앞으로 버튼으로 한 칸씩 걷고, 왼쪽과 오른쪽으로 돌아요. 먼저 한 걸음 걸어 보세요.',
+// A string is the same for everyone; a pair is [on a touch screen, with a keyboard].
+export const TUTORIAL_TIPS: Partial<Record<string, string | [string, string]>> = {
+  walk: [
+    '화면 아래의 버튼을 눌러 움직여요. ↑는 한 칸 앞으로, ↺와 ↻는 왼쪽과 오른쪽으로 돌기, ↓는 뒤돌기예요. 먼저 한 걸음 걸어 보세요.',
+    '방향키나 W, A, S, D 키로 움직여요. ↑(W)는 한 칸 앞으로, ←(A)와 →(D)는 그쪽으로 돌기, ↓(S)는 뒤돌기예요. 화면 아래의 버튼을 눌러도 돼요. 먼저 한 걸음 걸어 보세요.',
+  ],
   goal: '왼쪽 위 네모가 지금 할 일이에요. 노란 화살표는 갈 방향이에요. ↑면 앞으로, →나 ←면 그쪽으로 돌아요. 따라가 보세요.',
-  talk: '사람이나 물건 앞에 서면 아래에 흰 버튼이 떠요. 눌러서 말을 걸어 보세요.',
-  back: '화면을 누르면 다음 말로 넘어가요. 다 들었으면 뒤로가기를 누르세요.',
+  talk: [
+    '사람이나 물건 앞에 서면 아래에 흰 버튼이 떠요. 눌러서 말을 걸어 보세요.',
+    '사람이나 물건 앞에 서면 아래에 흰 버튼이 떠요. 누르거나 Enter 키로 말을 걸어 보세요.',
+  ],
+  back: [
+    '화면을 누르면 다음 말로 넘어가요. 다 들었으면 뒤로가기를 누르세요.',
+    '화면을 누르거나 Enter 키를 누르면 다음 말로 넘어가요. 다 들었으면 뒤로가기나 Esc 키를 누르세요.',
+  ],
   shop: '화살표를 따라 매점으로 가서, 매점 주인 앞에 서 보세요.',
   buy: '말을 걸면 아래에 오늘의 선물이 떠요. 하루에 하나만 살 수 있어요. 하나 골라 보세요.',
   shopBack: '산 선물은 병실에서 소녀에게 건넬 수 있어요. 뒤로가기를 눌러 나오세요.',
-  lift: '이제 4층으로 올라가요. 화살표가 엘리베이터로 이끌어요. 앞에 서면 타는 버튼이 떠요. 옆의 계단도 괜찮아요.',
+  lift: [
+    '이제 4층으로 올라가요. 화살표가 엘리베이터로 이끌어요. 앞에 서면 타는 버튼이 떠요. 옆의 계단도 괜찮아요.',
+    '이제 4층으로 올라가요. 화살표가 엘리베이터로 이끌어요. 앞에 서면 타는 버튼이 떠요. Enter 키로도 탈 수 있어요. 옆의 계단도 괜찮아요.',
+  ],
   room: '한 번 가 본 층은 지도 버튼으로 바로 갈 수 있어요. 화살표를 따라 열린 문을 지나면 소녀를 만나요.',
   day: '소녀는 하루에 한 번 만날 수 있어요. 남은 시간에는 병원을 둘러보며 사람들과 이야기해도 되고, 1층 정문에서 돌아가도 돼요. 다음 날은 실제로 내일 열려요.',
 };
@@ -114,6 +127,7 @@ export const TUTORIAL_TELL = '고르거나 직접 써서 오늘 일을 들려주
 export const TUTORIAL_GIVE = '가져온 선물을 건네거나, 그냥 두어도 돼요.';
 export const TUTORIAL_SKIP = '튜토리얼 건너뛰기';
 export const TUTORIAL_OK = '알겠어요';
+export const TUTORIAL_TITLE = '도움말';
 // What the guide at the front desk says the first time, so the shop comes up on its own.
 export const GUIDE_FIRST_LINES = ['병문안 오셨어요? 호스피스 병동은 4층이에요.', '빈손이 쑥스러우시면 매점에 먼저 들러 보세요. 이 층에 있어요.'];
 export const ROOM_SHUT = '치료 중이다. 오늘은 더 들어갈 수 없다.';

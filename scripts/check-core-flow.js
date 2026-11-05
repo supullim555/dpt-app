@@ -307,27 +307,47 @@ async function main() {
           await sleep(420);
         }
       };
+      // Each step of the tutorial opens in the middle of a darkened screen, and has to be read before you go on.
+      const readTip = async () => {
+        await t.clickText('알겠어요');
+        await sleep(250);
+      };
       t.note('병문안: 왼쪽 위에 목표', await t.waitText('안내 직원에게 가기', 3000));
-      t.note('병문안: 튜토리얼이 걷는 법부터', await t.hasText('한 칸씩 걷고'));
+      t.note('병문안: 튜토리얼이 걷는 법부터, 컴퓨터엔 키로', (await t.hasText('방향키나 W, A, S, D')) && (await t.hasText('화면 아래의 버튼을 눌러도')));
       t.note('병문안: 튜토리얼은 건너뛸 수 있음', await t.hasText('튜토리얼 건너뛰기'));
+      t.note('병문안: 튜토리얼은 어둡게 흐린 화면 가운데', await t.evalJs("[...document.querySelectorAll('div')].some((d) => { const c = getComputedStyle(d); return (c.backdropFilter || c.webkitBackdropFilter || '').includes('blur') && c.position === 'absolute'; })"));
+      await t.shot('tutorial_center.png');
+      await t.clickText('앞으로');
+      await sleep(420);
+      t.note('병문안: 튜토리얼을 읽기 전엔 움직이지 않음', !(await t.hasText('노란 화살표')));
+      await readTip();
+      t.note('병문안: 읽고 나면 아래에 작게 남음', (await t.hasText('방향키나 W, A, S, D')) && !(await t.hasText('알겠어요')));
       t.note('병문안: 3D 화면이 뜸', await waitFor(() => t.evalJs("!!document.querySelector('canvas')"), 8000));
       await sleep(500);
       await t.shot('walk_lobby.png');
       t.note('병문안: 화면이 실제로 그려짐', await viewHasPicture(t));
-      await press('앞으로');
+      // W by where it sits on the keyboard, so it walks with the keyboard set to Hangul too
+      await t.evalJs("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ㅈ', code: 'KeyW' })), true");
+      await sleep(420);
+      t.note('병문안: 한글 입력 상태의 W 키로도 걸음', await t.hasText('노란 화살표'));
       t.note('병문안: 튜토리얼이 목표와 화살표를 설명', await t.hasText('노란 화살표'));
+      await readTip();
       await press('앞으로', 4);
       await press('오른쪽');
       t.note('병문안: 튜토리얼이 말 걸기를 설명', await t.hasText('흰 버튼'));
+      t.note('병문안: 컴퓨터엔 Enter 키도 알려 줌', await t.hasText('Enter 키로 말을'));
+      await readTip();
       await t.clickText('안내 직원에게 말 걸기');
       t.note('병문안: 안내 직원이 처음엔 매점을 권함', await t.waitText('병문안 오셨어요?', 2000));
       t.note('병문안: 튜토리얼이 뒤로가기를 설명', await t.hasText('다 들었으면'));
+      await readTip();
       await sleep(500);
       await t.clickText('병문안 오셨어요? 호스피스 병동은 4층이에요.');
       t.note('병문안: 화면을 누르면 다음 말', await t.waitText('매점에 먼저 들러', 2000));
       await t.clickText('뒤로가기');
       await sleep(600);
       t.note('병문안: 목표가 매점으로 바뀜', await t.waitText('1층 매점에서 선물 고르기', 2000));
+      await readTip();
       await t.shot('tutorial_shop.png');
       await press('왼쪽');
       await press('앞으로', 4);
@@ -337,14 +357,17 @@ async function main() {
       await press('앞으로');
       await press('왼쪽');
       t.note('병문안: 튜토리얼이 선물 고르기를 설명', await t.hasText('하루에 하나만'));
+      await readTip();
       await t.clickText('매점 주인에게 말 걸기');
       await sleep(600);
       await t.clickText('귤');
       t.note('병문안: 튜토리얼이 선물 쓰는 곳을 설명', await t.waitText('소녀에게 건넬 수 있어요', 2000));
+      await readTip();
       await t.clickText('뒤로가기');
       await sleep(600);
       t.note('병문안: 선물을 사면 목표가 4층으로', await t.waitText('4층 소녀의 병실로 가기', 2000));
       t.note('병문안: 튜토리얼이 엘리베이터를 설명', await t.hasText('타는 버튼'));
+      await readTip();
       await press('왼쪽');
       await press('앞으로');
       await press('왼쪽');
@@ -370,6 +393,7 @@ async function main() {
       await t.clickText('4층');
       t.note('병문안: 엘리베이터로 4층 도착', await t.waitText('4층 호스피스 병동', 3000));
       t.note('병문안: 튜토리얼이 지도를 설명', await t.hasText('지도 버튼'));
+      await readTip();
       await sleep(300);
       await t.shot('walk_4f.png');
       await press('앞으로', 2);
