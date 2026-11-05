@@ -6,7 +6,7 @@ import { doctorTalk, personTalk, requestGoal, REQUESTS } from '../src/features/v
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
-import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
+import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, RIVER_FOUND, RIVER_MEET, RIVER_START, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 // the first walk in moves on by what you've done, only forward, and can't strand you
@@ -103,7 +103,7 @@ assert.equal(happyUnlocked(REQUEST_DAYS), true);
 void allClues;
 // every request's conversations lead somewhere real, can be settled, and are taken on at the doctor's
 for (const r of REQUESTS) {
-  for (const talk of [r.doctor, r.person]) {
+  for (const talk of [r.doctor, r.person, r.memory.meet, r.memory.found]) {
     assert.ok(talk.start, `${r.day}일 부탁: start`);
     for (const [name, node] of Object.entries(talk)) {
       for (const next of [...(node.choices ?? []).map((c) => c.to), ...(node.then ? [node.then] : [])]) assert.ok(talk[next], `${r.day}일 부탁 ${name} → ${next}`);
@@ -113,10 +113,19 @@ for (const r of REQUESTS) {
   assert.ok(Object.values(r.doctor).some((n) => n.effect === 'accept'));
   assert.ok(Object.values(r.person).some((n) => n.effect === 'solve'));
   assert.ok(Object.values(r.person).some((n) => n.effect === 'breathe'));
+  assert.ok(Object.values(r.person).some((n) => n.effect === 'memory') && r.person.again, `${r.day}일 부탁: 기억으로 갔다가 again으로`);
+  assert.ok(Object.values(r.memory.meet).some((n) => n.effect === 'lose'));
+  assert.ok(Object.values(r.memory.found).some((n) => n.effect === 'return'));
   const [floor, letter] = [Number(r.who[0]), r.who[1]];
   assert.equal(charAt(floor, r.goal.cell.x + [0, 1, 0, -1][r.goal.face], r.goal.cell.y + [-1, 0, 1, 0][r.goal.face]), letter, `${r.day}일 부탁: 목표 앞에 그 사람`);
   assert.ok(canStand(floor, r.goal.cell.x, r.goal.cell.y));
 }
+// the riverside: from the car to the boy at the water, and round the reeds to where he's found
+assert.equal(thingAt(RIVER_MEET, false).id, '0k');
+assert.equal(thingAt(RIVER_FOUND, false).id, '0j');
+assert.ok(firstStep(0, RIVER_START, RIVER_MEET) !== null && firstStep(0, RIVER_MEET, RIVER_FOUND) !== null);
+assert.ok(!canStand(0, 3, 6), 'the river is only to look at');
+assert.equal(thingAt({ floor: 0, x: 3, y: 4, dir: 2 }, false).kind, 'person');
 assert.equal(doctorTalk(1, [], []), REQUESTS[0].doctor);
 assert.ok(doctorTalk(1, [1], [])['start'].lines[0].includes('만나 보셨어요'));
 assert.equal(personTalk('3b', [], []), null);

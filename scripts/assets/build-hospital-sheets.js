@@ -67,6 +67,10 @@ const ITEMS = {
     { src: 'lying-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
     { src: 'lying-turned', box: [125, 115, 895, 1024], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.547 },
     { src: 'lying-hand', box: [205, 45, 825, 1024], cell: { x: 0, y: 512, w: 512, h: 512 }, scale: 0.505 },
+    // the first request's riverside (v0.72): the boy, the car and the rocks
+    { src: 'river', box: [752, 245, 962, 755], cell: { x: 512, y: 512, w: 256, h: 512 }, height: 330 },
+    { src: 'river', box: [38, 355, 268, 575], cell: { x: 768, y: 512, w: 256, h: 256 } },
+    { src: 'river', box: [198, 562, 582, 722], cell: { x: 768, y: 768, w: 256, h: 256 } },
   ],
   // Sofas, chairs and so on, drawn further down.
   furniture: [],
@@ -74,6 +78,9 @@ const ITEMS = {
   extra: [
     { src: 'lying-loose-window', box: [230, 235, 885, 940], cell: { x: 0, y: 0, w: 512, h: 512 }, scale: 0.7 },
     { src: 'lying-loose-turned', box: [185, 165, 890, 910], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.657 },
+    // the riverside's tent and reeds
+    { src: 'river', box: [282, 322, 590, 525], cell: { x: 0, y: 512, w: 512, h: 256 } },
+    { src: 'river', box: [602, 338, 750, 728], cell: { x: 512, y: 512, w: 256, h: 256 } },
   ],
 };
 

@@ -88,6 +88,12 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // The first request's memory (v0.72): a summer riverside, walked through as the parent.
+  river: `${SAME_STYLE} Five separate things for a summer riverside campsite, each whole and seen straight on from the
+front: a small plain family car seen from behind; a small dome camping tent; a cluster of large smooth river boulders,
+wider than tall, big enough for a child to hide behind; a clump of tall reeds; and a boy about eight in a plain summer
+t-shirt and shorts, full body, standing, facing the viewer, holding a flat stone in one hand, a cheerful calm expression,
+feet visible.`,
   // The doctor at his desk on her floor (v0.70): from the waist up, so a desk in the game hides where he'd sit.
   doctor: `${SAME_STYLE} One middle-aged doctor in a plain white coat over a plain shirt, seated, seen straight on from the
 front, drawn from the waist up only, both forearms resting forward on an invisible desk, hands loosely together. Short

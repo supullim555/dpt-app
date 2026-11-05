@@ -9,6 +9,7 @@ const FOCUS_MS = 420;
 const EYE = 0.64;
 const WALL_H = 1.25;
 const YARD_WALL_H = 3;
+const RIVER_TREES_H = 1.05;
 // A little behind the middle of the cell, or a wall ahead would fill the screen.
 const STAND_BACK = 0.36;
 // How dark everything but the person or thing you're looking at gets.
@@ -29,8 +30,8 @@ const UV_INSET = 3;
 const WINDOW_X = GIRL_FRONT.x + 1;
 const INK = [0.09, 0.08, 0.06];
 const PAPER = [0.93, 0.9, 0.84];
-const FLOOR_LIGHT: Record<FloorNo, number> = { 1: 1, 2: 0.94, 3: 0.8, 4: 0.68 };
-const FOG_COLOR: Record<FloorNo, number[]> = { 1: [0.2, 0.19, 0.17], 2: [0.15, 0.14, 0.13], 3: [0.09, 0.09, 0.08], 4: [0.04, 0.04, 0.04] };
+const FLOOR_LIGHT: Record<FloorNo, number> = { 0: 1.08, 1: 1, 2: 0.94, 3: 0.8, 4: 0.68 };
+const FOG_COLOR: Record<FloorNo, number[]> = { 0: [0.5, 0.49, 0.45], 1: [0.2, 0.19, 0.17], 2: [0.15, 0.14, 0.13], 3: [0.09, 0.09, 0.08], 4: [0.04, 0.04, 0.04] };
 
 const VERTEX = /* glsl */ `
 attribute float aShade;
@@ -121,6 +122,10 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   gurney: { w: 0.9, h: 0.9 },
   cart: { w: 0.85, h: 0.85 },
   vending: { w: 0.6, h: 0.966 },
+  riverCar: { w: 0.85, h: 0.85 },
+  riverRocks: { w: 1.1, h: 1.1 },
+  riverTent: { w: 1.3, h: 0.65 },
+  riverReeds: { w: 0.85, h: 0.85 },
   collar: { w: 0.24, h: 0.24 },
   snack: { w: 0.24, h: 0.24 },
   laces: { w: 0.24, h: 0.24 },
@@ -394,12 +399,13 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
 
     // Everything visible stands on these cells: where you can walk, who or what is in the way, and the
     // part of her room you can see but not walk on.
-    const isFurnished = (c: string) => c === '%' || c === 'T' || c === '_' || c === '&' || c === '^' || (c >= 'a' && c <= 'z');
+    const isFurnished = (c: string) => c === '%' || c === 'T' || c === '_' || c === '&' || c === '^' || (c >= 'a' && c <= 'z') || (floor === 0 && 'CAR~'.includes(c));
     const open = new Set(walkable(floor));
     const queue = [...open];
     while (queue.length) {
       const [x, y] = queue.pop()!.split(',').map(Number);
-      const spreads = open.has(`${x},${y}`) && (walkable(floor).has(`${x},${y}`) || charAt(floor, x, y) === '_');
+      // her room's floor and the river spread on to the rest of themselves, behind whoever stands in front
+      const spreads = open.has(`${x},${y}`) && (walkable(floor).has(`${x},${y}`) || charAt(floor, x, y) === '_' || (floor === 0 && charAt(floor, x, y) === '~'));
       if (!spreads) continue;
       for (let d = 0; d < 4; d++) {
         const k = `${x + DX[d]},${y + DY[d]}`;
@@ -415,14 +421,15 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       : d === 2 ? [[x + 1, 0, y + 1], [x, 0, y + 1], [x, h, y + 1], [x + 1, h, y + 1]]
       : [[x, 0, y + 1], [x, 0, y], [x, h, y], [x, h, y + 1]];
 
-    const isYard = (c: string) => floor === 1 && 'YTb'.includes(c);
+    // Out of doors: the courtyard, and all of the riverside.
+    const isYard = (c: string) => floor === 0 || (floor === 1 && 'YTb'.includes(c));
     const SIDE_SHADE = [1, 0.84, 0.94, 0.84];
 
     for (const k of open) {
       const [x, y] = k.split(',').map(Number);
       const here = charAt(floor, x, y);
       const yard = isYard(here);
-      quad([[x, 0, y + 1], [x + 1, 0, y + 1], [x + 1, 0, y], [x, 0, y]], yard ? TILES.yardGround : TILES.floor, { shade: 0.92, flat: true, flip: hash(x, y, 5) < 0.5 });
+      quad([[x, 0, y + 1], [x + 1, 0, y + 1], [x + 1, 0, y], [x, 0, y]], floor === 0 ? (here === '~' ? TILES.water : TILES.pebbles) : yard ? TILES.yardGround : TILES.floor, { shade: 0.92, flat: true, flip: hash(x, y, 5) < 0.5 });
       if (!yard) quad([[x, WALL_H, y], [x + 1, WALL_H, y], [x + 1, WALL_H, y + 1], [x, WALL_H, y + 1]], TILES.ceiling, { shade: 0.78, flat: true });
 
       for (let d = 0; d < 4; d++) {
@@ -434,7 +441,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         const behindDesk = floor === 1 && x === 5 && ((y === 5 && d === 2) || (y === 6 && d === 0));
         if (open.has(`${nx},${ny}`) && !shutHere && !behindDesk) continue;
         const c = charAt(floor, nx, ny);
-        const h = yard ? YARD_WALL_H : WALL_H;
+        // the riverside's far trees, lower than the courtyard's walls
+        const h = floor === 0 ? RIVER_TREES_H : yard ? YARD_WALL_H : WALL_H;
         let tile: number = TILES.wall + Math.floor(hash(x, y, d) * 4);
         let flip = hash(y, x, d) < 0.5;
         let lit = false;
@@ -446,12 +454,13 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         else if (here === '+') tile = TILES.jamb;
         else if (floor === 1 && (here === 'M' || here === 'm')) tile = TILES.shelf;
         else if (floor === 1 && here === 'i' && d === 2) tile = TILES.floorGuide;
+        else if (floor === 0) tile = TILES.treeline;
         else if (yard) tile = TILES.yardWall;
         // windows: the end of her floor's corridor, above her bed, and the sitting room on the second
         else if ((here === 'W' && d === 2) || (floor === 4 && here === '_' && x === WINDOW_X && d === 2) || (floor === 2 && here === 'V' && d === 0)) {
           tile = TILES.window;
           lit = true;
-        } else if (((x === 4 || x === 6) && y === 2 && d % 2 === 1) || (x === 4 && y === 4 && d === 2)) {
+        } else if (floor > 0 && (((x === 4 || x === 6) && y === 2 && d % 2 === 1) || (x === 4 && y === 4 && d === 2))) {
           tile = TILES.number + floor - 1;
           flip = false;
         }

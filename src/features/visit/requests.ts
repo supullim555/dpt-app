@@ -8,8 +8,11 @@ export type TalkNode = {
   lines: string[];
   choices?: { label: string; to: string }[];
   then?: string;
-  /** What entering this stretch does: take the request on, breathe together, or settle it. */
-  effect?: 'accept' | 'breathe' | 'solve';
+  /**
+   * What entering this stretch does: take the request on, breathe together, settle it; or, in the memory, go to the
+   * riverside, lose sight of the boy, and come back to the hospital.
+   */
+  effect?: 'accept' | 'breathe' | 'solve' | 'memory' | 'lose' | 'return';
 };
 export type Talk = Record<string, TalkNode>;
 
@@ -29,6 +32,11 @@ export type Request = {
   after: string[];
   /** On a later visit, something to tell her about it, and what she says. */
   girl: { choice: string; lines: string[] };
+  /**
+   * The day they remember, walked through as them: where it is, the talk before (`meet`) and after (`found`), and
+   * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
+   */
+  memory: { title: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
 };
 
 // The questions come back after a reply that didn't help, so another can be tried. Nothing fails.
@@ -87,21 +95,40 @@ export const REQUESTS: Request[] = [
         choices: Q3,
       },
       rushed: { lines: ['괜찮은 건 아니에요. 그렇게 빨리는 안 돼요.'], choices: Q3 },
-      story: {
-        lines: [
-          '…있어요. 작년 여름에 애랑 강으로 캠핑을 갔어요.',
-          '텐트를 치는 사이에 애가 안 보였어요. 십 분쯤이요.',
-          '그 십 분 동안 저는 물에 빠진 애를 몇 번이나 봤어요. 머릿속에서요.',
-          '애는 바위 뒤에서 물수제비를 뜨고 있었어요. 네 번 튀었다고 자랑하더라고요.',
-        ],
-        then: 'again',
-      },
+      story: { lines: ['…있어요. 작년 여름에 애랑 강으로 캠핑을 갔어요.'], then: 'river' },
+      river: { effect: 'memory', lines: [] },
       again: {
-        lines: ['그때도 제 머릿속이 현실보다 먼저 달려갔네요.', '지금도 그런 걸까요. 열은… 지켜보자고 했으니까.'],
+        lines: [
+          '…그 십 분 동안 저는 물에 빠진 애를 몇 번이나 봤어요. 머릿속에서요.',
+          '애는 바위 뒤에서 물수제비를 뜨고 있었는데.',
+          '그때도 제 머릿속이 현실보다 먼저 달려갔네요.',
+          '지금도 그런 걸까요. 열은… 지켜보자고 했으니까.',
+        ],
         choices: [{ label: '같이 숨 좀 고르고 갈까요?', to: 'breathe' }],
       },
       breathe: { effect: 'breathe', lines: ['천천히요. 들이쉬고, 내쉬고.'], then: 'done' },
       done: { effect: 'solve', lines: ['…조금 낫네요. 머릿속이 좀 조용해졌어요.', '애 얼굴 보러 가 볼게요. 고마워요.'] },
+    },
+    memory: {
+      title: '작년 여름, 강가',
+      lostTitle: '텐트를 다 치고 돌아보니, 아이가 보이지 않는다.',
+      returnTitle: '다시, 병원',
+      meet: {
+        start: {
+          lines: ['이것 봐요! 여기 납작한 돌 엄청 많아요.', '물수제비 할 줄 알아요? 내가 가르쳐 줄게요.'],
+          choices: [{ label: '텐트부터 치고 올게. 물에는 들어가지 마.', to: 'go' }],
+        },
+        go: { lines: ['네에! 여기 있을게요.'], then: 'gone' },
+        gone: { effect: 'lose', lines: [] },
+      },
+      found: {
+        start: {
+          lines: ['어? 여기요! 네 번 튀었어요! 봤어요?', '…왜 그렇게 봐요? 나 여기 계속 있었는데.'],
+          choices: [{ label: '…아니야. 다시 해 봐. 이번엔 보고 있을게.', to: 'back' }],
+        },
+        back: { effect: 'return', lines: [] },
+      },
+      thoughts: ['물 쪽으로 간 걸까.', '왜 눈을 뗐지. 텐트가 뭐라고.', '소리라도 질렀으면 들렸을 텐데.', '깊은 데는 저 멀리라고 했는데… 정말일까.', '아니야. 아직 아무것도 확인한 게 없어.'],
     },
     after: ['열이 조금 내렸어요. 아직 지켜봐야 하지만요.', '네 번 튄 물수제비 얘기, 애한테 다시 해 달라고 했어요.'],
     girl: {

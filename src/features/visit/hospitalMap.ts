@@ -3,7 +3,8 @@
 // One character is one cell. Every floor has one footprint, so the lift and the stairs line up.
 // '_' is floor you can see but not walk on: the part of her room around the bed. '&' is a sofa and '^' a plant.
 
-export type FloorNo = 1 | 2 | 3 | 4;
+/** 0 isn't in the hospital: it's the riverside someone remembers (docs/의사의_부탁.md). */
+export type FloorNo = 0 | 1 | 2 | 3 | 4;
 /** 0 north, 1 east, 2 south, 3 west. */
 export type Dir = 0 | 1 | 2 | 3;
 export type Cell = { x: number; y: number };
@@ -12,6 +13,22 @@ export type Pose = Cell & { floor: FloorNo; dir: Dir };
 export const FLOOR_ORDER: FloorNo[] = [4, 3, 2, 1];
 
 export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, string>; blocked?: string }> = {
+  // A summer riverside: C the car, A the tent, R reeds, % rocks, ~ the river. k is where the boy waits, j where he's found.
+  0: {
+    map: [
+      '###########',
+      '#.C.......#',
+      '#.........#',
+      '#.A...RRR.#',
+      '#.....Rj..#',
+      '#..k..R%%.#',
+      '#~~~~~~~~~#',
+      '#~~~~~~~~~#',
+      '###########',
+    ],
+    rooms: {},
+    blocked: '큰 바위들이다. 그 뒤는 보이지 않는다.',
+  },
   4: {
     map: [
       '###############',
@@ -88,6 +105,7 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
 // Things along the walls that you walk past, not into: cell, what, and how far off the middle of the cell (across, along).
 // Never against a door: scripts/check-visit-logic.mjs checks.
 export const ALONG_THE_WALLS: Record<FloorNo, [number, number, 'chairBox' | 'plant' | 'wheelchair', number, number][]> = {
+  0: [],
   4: [[3, 4, 'chairBox', 0, -0.36], [10, 4, 'plant', 0, -0.36], [13, 7, 'chairBox', 0.36, 0]],
   3: [[4, 7, 'chairBox', 0, 0.36], [5, 7, 'chairBox', 0, 0.36], [6, 7, 'chairBox', 0, 0.36], [13, 7, 'plant', 0.34, 0.34], [6, 9, 'chairBox', 0, 0.36], [2, 4, 'wheelchair', 0, -0.33]],
   2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chairBox', 0, 0.36], [10, 7, 'chairBox', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chairBox', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
@@ -95,7 +113,7 @@ export const ALONG_THE_WALLS: Record<FloorNo, [number, number, 'chairBox' | 'pla
 };
 
 // Same cells as CLUES in progress.ts, by floor.
-export const CLUE_CELLS: Record<FloorNo, Cell> = { 4: { x: 11, y: 1 }, 3: { x: 5, y: 9 }, 2: { x: 5, y: 9 }, 1: { x: 13, y: 1 } };
+export const CLUE_CELLS: Record<FloorNo, Cell> = { 0: { x: -1, y: -1 }, 4: { x: 11, y: 1 }, 3: { x: 5, y: 9 }, 2: { x: 5, y: 9 }, 1: { x: 13, y: 1 } };
 
 export const DX = [0, 1, 0, -1];
 export const DY = [-1, 0, 1, 0];
@@ -107,6 +125,12 @@ export const SHOP_FRONT: Cell = { x: 10, y: 2 };
 export const GUIDE_FRONT: Cell = { x: 5, y: 4 };
 /** In front of the doctor's desk, in his room at the end of her floor. */
 export const DOCTOR_FRONT: Cell = { x: 12, y: 7 };
+
+/** Where the riverside starts: just out of the car, facing the water. */
+export const RIVER_START: Pose = { floor: 0, x: 1, y: 1, dir: 2 };
+/** In front of the boy at the water, and where he's found again behind the reeds and rocks. */
+export const RIVER_MEET: Pose = { floor: 0, x: 3, y: 4, dir: 2 };
+export const RIVER_FOUND: Pose = { floor: 0, x: 8, y: 4, dir: 3 };
 
 /** The start of each day: just inside the front door, looking down the lobby. */
 export const ENTRANCE: Pose = { floor: 1, x: 0, y: 4, dir: 1 };
@@ -120,6 +144,8 @@ export const arrival = (floor: FloorNo, at: Cell): Pose => ({ floor, x: at.x, y:
 export const charAt = (floor: FloorNo, x: number, y: number) => HOSPITAL[floor].map[y]?.[x] ?? '#';
 const isPerson = (c: string) => c >= 'a' && c <= 'z';
 const STOPS_YOU = '#=%NTES_&^';
+// On the riverside the car, the tent, the reeds and the water stop you too; in the hospital those letters are rooms.
+const stopsOn = (floor: FloorNo) => (floor === 0 ? STOPS_YOU + 'CAR~' : STOPS_YOU);
 
 const walkableCache = new Map<FloorNo, Set<string>>();
 const key = (x: number, y: number) => `${x},${y}`;
@@ -128,15 +154,16 @@ const key = (x: number, y: number) => `${x},${y}`;
 export function walkable(floor: FloorNo): Set<string> {
   const cached = walkableCache.get(floor);
   if (cached) return cached;
-  const seen = new Set([key(LIFT_FRONT.x, LIFT_FRONT.y)]);
-  const queue: Cell[] = [LIFT_FRONT];
+  const start = floor === 0 ? RIVER_START : LIFT_FRONT;
+  const seen = new Set([key(start.x, start.y)]);
+  const queue: Cell[] = [start];
   while (queue.length) {
     const { x, y } = queue.pop()!;
     for (let d = 0; d < 4; d++) {
       const nx = x + DX[d];
       const ny = y + DY[d];
       const c = charAt(floor, nx, ny);
-      if (STOPS_YOU.includes(c) || isPerson(c) || seen.has(key(nx, ny))) continue;
+      if (stopsOn(floor).includes(c) || isPerson(c) || seen.has(key(nx, ny))) continue;
       seen.add(key(nx, ny));
       queue.push({ x: nx, y: ny });
     }
@@ -258,6 +285,15 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   const cell = CLUE_CELLS[p.floor];
   if (clueHere && ((p.x === cell.x && p.y === cell.y) || (front.x === cell.x && front.y === cell.y))) return { kind: 'clue' };
   const c = charAt(p.floor, front.x, front.y);
+  if (p.floor === 0) {
+    if (isPerson(c)) return { kind: 'person', id: `0${c}` };
+    if (c === 'C') return { kind: 'look', text: '타고 온 차다. 트렁크가 열려 있다.' };
+    if (c === 'A') return { kind: 'look', text: '텐트다. 팩을 아직 덜 박았다.' };
+    if (c === 'R') return { kind: 'look', text: '갈대가 키만큼 자랐다. 너머가 잘 보이지 않는다.' };
+    if (c === '%') return { kind: 'look', text: HOSPITAL[0].blocked ?? '' };
+    if (c === '~') return { kind: 'look', text: '강물이 얕게 반짝인다. 깊은 데는 저 멀리다.' };
+    return null;
+  }
   if (c === 'E') return { kind: 'lift' };
   if (c === 'S') return { kind: 'stairs' };
   // Someone with furniture in front of them is spoken to from the one spot where the two go together (docs/병원_지도.md).

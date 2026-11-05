@@ -1,4 +1,4 @@
-import type { PersonLook } from './hospitalArt';
+import type { LyingPart, PersonLook } from './hospitalArt';
 import { CLUES, type ClueId, type EndingId } from './progress';
 
 // First draft by Claude, for the user to rewrite (docs/계획서.md). Needs expert review
@@ -97,6 +97,7 @@ export const STAFF_CALL_GENTLE: StaffCall = { who: '간호사', line: '치료 �
 // The hospital. She's at the top; the higher the floor, the heavier. No one else's suffering is shown.
 // The walkable version is in hospitalMap.ts; `line` is what you notice on arriving.
 export const FLOORS: Record<number, { name: string; line: string; open?: string }> = {
+  0: { name: '작년 여름, 강가', line: '' },
   4: { name: '4층 호스피스 병동', line: '병실 앞 복도. 문은 닫혀 있다. 치료가 끝날 때까지 들어갈 수 없다.', open: '복도 가운데에 문이 하나 열려 있다.' },
   3: { name: '3층 중증 병동', line: '보호자들이 복도 의자에서 말없이 앉아 있다.' },
   2: { name: '2층 일반 병동', line: '링거대를 끌고 천천히 걷는 사람들이 있다. 내일 퇴원한다는 말소리가 들린다.' },
@@ -144,7 +145,10 @@ export const ROOM_SHUT = '치료 중이다. 오늘은 더 들어갈 수 없다.'
 // Who you can talk to, by floor and map letter. `clue` is what they let slip on the day there's something
 // to find near them.
 // She talks through VisitScreen; this entry only names her and draws her.
-export const PEOPLE: Record<string, { name: string; look: PersonLook; lines: string[]; clue?: { day: number; line: string } }> = {
+export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart; lines: string[]; clue?: { day: number; line: string } }> = {
+  // The boy in the first request's memory: at the water (k), and found again (j).
+  '0k': { name: '아이', look: 'riverBoy', lines: [] },
+  '0j': { name: '아이', look: 'riverBoy', lines: [] },
   '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'] },
   '4p': { name: '옆 병실 보호자', look: 'visitor', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' } },
   '4v': { name: '자원봉사자', look: 'elder', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'] },

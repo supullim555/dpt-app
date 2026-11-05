@@ -21,6 +21,10 @@ export const TILES = {
   number: 15, // to 18: floors 1 to 4
   shelf: 19,
   floorGuide: 20,
+  // the riverside in the first request's memory
+  water: 21,
+  treeline: 22,
+  pebbles: 23,
 } as const;
 
 /** Top-left corner of a tile, in pixels. */
@@ -247,6 +251,38 @@ function paintStructure(c: CanvasRenderingContext2D) {
     c.fillText(`${f}층`, t.x + 100, t.y + 62);
   }
 
+  // the riverside: shallow water in long ripples, a far bank of trees, a beach of pebbles
+  t = at(TILES.water);
+  paper(p, t.x, t.y, TILE, 0.74);
+  for (let i = 0; i < 18; i++) {
+    const lx = t.x + p.r() * 160;
+    const ly = t.y + 8 + p.r() * 184;
+    line(p, lx, ly, lx + 24 + p.r() * 30, ly, 1.6, 0.42);
+  }
+  t = at(TILES.treeline);
+  paper(p, t.x, t.y, TILE, 0.8);
+  c.fillStyle = grey(0.55);
+  for (let i = 0; i < 7; i++) {
+    const cx = t.x + i * 32 + p.r() * 10;
+    const top = t.y + 60 + p.r() * 60;
+    c.beginPath();
+    c.moveTo(cx - 26, t.y + TILE);
+    c.lineTo(cx, top);
+    c.lineTo(cx + 26, t.y + TILE);
+    c.fill();
+  }
+  t = at(TILES.pebbles);
+  paper(p, t.x, t.y, TILE, 0.72);
+  for (let i = 0; i < 40; i++) {
+    const lx = t.x + 8 + p.r() * 184;
+    const ly = t.y + 8 + p.r() * 184;
+    c.strokeStyle = grey(0.3);
+    c.lineWidth = 1.4;
+    c.beginPath();
+    c.ellipse(lx, ly, 3 + p.r() * 5, 2 + p.r() * 3, p.r() * 3, 0, Math.PI * 2);
+    c.stroke();
+  }
+
   // the shop's walls: shelves from floor to ceiling, things on them in no particular order
   t = at(TILES.shelf);
   paper(p, t.x, t.y, TILE, 0.46);
@@ -331,6 +367,9 @@ export const LYING_PART = {
   lyingWindow: { x: 0, y: 0, w: 512, h: 512 },
   lyingTurned: { x: 512, y: 0, w: 512, h: 512 },
   lyingHand: { x: 0, y: 512, w: 512, h: 512 },
+  riverBoy: { x: 512, y: 512, w: 256, h: 512 },
+  riverCar: { x: 768, y: 512, w: 256, h: 256 },
+  riverRocks: { x: 768, y: 768, w: 256, h: 256 },
 } as const;
 export type LyingPart = keyof typeof LYING_PART;
 
@@ -382,6 +421,8 @@ export const EXTRA_PART = {
   lyingLooseTurned: { x: 512, y: 0, w: 512, h: 512 },
   signGuide: { x: 0, y: 768, w: 512, h: 128 },
   signShop: { x: 512, y: 768, w: 512, h: 128 },
+  riverTent: { x: 0, y: 512, w: 512, h: 256 },
+  riverReeds: { x: 512, y: 512, w: 256, h: 256 },
 } as const;
 export type ExtraPart = keyof typeof EXTRA_PART;
 
