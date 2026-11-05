@@ -8,19 +8,26 @@ const PHASE = [
   { label: '잠깐 멈춰요', ms: 2000, toValue: 1.7 },
   { label: '천천히 내쉬어요', ms: 6000, toValue: 1 },
 ];
+// Tensing and letting go (progressive relaxation, shortened): fists and shoulders up, then all at once, down.
+const MUSCLE = [
+  { label: '주먹을 쥐고, 어깨를 귀 쪽으로 올려요', ms: 5000, toValue: 1.55 },
+  { label: '툭, 한 번에 내려놓아요', ms: 7000, toValue: 1 },
+];
 const CYCLES = 3;
 const AMBER = '#d9a441';
 
-// Breathing with someone in the hospital (docs/의사의_부탁.md): three slow breaths, or stop whenever.
-export default function BreatheTogether({ onDone, fontScale }: { onDone: () => void; fontScale: number }) {
-  const { value, phaseIndex, cyclesDone } = useBreathPacer(PHASE, { cycles: CYCLES, onDone });
+// Unwinding with someone in the hospital (docs/의사의_부탁.md): three slow breaths, or three times tensing and
+// letting go; stop whenever.
+export default function BreatheTogether({ onDone, fontScale, mode = 'breath' }: { onDone: () => void; fontScale: number; mode?: 'breath' | 'muscle' }) {
+  const phases = mode === 'muscle' ? MUSCLE : PHASE;
+  const { value, phaseIndex, cyclesDone } = useBreathPacer(phases, { cycles: CYCLES, onDone });
   return (
     <View style={styles.shade} accessibilityViewIsModal>
-      <Text style={[styles.title, { fontSize: 13 * fontScale }]}>같이 숨 고르기</Text>
+      <Text style={[styles.title, { fontSize: 13 * fontScale }]}>{mode === 'muscle' ? '같이 힘 빼기' : '같이 숨 고르기'}</Text>
       <View style={styles.ring}>
         <Animated.View style={[styles.circle, { transform: [{ scale: value }] }]} />
       </View>
-      <Text style={[styles.label, { fontSize: 17 * fontScale }]}>{PHASE[phaseIndex].label}</Text>
+      <Text style={[styles.label, { fontSize: 17 * fontScale }]}>{phases[phaseIndex].label}</Text>
       <Text style={[styles.count, { fontSize: 13 * fontScale }]}>
         {Math.min(cyclesDone + 1, CYCLES)} / {CYCLES}
       </Text>

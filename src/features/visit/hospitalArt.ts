@@ -161,6 +161,17 @@ function doorShape(p: Pen, x: number, y: number) {
 }
 
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
+/** v0.79: the remembered places' own sheet of tiles (places.ts MemoryTile), the same layout as the structure sheet. */
+export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7 } as const;
+/** And their things and people, cut out like the rest. */
+export const MEMORY_PART = {
+  rehabBars: { x: 0, y: 0, w: 256, h: 256 },
+  rehabStairs: { x: 256, y: 0, w: 256, h: 256 },
+  rehabMat: { x: 512, y: 0, w: 256, h: 256 },
+  rehabBike: { x: 768, y: 0, w: 256, h: 256 },
+} as const;
+export type MemoryPart = keyof typeof MEMORY_PART;
+
 /** Which window each floor looks out of: the higher, the further down onto the tree. */
 export const WINDOW_TILE: Record<number, number> = { 1: TILES.windowF1, 2: TILES.windowF2, 3: TILES.windowF3, 4: TILES.window };
 
@@ -479,7 +490,7 @@ function toChannel(paint: (c: CanvasRenderingContext2D) => void): Uint8Array {
   return out;
 }
 
-const SHEET_FILES = { structure: '/hospital/sheet-structure.png', people2: '/hospital/sheet-people2.png', people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
+const SHEET_FILES = { memory: '/hospital/sheet-memory.png', memoryProps: '/hospital/sheet-memoryprops.png', structure: '/hospital/sheet-structure.png', people2: '/hospital/sheet-people2.png', people: '/hospital/sheet-people.png', props: '/hospital/sheet-props.png', girl: '/hospital/sheet-girl.png', lying: '/hospital/sheet-lying.png', extra: '/hospital/sheet-extra.png', furniture: '/hospital/sheet-furniture.png' };
 
 /** Fetched only on reaching the hospital. If one can't be, the caller falls back to the floor plan. */
 function loadChannel(url: string): Promise<Uint8Array> {
@@ -493,6 +504,6 @@ function loadChannel(url: string): Promise<Uint8Array> {
 
 export const loadSheets = async () => {
   // Without the drawn walls the painted ones still do.
-  const [drawnWalls, people, people2, props, girl, lying, extra, furniture] = await Promise.all([loadChannel(SHEET_FILES.structure).catch(() => null), loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.people2), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture)]);
-  return { structure: toChannel((c) => paintStructure(c, drawnWalls)), people, people2, props, girl, lying, extra, furniture };
+  const [drawnWalls, people, people2, props, girl, lying, extra, furniture, memory, memoryProps] = await Promise.all([loadChannel(SHEET_FILES.structure).catch(() => null), loadChannel(SHEET_FILES.people), loadChannel(SHEET_FILES.people2), loadChannel(SHEET_FILES.props), loadChannel(SHEET_FILES.girl), loadChannel(SHEET_FILES.lying), loadChannel(SHEET_FILES.extra), loadChannel(SHEET_FILES.furniture), loadChannel(SHEET_FILES.memory), loadChannel(SHEET_FILES.memoryProps)]);
+  return { structure: toChannel((c) => paintStructure(c, drawnWalls)), people, people2, props, girl, lying, extra, furniture, memory, memoryProps };
 };

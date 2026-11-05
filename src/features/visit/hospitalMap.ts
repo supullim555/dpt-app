@@ -13,23 +13,8 @@ export type Pose = Cell & { floor: FloorNo; dir: Dir };
 export const FLOOR_ORDER: FloorNo[] = [4, 3, 2, 1];
 
 export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, string>; blocked?: string }> = {
-  // A summer riverside: C the car, A the tent, R thick bushes (nothing behind them shows), % rocks, ~ the river. k is where the boy waits, j where he's found.
-  0: {
-    map: [
-      '###########',
-      '#.C.......#',
-      '#.........#',
-      '#.A...RRR.#',
-      '#.....Rj..#',
-      '#..k..R%%.#',
-      '#~~~~~~~~~#',
-      '#~~~~~~~~~#',
-      '#~~~~~~~~~#',
-      '###########',
-    ],
-    rooms: {},
-    blocked: '큰 바위들이다. 그 뒤는 보이지 않는다.',
-  },
+  // Whichever place is being remembered (places.ts), put here by enterPlace.
+  0: { map: ['#'], rooms: {} },
   4: {
     map: [
       '###############',
@@ -129,11 +114,17 @@ export const FRONT_DOOR: Cell = { x: 0, y: 4 };
 /** In front of the doctor's desk, in his room at the end of her floor. */
 export const DOCTOR_FRONT: Cell = { x: 12, y: 7 };
 
-/** Where the riverside starts: just out of the car, facing the water. */
-export const RIVER_START: Pose = { floor: 0, x: 1, y: 1, dir: 2 };
-/** In front of the boy at the water, and where he's found again behind the reeds and rocks. */
-export const RIVER_MEET: Pose = { floor: 0, x: 3, y: 4, dir: 2 };
-export const RIVER_FOUND: Pose = { floor: 0, x: 8, y: 4, dir: 3 };
+/** As much of a remembered place (places.ts) as walking it needs. */
+type PlaceLike = { map: string[]; start: { x: number; y: number; dir: Dir }; stops: string; things: Record<string, { text: string }> };
+let place: PlaceLike | null = null;
+
+/** Floor 0 becomes this remembered place. */
+export function enterPlace(p: PlaceLike) {
+  place = p;
+  HOSPITAL[0] = { map: p.map, rooms: {} };
+  walkableCache.delete(0);
+}
+export const currentPlace = () => place;
 
 /** The start of each day: just inside the front door, looking down the lobby. */
 export const ENTRANCE: Pose = { floor: 1, x: 0, y: 4, dir: 1 };
@@ -147,8 +138,8 @@ export const arrival = (floor: FloorNo, at: Cell): Pose => ({ floor, x: at.x, y:
 export const charAt = (floor: FloorNo, x: number, y: number) => HOSPITAL[floor].map[y]?.[x] ?? '#';
 const isPerson = (c: string) => c >= 'a' && c <= 'z';
 const STOPS_YOU = '#=%NTES_&^';
-// On the riverside the car, the tent, the reeds and the water stop you too; in the hospital those letters are rooms.
-const stopsOn = (floor: FloorNo) => (floor === 0 ? STOPS_YOU + 'CAR~' : STOPS_YOU);
+// In a remembered place its things stop you too; in the hospital the same letters can be rooms.
+const stopsOn = (floor: FloorNo) => (floor === 0 ? STOPS_YOU + (place?.stops ?? '') : STOPS_YOU);
 
 const walkableCache = new Map<FloorNo, Set<string>>();
 const key = (x: number, y: number) => `${x},${y}`;
@@ -157,7 +148,7 @@ const key = (x: number, y: number) => `${x},${y}`;
 export function walkable(floor: FloorNo): Set<string> {
   const cached = walkableCache.get(floor);
   if (cached) return cached;
-  const start = floor === 0 ? RIVER_START : LIFT_FRONT;
+  const start = floor === 0 && place ? place.start : LIFT_FRONT;
   const seen = new Set([key(start.x, start.y)]);
   const queue: Cell[] = [start];
   while (queue.length) {
@@ -306,12 +297,8 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   const c = charAt(p.floor, front.x, front.y);
   if (p.floor === 0) {
     if (isPerson(c)) return { kind: 'person', id: `0${c}` };
-    if (c === 'C') return { kind: 'look', text: '타고 온 차다. 트렁크가 열려 있다.' };
-    if (c === 'A') return { kind: 'look', text: '텐트다. 팩을 아직 덜 박았다.' };
-    if (c === 'R') return { kind: 'look', text: '수풀이 키만큼 빽빽하다. 너머가 보이지 않는다.' };
-    if (c === '%') return { kind: 'look', text: HOSPITAL[0].blocked ?? '' };
-    if (c === '~') return { kind: 'look', text: '강물이 얕게 반짝인다. 깊은 데는 저 멀리다.' };
-    return null;
+    const it = place?.things[c];
+    return it ? { kind: 'look', text: it.text } : null;
   }
   if (c === 'E') return { kind: 'lift' };
   if (c === 'S') return { kind: 'stairs' };

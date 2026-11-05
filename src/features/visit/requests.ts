@@ -13,6 +13,8 @@ export type TalkNode = {
    * riverside, lose sight of the boy, and come back to the hospital.
    */
   effect?: 'accept' | 'breathe' | 'solve' | 'memory' | 'lose' | 'return';
+  /** With 'breathe': which way of unwinding together (BreatheTogether): slow breaths, or tensing and letting go. */
+  relax?: 'breath' | 'muscle';
 };
 export type Talk = Record<string, TalkNode>;
 
@@ -37,7 +39,7 @@ export type Request = {
    * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
    */
   /** `opening`: what goes through their head on arriving, before anything happens. */
-  memory: { title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
+  memory: { place: 'river' | 'rehab'; title: string; opening: string; lostTitle: string; returnTitle: string; meet: Talk; found: Talk; thoughts: string[] };
   /** Who they are, for answering what the player writes themselves (Gemini, for those who turned AI on; api/chat.ts). */
   persona: string;
 };
@@ -113,6 +115,7 @@ export const REQUESTS: Request[] = [
       done: { effect: 'solve', lines: ['…조금 낫네요. 머릿속이 좀 조용해졌어요.', '애 얼굴 보러 가 볼게요. 고마워요.'] },
     },
     memory: {
+      place: 'river',
       title: '작년 여름, 강가',
       opening: '애는 내리자마자 물가로 뛰어갔다. 텐트 칠 자리부터 봐 둬야지.',
       lostTitle: '텐트를 다 치고 돌아보니, 아이가 보이지 않는다.',
@@ -139,6 +142,112 @@ export const REQUESTS: Request[] = [
     girl: {
       choice: '3층 보호자분 이야기',
       lines: ['최악부터 생각하는 거, 나도 잘해.', '근데 그 집 애는 물수제비를 네 번 튀겼다며. 나는 세 번이 최고였어.', '…머릿속이 먼저 달려간다는 말, 기억해 둘게.'],
+    },
+  },
+  {
+    day: 2,
+    who: '2d',
+    name: '2층 곧 퇴원하는 청년',
+    distortion: '점쟁이 오류',
+    goal: { text: '2층 곧 퇴원하는 청년과 이야기하기', floor: 2, cell: { x: 9, y: 3 }, face: 0 },
+    doctor: {
+      start: {
+        lines: [
+          '오셨어요. 오늘도 부탁 하나 드려도 될까요?',
+          '2층에 곧 퇴원하는 청년이 있어요. 몸은 다 나았는데, 나가 봤자 또 넘어질 거라고 단정해요.',
+          '앞일을 미리 다 안다고 믿어 버리는 거죠. 점쟁이 오류라고들 해요.',
+          '질문을 몇 개만 해 주세요. 안 하셔도 괜찮아요.',
+        ],
+        choices: [
+          { label: '해 볼게요', to: 'yes' },
+          { label: '오늘은 어려워요', to: 'no' },
+        ],
+      },
+      yes: { effect: 'accept', lines: ['고마워요. 2층 위쪽 병실이에요. 문턱에서 이야기할 수 있을 거예요.'] },
+      no: { lines: ['괜찮아요. 마음이 생기면 언제든 들러 주세요.'] },
+    },
+    person: {
+      start: {
+        lines: ['…의사 선생님이요? 저 괜찮은데.', '모레 퇴원이에요. 근데 나가 봤자 또 넘어질 거예요. 뻔해요.', '처음 다쳤을 때도 그랬거든요. 저는 그런 사람이에요.'],
+        choices: [
+          { label: '또 넘어질 거라는 걸, 지금 무엇으로 알 수 있어요?', to: 'evidence' },
+          { label: '에이, 이제 안 넘어질 거예요.', to: 'reassured' },
+          { label: '조심하면 되죠. 너무 걱정 마세요.', to: 'advised' },
+        ],
+      },
+      reassured: {
+        lines: ['그건 아무도 모르잖아요. 그 말이 더 불안해요.'],
+        choices: [
+          { label: '또 넘어질 거라는 걸, 지금 무엇으로 알 수 있어요?', to: 'evidence' },
+          { label: '조심하면 되죠. 너무 걱정 마세요.', to: 'advised' },
+        ],
+      },
+      advised: {
+        lines: ['조심은 하죠. 그래도 넘어지는 건 넘어지는 거예요.'],
+        choices: [
+          { label: '또 넘어질 거라는 걸, 지금 무엇으로 알 수 있어요?', to: 'evidence' },
+          { label: '에이, 이제 안 넘어질 거예요.', to: 'reassured' },
+        ],
+      },
+      evidence: {
+        lines: ['…증거요? 그냥 느낌이요. 다리가 아직 제 다리 같지 않아요.', '물리치료사 선생님은 이제 혼자 걸어도 된대요. 근데 그건 여기 안 얘기고요.'],
+        choices: [
+          { label: '느낌이 꼭 앞일을 말해 주는 건 아닐 수도 있지 않을까요?', to: 'feeling' },
+          { label: '그럼 퇴원을 좀 미루면 되잖아요.', to: 'delay' },
+        ],
+      },
+      delay: {
+        lines: ['그건 더 싫어요. 여기 계속 있는 게 더 무서워요.'],
+        choices: [{ label: '느낌이 꼭 앞일을 말해 주는 건 아닐 수도 있지 않을까요?', to: 'feeling' }],
+      },
+      feeling: {
+        lines: ['…그럴 수도 있겠죠. 근데 그 느낌이 제일 크게 들려요.'],
+        choices: [
+          { label: '여기서 처음 걸었던 날은 어땠어요? 그때도 그렇게 생각했어요?', to: 'story' },
+          { label: '그럼 이제 좀 괜찮아진 거죠?', to: 'rushed' },
+        ],
+      },
+      rushed: {
+        lines: ['아뇨. 그렇게 금방은 안 돼요.'],
+        choices: [{ label: '여기서 처음 걸었던 날은 어땠어요? 그때도 그렇게 생각했어요?', to: 'story' }],
+      },
+      story: { lines: ['…첫날이요? 넘어졌어요. 평행봉 중간에서.', '그때 진짜 다 끝났다고 생각했어요.'], then: 'remembered' },
+      remembered: { effect: 'memory', lines: [] },
+      again: {
+        lines: ['넘어지고 나서 네 걸음 더 갔었네요. 그건 잊고 있었어요.', '넘어질 수는 있겠죠. 근데 넘어지면 거기서 끝나는 건 아니었어요.', '…나가서도, 아마.'],
+        choices: [{ label: '잠깐 같이 몸에 힘 좀 빼고 갈까요?', to: 'relax' }],
+      },
+      relax: { effect: 'breathe', relax: 'muscle', lines: ['어깨에 힘 들어간 거, 저도 느껴져요.'], then: 'done' },
+      done: { effect: 'solve', lines: ['…다리가 좀 제 거 같네요.', '퇴원하는 날, 물리치료사 선생님한테 인사하고 갈게요.'] },
+    },
+    memory: {
+      place: 'rehab',
+      title: '재활실, 처음 걷던 날',
+      opening: '평행봉이 저렇게 길었나. 다리에 힘이 하나도 없다.',
+      lostTitle: '평행봉 중간쯤에서 무릎이 꺾였다. 넘어졌다.',
+      returnTitle: '다시, 병원',
+      meet: {
+        start: {
+          lines: ['왔어요? 오늘은 저 평행봉 끝까지만 가 봐요.', '넘어져도 괜찮아요. 제가 저쪽 끝에서 기다릴게요.'],
+          choices: [{ label: '…해 볼게요.', to: 'go' }],
+        },
+        go: { lines: ['천천히. 손은 봉에.'], then: 'gone' },
+        gone: { effect: 'lose', lines: [] },
+      },
+      found: {
+        start: {
+          lines: ['넘어지고 나서 네 걸음 더 왔어요. 봤어요?', '넘어지는 거랑 못 걷는 거는 달라요.'],
+          choices: [{ label: '…네. 봤어요.', to: 'back' }],
+        },
+        back: { effect: 'return', lines: [] },
+      },
+      thoughts: ['역시 안 돼. 이럴 줄 알았어.', '또 넘어질 거야. 뻔해.', '다들 보고 있겠지.', '…아직 서 있네.', '저기, 끝이 보인다.'],
+    },
+    persona: `2층 일반 병동의 곧 퇴원하는 청년. 이십 대 초반. 다리를 다쳐 오래 재활했고 이제 혼자 걸을 수 있지만, 퇴원해도 또 넘어질 거라고 단정한다(점쟁이 오류). 무심한 척하지만 불안하다. 재활 첫날 평행봉 중간에서 넘어졌지만 그 뒤로 네 걸음 더 걸었던 일은, 플레이어가 지난 경험을 묻기 전에는 먼저 꺼내지 않는다.`,
+    after: ['퇴원 날짜 받았어요. 넘어지면, 일어나면 되죠 뭐.'],
+    girl: {
+      choice: '2층 청년 이야기',
+      lines: ['넘어지는 거랑 못 걷는 거는 다르다… 그 말 좋다.', '나는 요즘 넘어질 일도 없어. 누워만 있으니까.', '…그래도 그 말은 가지고 있을게.'],
     },
   },
 ];

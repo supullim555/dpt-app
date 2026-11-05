@@ -3,12 +3,13 @@ import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, ALONG_THE_WALLS, arrival, arrowFor, pathTo, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, RIVER_FOUND, RIVER_MEET, RIVER_START, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, arrival, arrowFor, pathTo, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
 import { doctorTalk, personTalk, requestGoal, REQUESTS, type Request, type Talk } from './requests';
 import BreatheTogether from './BreatheTogether';
+import { PLACES, type Place } from './places';
 import Minimap from './Minimap';
 import { soundsLikeCrisis } from './safety';
 import { sendPersonaMessage, type ChatMessage } from '@/features/ai';
@@ -29,12 +30,11 @@ function timeToMidnight(): [number, number] {
 const TOUCH = Platform.OS !== 'web' || (typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches);
 // The letter keys by where they sit, so they still work with the keyboard set to Hangul.
 const KEY_AT: Record<string, string> = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
-const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending', 0: 'riverRocks' };
-const RIVER_PROP: Record<string, SpriteLook> = { C: 'riverCar', A: 'riverTent', R: 'riverBushes' };
+const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
 const MEMORY_MS = 2600;
 
 /** Someone's remembered day, walked through: whose, how far in, and where you were in the hospital before it. */
-type Memory = { request: Request; stage: 'meet' | 'lost'; back: Pose; step: number };
+type Memory = { request: Request; place: Place; stage: 'meet' | 'lost'; back: Pose; step: number };
 const GIRL_CELL = { x: GIRL_FRONT.x, y: GIRL_FRONT.y + 1 };
 // However long the camera takes to come in from the door, and when she turns to you: after it's there, so you
 // get to see her as she was.
@@ -123,6 +123,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [transit, setTransit] = useState('');
   const [noView, setNoView] = useState(false);
   const [breathing, setBreathing] = useState(false);
+  const [relaxMode, setRelaxMode] = useState<'breath' | 'muscle'>('breath');
   const [memory, setMemory] = useState<Memory | null>(null);
   // In someone's remembered day, what goes through their head: the newest, and the one before it, fainter.
   const [thoughts, setThoughts] = useState<string[]>([]);
@@ -160,12 +161,14 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     const out: HospitalSprite[] = [];
     HOSPITAL[floor].map.forEach((row, y) =>
       [...row].forEach((c, x) => {
-        const person = PEOPLE[`${floor}${c}`];
-        // In the memory the boy is at the water until he isn't.
-        const away = floor === 0 && (c === 'k' ? now.memory?.stage !== 'meet' : c === 'j' ? now.memory?.stage !== 'lost' : false);
+        // In a remembered place, whoever you meet first (k), and later the one you reach again (j): each only in their turn.
+        const place = floor === 0 ? now.memory?.place : undefined;
+        const person = place ? (c === 'k' || c === 'j' ? place.people[c] : undefined) : PEOPLE[`${floor}${c}`];
+        const away = !!place && (c === 'k' ? now.memory?.stage !== 'meet' : c === 'j' ? now.memory?.stage !== 'lost' : false);
         if (person && c !== 'N' && `${floor}${c}` !== '4r' && !away) out.push({ cell: { x, y }, look: person.look as SpriteLook });
-        if (floor === 0 && RIVER_PROP[c]) out.push({ cell: { x, y }, look: RIVER_PROP[c] });
-        if (c === '%') out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
+        const thing = place?.things[c];
+        if (thing?.look) out.push({ cell: { x, y }, look: thing.look as SpriteLook, ...(thing.face !== undefined ? { fixed: true, face: thing.face } : {}) });
+        if (c === '%' && floor > 0) out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
         if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
         if (c === '&') out.push({ cell: { x, y }, look: 'sofaBox', face: floor === 4 ? 1 : 0 });
         if (c === '^') out.push({ cell: { x, y }, look: 'plant' });
@@ -350,8 +353,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const near = thingAt(pose, clueHere);
   // She isn't someone you walk up to: her door starts the scene. For one render after you're sent out you
   // still stand at her bed, so she's left out by name rather than by phase.
+  // Who someone is: in the hospital by floor and letter; in a remembered place, its own k and j.
+  const personOf = (id: string) => (id[0] === '0' ? (memory && (id[1] === 'k' || id[1] === 'j') ? memory.place.people[id[1]] : undefined) : PEOPLE[id]);
   const boyAway = near?.kind === 'person' && pose.floor === 0 && (near.id === '0k' ? memory?.stage !== 'meet' : memory?.stage !== 'lost');
-  const thing: Thing | null = (near?.kind === 'person' && !PEOPLE[near.id]) || boyAway ? null : facingShutDoor ? { kind: 'look', text: ROOM_SHUT, wall: true } : near?.kind === 'leave' && !doneToday ? null : near;
+  const thing: Thing | null = (near?.kind === 'person' && !personOf(near.id)) || boyAway ? null : facingShutDoor ? { kind: 'look', text: ROOM_SHUT, wall: true } : near?.kind === 'leave' && !doneToday ? null : near;
 
   // Into a stretch of a conversation, doing what it does: taking a request on, breathing, settling it.
   function enterNode(from: Extract<Focused, { kind: 'person' }>, node: string) {
@@ -361,7 +366,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     const request = r?.day;
     if (at.effect === 'accept' && request !== undefined) onAccept(request);
     if (at.effect === 'solve' && request !== undefined) onSolve(request);
-    if (at.effect === 'breathe') setBreathing(true);
+    if (at.effect === 'breathe') {
+      setRelaxMode(at.relax ?? 'breath');
+      setBreathing(true);
+    }
     setAside(null);
     if (at.effect === 'memory' && r) return remember(r);
     if (at.effect === 'lose' && memory) return loseHim(memory);
@@ -392,17 +400,20 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   // Into their remembered day, as them: from just out of the car.
   function remember(r: Request) {
-    const m: Memory = { request: r, stage: 'meet', back: pose, step: 0 };
+    const place = PLACES[r.memory.place];
+    enterPlace(place);
+    const start: Pose = { floor: 0, ...place.start };
+    const m: Memory = { request: r, place, stage: 'meet', back: pose, step: 0 };
     busy.current = true;
     setTransit(r.memory.title);
     setTimeout(() => {
       setFocused(null);
       setMemory(m);
       latest.current.memory = m;
-      setPose(RIVER_START);
+      setPose(start);
       setNote('');
       think(r.memory.opening, false);
-      scene.current?.showFloor(0, spritesFor(0), RIVER_START, false);
+      scene.current?.showFloor(0, spritesFor(0), start, false);
       setTransit('');
       busy.current = false;
     }, MEMORY_MS);
@@ -417,10 +428,12 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       setFocused(null);
       setMemory(lost);
       latest.current.memory = lost;
-      if (scene.current) {
-        scene.current.setSprites(spritesFor(0));
-        scene.current.unfocus(pose, () => (busy.current = false));
-      } else busy.current = false;
+      const at: Pose = m.place.lostAt ? { floor: 0, ...m.place.lostAt } : pose;
+      setPose(at);
+      // behind the black card: straight to where it happens, facing the way on
+      scene.current?.setSprites(spritesFor(0));
+      scene.current?.jump(at);
+      busy.current = false;
       think(m.request.memory.thoughts[0], false);
       setTransit('');
     }, MEMORY_MS);
@@ -473,7 +486,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       setFocused({ kind: 'thing', text: thing.text });
       scene.current?.focus({ cell: ahead(pose), height: thing.up ? 2.4 : 0.56, away: thing.wall ? 1.05 : 0.95 });
     } else if (thing.kind === 'person') {
-      const person = PEOPLE[thing.id];
+      const person = personOf(thing.id)!;
       setNote('');
       const firstVisit = thing.id === '1i' && (tutorial === 'goal' || tutorial === 'talk');
       const doctor = thing.id === '4r' && doneToday;
@@ -481,7 +494,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       const talk = memory ? (thing.id === '0k' ? memory.request.memory.meet : memory.request.memory.found) : doctor ? doctorTalk(day, asked, solved) : personTalk(thing.id, asked, solved);
       const base = { kind: 'person' as const, id: thing.id, name: person.name, index: 0, shop: thing.id === '1m' };
       if (talk) enterNode({ ...base, lines: [], talk }, 'start');
-      else setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : person.clue?.day === day ? [person.clue.line] : person.lines });
+      else {
+        // in the hospital, everyone has lines of their own (a remembered place always has a talk)
+        const own = PEOPLE[thing.id];
+        setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : own?.clue?.day === day ? [own.clue.line] : own?.lines ?? [] });
+      }
       if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
       else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
@@ -519,8 +536,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const todaysClue = CLUES.find((c) => c.day <= day && !found.includes(c.id)) ?? null;
   const goal = memory
     ? memory.stage === 'meet'
-      ? { text: '강가의 아이에게 가기', floor: 0 as FloorNo, cell: { x: RIVER_MEET.x, y: RIVER_MEET.y }, face: RIVER_MEET.dir }
-      : { text: '아이 찾기', floor: 0 as FloorNo, cell: null }
+      ? { text: memory.place.meetGoal, floor: 0 as FloorNo, cell: { x: memory.place.meet.x, y: memory.place.meet.y }, face: memory.place.meet.dir }
+      : { text: memory.place.lostGoal, floor: 0 as FloorNo, cell: memory.place.lostArrow ? { x: memory.place.found.x, y: memory.place.found.y } : null, face: memory.place.found.dir }
     : tutorialGoal(tutorial) ?? goalFor({
     doneToday,
     metDoctor: day < 7 ? metDoctor : undefined,
@@ -559,7 +576,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     : thing.kind === 'stairs' ? '계단으로 가기'
     : thing.kind === 'clue' ? CLUE_SPOT
     : thing.kind === 'look' ? '살펴보기'
-    : thing.kind === 'person' ? `${PEOPLE[thing.id].name}에게 말 걸기`
+    : thing.kind === 'person' ? `${personOf(thing.id)?.name}에게 말 걸기`
     : '병원 나가기'
     : '';
 
@@ -611,7 +628,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           !focused && (
             <>
               <View style={[styles.goal, VISIT_DEV && styles.belowDev]}>
-                <Text style={[styles.place, { fontSize: 12 * fontScale }]}>{placeName(pose) ?? FLOORS[pose.floor].name}</Text>
+                <Text style={[styles.place, { fontSize: 12 * fontScale }]}>{memory ? memory.request.memory.title : placeName(pose) ?? FLOORS[pose.floor].name}</Text>
                 <View style={styles.goalRow}>
                   {arrow !== null && <Text style={styles.goalArrow}>{ARROWS[arrow]}</Text>}
                   <Text style={[styles.goalText, { fontSize: 14 * fontScale }]}>{goal?.text ?? '병원 둘러보기'}</Text>
@@ -866,6 +883,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       {breathing && (
         <BreatheTogether
           fontScale={fontScale}
+          mode={relaxMode}
           onDone={() => {
             setBreathing(false);
             const then = atNode?.then;

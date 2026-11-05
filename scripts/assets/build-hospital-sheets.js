@@ -74,6 +74,13 @@ const ITEMS = {
   ],
   // Sofas, chairs and so on, drawn further down.
   furniture: [],
+  // v0.79: the remembered places' things (hospitalArt.ts MEMORY_PART)
+  memoryprops: [
+    { src: 'rehab-props', box: [18, 476, 324, 690], cell: { x: 0, y: 0, w: 256, h: 256 } },
+    { src: 'rehab-props', box: [330, 470, 530, 670], cell: { x: 256, y: 0, w: 256, h: 256 } },
+    { src: 'rehab-props', box: [542, 538, 756, 674], cell: { x: 512, y: 0, w: 256, h: 256 } },
+    { src: 'rehab-props', box: [768, 418, 1000, 678], cell: { x: 768, y: 0, w: 256, h: 256 } },
+  ],
   // v0.74: everyone who shared a drawing now has their own (hospitalArt.ts PERSON2_SLOT).
   people2: [
     { src: 'people-c', box: [420, 200, 615, 930], cell: slot(0), height: 470 },
@@ -389,6 +396,17 @@ const STRUCTURE = [
   { tile: 23, src: 'tex-ground', box: [551, 546, 942, 939], seam: 'xy' },
 ];
 const SEAM = 40;
+// v0.79: the remembered places' tiles (hospitalArt.ts MEMORY_TILES), cut the same way into their own sheet.
+const MEMORY = [
+  { tile: 0, src: 'tex-ground', box: [551, 546, 942, 939], seam: 'xy' },
+  { tile: 1, src: 'river-scene', box: [554, 289, 953, 686], seam: 'xy' },
+  { tile: 2, src: 'tex-walls', box: [76, 552, 469, 946], seam: 'x' },
+  { tile: 3, src: 'river-scene', box: [70, 289, 484, 686], seam: 'x' },
+  { tile: 4, src: 'rehab-tex', box: [56, 296, 466, 712], seam: 'xy', soften: 0.3 },
+  { tile: 5, src: 'rehab-tex', box: [556, 294, 966, 712], seam: 'x' },
+  { tile: 6, ...WALL },
+  { tile: 7, flat: 224 },
+];
 // The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
 // (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small
 // and far down; from the first it fills the glass.
@@ -400,9 +418,13 @@ const VIEWS = [
   { tile: 3, horizon: 124, x: 70, foot: 168, height: 190 },
 ];
 
-async function buildStructure() {
-  const sheet = new Uint8Array(SHEET * SHEET);
-  for (const t of STRUCTURE) {
+async function cutTiles(list, sheet) {
+  for (const t of list) {
+    if (t.flat) {
+      const { x: ox, y: oy } = tileAt(t.tile);
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) sheet[(oy + y) * SHEET + ox + x] = t.flat;
+      continue;
+    }
     const [x0, y0, x1, y1] = t.box;
     const n = TILE + SEAM;
     // a little more than a tile: the extra goes into the cross-fade that makes the edges meet
@@ -438,6 +460,19 @@ async function buildStructure() {
       }
     }
   }
+}
+
+async function buildMemory() {
+  const sheet = new Uint8Array(SHEET * SHEET);
+  await cutTiles(MEMORY, sheet);
+  const file = path.join(SHEETS_OUT, 'sheet-memory.png');
+  await sharp(Buffer.from(sheet), { raw: { width: SHEET, height: SHEET, channels: 1 } }).toColourspace('b-w').png({ compressionLevel: 9, palette: false }).toFile(file);
+  console.log('sheet-memory.png', fs.statSync(file).size);
+}
+
+async function buildStructure() {
+  const sheet = new Uint8Array(SHEET * SHEET);
+  await cutTiles(STRUCTURE, sheet);
   // each floor's view of the ginkgo
   const ginkgo = await cut({ src: 'large', box: [5, 255, 365, 720], solid: true, tone: tree });
   for (const v of VIEWS) {
@@ -483,5 +518,6 @@ async function buildOpening({ name, src, crop, mark }) {
 (async () => {
   for (const name of Object.keys(ITEMS)) await buildSheet(name);
   await buildStructure();
+  await buildMemory();
   for (const item of OPENING) await buildOpening(item);
 })();

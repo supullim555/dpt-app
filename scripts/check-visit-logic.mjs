@@ -3,10 +3,11 @@
 import assert from 'node:assert/strict';
 import { CLUES, clueOn, dayInRun, endingFor, girlAppearsIn, dayNumber, happyUnlocked, REQUEST_DAYS } from '../src/features/visit/progress.ts';
 import { doctorTalk, personTalk, requestGoal, REQUESTS } from '../src/features/visit/requests.ts';
+import { PLACES } from '../src/features/visit/places.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
-import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, pathTo, LIFT_FRONT, OUTSIDE_ROOM, RIVER_FOUND, RIVER_MEET, RIVER_START, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
+import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, pathTo, LIFT_FRONT, OUTSIDE_ROOM, enterPlace, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 // the first walk in moves on by what you've done, only forward, and can't strand you
@@ -127,12 +128,22 @@ for (const r of REQUESTS) {
   assert.equal(charAt(floor, r.goal.cell.x + [0, 1, 0, -1][r.goal.face], r.goal.cell.y + [-1, 0, 1, 0][r.goal.face]), letter, `${r.day}일 부탁: 목표 앞에 그 사람`);
   assert.ok(canStand(floor, r.goal.cell.x, r.goal.cell.y));
 }
-// the riverside: from the car to the boy at the water, and round the reeds to where he's found
-assert.equal(thingAt(RIVER_MEET, false).id, '0k');
-assert.equal(thingAt(RIVER_FOUND, false).id, '0j');
-assert.ok(firstStep(0, RIVER_START, RIVER_MEET) !== null && firstStep(0, RIVER_MEET, RIVER_FOUND) !== null);
+// every remembered place: from the start to whoever you meet, from where the moment comes to whoever you reach,
+// every thing letter described, and every request's place a real one
+for (const [id, p] of Object.entries(PLACES)) {
+  enterPlace(p);
+  const at = (s) => ({ floor: 0, ...s });
+  assert.ok(p.map.every((r) => r.length === p.map[0].length), `${id}: 너비`);
+  assert.equal(thingAt(at(p.meet), false)?.id, '0k', `${id}: 만나는 사람 앞`);
+  assert.equal(thingAt(at(p.found), false)?.id, '0j', `${id}: 다시 찾는 사람 앞`);
+  assert.ok(firstStep(0, p.start, p.meet) !== null || (p.start.x === p.meet.x && p.start.y === p.meet.y), `${id}: 시작에서 만남까지`);
+  const from = p.lostAt ?? p.meet;
+  assert.ok(firstStep(0, from, p.found) !== null, `${id}: 사건 뒤 다시 찾기까지`);
+  for (const c of p.stops + p.spread) assert.ok(p.things[c], `${id}: ${c} 설명`);
+}
+for (const r of REQUESTS) assert.ok(PLACES[r.memory.place], `${r.day}일 부탁의 장소`);
+enterPlace(PLACES.river);
 assert.ok(!canStand(0, 3, 6), 'the river is only to look at');
-assert.equal(thingAt({ floor: 0, x: 3, y: 4, dir: 2 }, false).kind, 'person');
 assert.equal(doctorTalk(1, [], []), REQUESTS[0].doctor);
 assert.ok(doctorTalk(1, [1], [])['start'].lines[0].includes('만나 보셨어요'));
 assert.equal(personTalk('3b', [], []), null);
