@@ -88,6 +88,16 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.76: a riverside that looks like one: the far bank with its sky as one tall backdrop, moving water, and bushes
+  // thick enough to hide a child.
+  'river-scene': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to edge,
+flat, no frame. Left: the far bank of a wide summer river seen straight across from the near shore, the upper half an open
+sky with soft drifting clouds, the lower half a dense line of leafy trees and bushes along the far shore, the bottom edge the
+far water's edge. Right: the surface of a clear shallow river seen from straight above, water flowing in long smooth ripples
+all one way, sparkling highlights of sunlight and faint reflections of clouds, a few stones under the water.`,
+  'river-bushes': `${SAME_STYLE} Three separate dense riverside bushes, each whole, seen straight on from the front, each wider
+than tall and as tall as an adult, the leaves packed thick so nothing behind them shows through, a few reed stalks among the
+leaves.`,
   // v0.74: the walls, floors and doors themselves, in the same hand, cut into the structure sheet. Flat and square.
   'tex-ground': `${SAME_STYLE} Four separate square texture swatches in a 2x2 grid with wide plain gaps between them, each seen straight
 from above. Each swatch completely filled edge to edge with one flat surface, no objects in front of it, evenly lit, no perspective, no vanishing lines. Top left: hospital vinyl floor tiles in a simple grid. Top right: a suspended ceiling of acoustic panels

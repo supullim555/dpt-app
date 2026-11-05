@@ -9,7 +9,10 @@ const FOCUS_MS = 420;
 const EYE = 0.64;
 const WALL_H = 1.25;
 const YARD_WALL_H = 3;
-const RIVER_TREES_H = 1.05;
+// High enough that the sky drawn over the trees fills the view above them.
+const RIVER_TREES_H = 2.6;
+// how many cells one drawing of the riverside's backdrop spans
+const RIVER_SPAN = 3;
 // A little behind the middle of the cell, or a wall ahead would fill the screen.
 const STAND_BACK = 0.36;
 // How dark everything but the person or thing you're looking at gets.
@@ -32,7 +35,7 @@ const INK = [0.09, 0.08, 0.06];
 const PAPER = [0.93, 0.9, 0.84];
 // v0.74: each a little brighter, so the drawn walls read without the quiet going out of the upper floors.
 const FLOOR_LIGHT: Record<FloorNo, number> = { 0: 1.14, 1: 1.1, 2: 1.04, 3: 0.91, 4: 0.8 };
-const FOG_COLOR: Record<FloorNo, number[]> = { 0: [0.55, 0.54, 0.5], 1: [0.26, 0.25, 0.23], 2: [0.21, 0.2, 0.19], 3: [0.14, 0.14, 0.13], 4: [0.09, 0.09, 0.09] };
+const FOG_COLOR: Record<FloorNo, number[]> = { 0: [0.8, 0.8, 0.77], 1: [0.26, 0.25, 0.23], 2: [0.21, 0.2, 0.19], 3: [0.14, 0.14, 0.13], 4: [0.09, 0.09, 0.09] };
 
 const VERTEX = /* glsl */ `
 attribute float aShade;
@@ -61,6 +64,8 @@ uniform float uDim;
 uniform vec3 uInk;
 uniform vec3 uPaper;
 uniform vec3 uFog;
+// how far the fog reaches: 1 indoors; out of doors only a haze, so the far bank and its sky still show
+uniform float uFogFar;
 uniform vec3 uDayLight;
 varying vec2 vUv;
 varying float vShade;
@@ -72,7 +77,7 @@ void main() {
   vec3 c = mix(uInk, uPaper, v) * vShade * uFloorLight;
   if (vLit > 1.5) c = vec3(0.64, 0.15, 0.25) * v;
   else if (vLit > 0.5 && v > 0.75) c = uDayLight * v;
-  float fog = smoothstep(1.2, 6.5, vDist);
+  float fog = smoothstep(1.2, 6.5 * uFogFar, vDist) * (uFogFar > 1.5 ? 0.35 : 1.0);
   // the window's light stays when the room dims around whoever you're looking at
   if (vLit > 0.5 && vLit < 1.5 && v > 0.75) gl_FragColor = vec4(c, 1.0);
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
@@ -126,7 +131,7 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   riverCar: { w: 0.85, h: 0.85 },
   riverRocks: { w: 1.1, h: 1.1 },
   riverTent: { w: 1.3, h: 0.65 },
-  riverReeds: { w: 0.85, h: 0.85 },
+  riverBushes: { w: 1.1, h: 1.1 },
   collar: { w: 0.24, h: 0.24 },
   snack: { w: 0.24, h: 0.24 },
   laces: { w: 0.24, h: 0.24 },
@@ -272,6 +277,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     uInk: { value: new THREE.Vector3(...INK) },
     uPaper: { value: new THREE.Vector3(...PAPER) },
     uFog: { value: new THREE.Vector3() },
+    uFogFar: { value: 1 },
     uDayLight: { value: new THREE.Color(dayLight) },
   };
   // Only the building dims when you focus: whoever you're looking at stays in the light.
@@ -377,12 +383,14 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const lits: number[] = [];
     const indices: number[] = [];
 
-    const quad = (corners: number[][], tile: number, o: { flip?: boolean; shade: number; lit?: boolean; flat?: boolean }) => {
+    // `part`: [k, n], the kth of n strips of the tile, for a drawing that runs on across n cells (the riverside's backdrop)
+    const quad = (corners: number[][], tile: number, o: { flip?: boolean; shade: number; lit?: boolean; flat?: boolean; part?: [number, number] }) => {
       const base = positions.length / 3;
       const { x, y } = tileAt(tile);
       const pad = 2;
-      const u0 = (x + pad) / SHEET;
-      const u1 = (x + TILE - pad) / SHEET;
+      const [k, n] = o.part ?? [0, 1];
+      const u0 = (x + pad + ((TILE - pad * 2) * k) / n) / SHEET;
+      const u1 = (x + pad + ((TILE - pad * 2) * (k + 1)) / n) / SHEET;
       const v0 = (y + pad) / SHEET;
       const v1 = (y + TILE - pad) / SHEET;
       const left = o.flip ? u1 : u0;
@@ -455,7 +463,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         else if (here === '+') tile = TILES.jamb;
         else if (floor === 1 && (here === 'M' || here === 'm')) tile = TILES.shelf;
         else if (floor === 1 && here === 'i' && d === 2) tile = TILES.floorGuide;
-        else if (floor === 0) tile = TILES.treeline;
+        // across the river, the far bank; on the other sides the woods
+        else if (floor === 0) tile = d === 2 ? TILES.farBank : TILES.treeline;
         else if (yard) tile = TILES.yardWall;
         // windows: the end of her floor's corridor, above her bed, and the sitting room on the second
         else if ((here === 'W' && d === 2) || (floor === 4 && here === '_' && x === WINDOW_X && d === 2) || (floor === 2 && here === 'V' && d === 0)) {
@@ -466,7 +475,10 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
           flip = false;
         }
         if (tile === TILES.shutDoor || tile === TILES.lift || tile === TILES.stairs || tile === TILES.roomDoor || tile === TILES.window || tile === TILES.floorGuide) flip = false;
-        quad(wallCorners(x, y, d, h), tile, { shade: SIDE_SHADE[d], flip, lit: lit || tile === TILES.roomDoor });
+        // the riverside's woods and far bank run on across three cells, so they don't repeat cell by cell
+        const along = d === 0 ? x : d === 2 ? -x - 1 : d === 1 ? y : -y - 1;
+        const part: [number, number] | undefined = floor === 0 ? [((along % RIVER_SPAN) + RIVER_SPAN) % RIVER_SPAN, RIVER_SPAN] : undefined;
+        quad(wallCorners(x, y, d, h), tile, { shade: SIDE_SHADE[d], flip: floor === 0 ? false : flip, lit: lit || tile === TILES.roomDoor, part });
       }
     }
 
@@ -684,6 +696,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     showFloor: (floor, sprites, pose, roomShut) => {
       shared.uFloorLight.value = FLOOR_LIGHT[floor];
       shared.uFog.value.set(FOG_COLOR[floor][0], FOG_COLOR[floor][1], FOG_COLOR[floor][2]);
+      shared.uFogFar.value = floor === 0 ? 2 : 1;
       renderer.setClearColor(new THREE.Color(FOG_COLOR[floor][0], FOG_COLOR[floor][1], FOG_COLOR[floor][2]));
       buildFloor(floor, roomShut);
       buildSprites(sprites, pose);

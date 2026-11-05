@@ -44,8 +44,9 @@ export const CLUES: readonly { id: ClueId; day: number; floor: number }[] = [
   { id: 'coupon', day: 6, floor: 4 },
 ];
 
+/** From its day on, a clue stays where it lies until it's picked up (v0.76: before, only on that one day). */
 export function clueOn(day: number, floor: number) {
-  return CLUES.find((c) => c.day === day && c.floor === floor) ?? null;
+  return CLUES.find((c) => c.day <= day && c.floor === floor) ?? null;
 }
 
 /** The days the doctor has a request (REQUESTS in requests.ts; scripts/check-visit-logic.mjs keeps the two the same). */

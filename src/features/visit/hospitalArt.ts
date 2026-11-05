@@ -25,6 +25,8 @@ export const TILES = {
   water: 21,
   treeline: 22,
   pebbles: 23,
+  // v0.76: across the river, the far bank and the sky over it
+  farBank: 24,
 } as const;
 
 /** Top-left corner of a tile, in pixels. */
@@ -155,7 +157,7 @@ function doorShape(p: Pen, x: number, y: number) {
 }
 
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
-const DRAWN_TILES = [TILES.floor, TILES.shutDoor, TILES.window, TILES.lift, TILES.stairs, TILES.roomDoor, TILES.counter, TILES.yardWall, TILES.yardGround, TILES.water, TILES.treeline, TILES.pebbles];
+const DRAWN_TILES = [TILES.floor, TILES.shutDoor, TILES.window, TILES.lift, TILES.stairs, TILES.roomDoor, TILES.counter, TILES.yardWall, TILES.yardGround, TILES.water, TILES.treeline, TILES.pebbles, TILES.farBank];
 
 function paintStructure(c: CanvasRenderingContext2D, base: Uint8Array | null = null) {
   drawn = base;
@@ -455,7 +457,7 @@ export const EXTRA_PART = {
   signGuide: { x: 0, y: 768, w: 512, h: 128 },
   signShop: { x: 512, y: 768, w: 512, h: 128 },
   riverTent: { x: 0, y: 512, w: 512, h: 256 },
-  riverReeds: { x: 512, y: 512, w: 256, h: 256 },
+  riverBushes: { x: 512, y: 512, w: 256, h: 256 },
 } as const;
 export type ExtraPart = keyof typeof EXTRA_PART;
 

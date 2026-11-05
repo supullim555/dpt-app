@@ -6,7 +6,7 @@ import { doctorTalk, personTalk, requestGoal, REQUESTS } from '../src/features/v
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
-import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, RIVER_FOUND, RIVER_MEET, RIVER_START, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
+import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, pathTo, LIFT_FRONT, OUTSIDE_ROOM, RIVER_FOUND, RIVER_MEET, RIVER_START, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 // the first walk in moves on by what you've done, only forward, and can't strand you
@@ -95,6 +95,14 @@ assert.ok(CLUES.every((c) => c.day <= 6));
 assert.equal(clueOn(1, 1)?.id, 'collar');
 assert.equal(clueOn(3, 3)?.id, 'snack');
 assert.equal(clueOn(2, 3), null);
+assert.equal(clueOn(5, 1)?.id, 'collar', 'a clue stays out after its day until found');
+assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null, metDoctor: true, somethingOfHers: 2 }).text, '2층 어딘가에서 그 아이의 물건 찾기');
+{
+  const way = pathTo(1, ENTRANCE, SHOP_FRONT);
+  assert.deepEqual(way[way.length - 1], SHOP_FRONT);
+  assert.ok(way.every((c) => canStand(1, c.x, c.y)));
+  assert.deepEqual(pathTo(1, SHOP_FRONT, SHOP_FRONT), []);
+}
 const allClues = CLUES.map((c) => c.id);
 // the happy ending: the doctor's requests, every one; the clues no longer count
 assert.deepEqual([...REQUEST_DAYS], REQUESTS.map((r) => r.day));

@@ -13,7 +13,7 @@ export type Pose = Cell & { floor: FloorNo; dir: Dir };
 export const FLOOR_ORDER: FloorNo[] = [4, 3, 2, 1];
 
 export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, string>; blocked?: string }> = {
-  // A summer riverside: C the car, A the tent, R reeds, % rocks, ~ the river. k is where the boy waits, j where he's found.
+  // A summer riverside: C the car, A the tent, R thick bushes (nothing behind them shows), % rocks, ~ the river. k is where the boy waits, j where he's found.
   0: {
     map: [
       '###########',
@@ -22,6 +22,7 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#.A...RRR.#',
       '#.....Rj..#',
       '#..k..R%%.#',
+      '#~~~~~~~~~#',
       '#~~~~~~~~~#',
       '#~~~~~~~~~#',
       '###########',
@@ -209,6 +210,19 @@ export function firstStep(floor: FloorNo, from: Cell, to: Cell): Dir | null {
   return step.dir;
 }
 
+/** The cells of a shortest walk, not counting where you are; empty if there's no way or you're there. */
+export function pathTo(floor: FloorNo, from: Cell, to: Cell): Cell[] {
+  const out: Cell[] = [];
+  let at: Cell = from;
+  for (let i = 0; i < 200; i++) {
+    const d = firstStep(floor, at, to);
+    if (d === null) break;
+    at = { x: at.x + DX[d], y: at.y + DY[d] };
+    out.push(at);
+  }
+  return out;
+}
+
 export type Goal = {
   text: string;
   floor: FloorNo;
@@ -218,12 +232,14 @@ export type Goal = {
   face?: Dir;
 };
 
-export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFind: { floor: FloorNo; name: string } | null; metDoctor?: boolean; request?: Goal | null }): Goal | null {
+export function goalFor(o: { doneToday: boolean; boughtToday: boolean; clueToFind: { floor: FloorNo; name: string } | null; metDoctor?: boolean; request?: Goal | null; somethingOfHers?: FloorNo | null }): Goal | null {
   if (!o.doneToday) return { text: '4층 소녀의 병실로 가기', floor: 4, cell: ROOM_ENTRY };
   if (o.metDoctor === false) return { text: '4층 의사 선생님의 방에 가기', floor: 4, cell: DOCTOR_FRONT, face: 2 };
   if (o.request) return o.request;
   if (o.clueToFind) return { text: `${o.clueToFind.floor}층에서 ${o.clueToFind.name} 찾기`, floor: o.clueToFind.floor, cell: null };
   if (!o.boughtToday) return { text: '1층 매점에서 선물 고르기', floor: 1, cell: SHOP_FRONT, face: 0 };
+  // Before the fairy says what it is, only that something of hers is on that floor.
+  if (o.somethingOfHers) return { text: `${o.somethingOfHers}층 어딘가에서 그 아이의 물건 찾기`, floor: o.somethingOfHers, cell: null };
   return null;
 }
 
@@ -289,7 +305,7 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
     if (isPerson(c)) return { kind: 'person', id: `0${c}` };
     if (c === 'C') return { kind: 'look', text: '타고 온 차다. 트렁크가 열려 있다.' };
     if (c === 'A') return { kind: 'look', text: '텐트다. 팩을 아직 덜 박았다.' };
-    if (c === 'R') return { kind: 'look', text: '갈대가 키만큼 자랐다. 너머가 잘 보이지 않는다.' };
+    if (c === 'R') return { kind: 'look', text: '수풀이 키만큼 빽빽하다. 너머가 보이지 않는다.' };
     if (c === '%') return { kind: 'look', text: HOSPITAL[0].blocked ?? '' };
     if (c === '~') return { kind: 'look', text: '강물이 얕게 반짝인다. 깊은 데는 저 멀리다.' };
     return null;

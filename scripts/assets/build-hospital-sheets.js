@@ -91,7 +91,8 @@ const ITEMS = {
     { src: 'lying-loose-turned', box: [185, 165, 890, 910], cell: { x: 512, y: 0, w: 512, h: 512 }, scale: 0.657 },
     // the riverside's tent and reeds
     { src: 'river', box: [282, 322, 590, 525], cell: { x: 0, y: 512, w: 512, h: 256 } },
-    { src: 'river', box: [602, 338, 750, 728], cell: { x: 512, y: 512, w: 256, h: 256 } },
+    // v0.76: bushes thick enough to hide him, where the reeds were
+    { src: 'river-bushes', box: [28, 280, 338, 668], cell: { x: 512, y: 512, w: 256, h: 256 } },
   ],
 };
 
@@ -379,7 +380,9 @@ const STRUCTURE = [
   { tile: 12, src: 'tex-water', box: [554, 316, 965, 710], seam: 'x' },
   { tile: 13, src: 'tex-walls', box: [552, 76, 947, 466], seam: 'x' },
   { tile: 14, src: 'tex-ground', box: [84, 546, 482, 939], seam: 'xy' },
-  { tile: 21, src: 'tex-water', box: [59, 316, 470, 710], seam: 'xy' },
+  // v0.76: the river and its far bank under the sky
+  { tile: 21, src: 'river-scene', box: [554, 289, 953, 686], seam: 'xy' },
+  { tile: 24, src: 'river-scene', box: [70, 289, 484, 686], seam: 'x' },
   { tile: 22, src: 'tex-walls', box: [76, 552, 469, 946], seam: 'x' },
   { tile: 23, src: 'tex-ground', box: [551, 546, 942, 939], seam: 'xy' },
 ];

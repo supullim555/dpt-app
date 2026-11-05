@@ -328,6 +328,7 @@ async function main() {
       await readTip();
       t.note('병문안: 읽고 나면 아래에 작게 남음', (await t.hasText('방향키나 W, A, S, D')) && !(await t.hasText('알겠어요')));
       t.note('병문안: 3D 화면이 뜸', await waitFor(() => t.evalJs("!!document.querySelector('canvas')"), 8000));
+      t.note('병문안: 미니맵', await waitFor(() => t.evalJs("!!document.querySelector('[aria-label=\"미니맵\"]')"), 3000));
       await sleep(500);
       await t.shot('walk_lobby.png');
       t.note('병문안: 화면이 실제로 그려짐', await viewHasPicture(t));

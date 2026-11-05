@@ -3,12 +3,13 @@ import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, RIVER_FOUND, RIVER_MEET, RIVER_START, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, arrival, arrowFor, pathTo, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, RIVER_FOUND, RIVER_MEET, RIVER_START, ENTRANCE, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
 import { doctorTalk, personTalk, requestGoal, REQUESTS, type Request, type Talk } from './requests';
 import BreatheTogether from './BreatheTogether';
+import Minimap from './Minimap';
 import { soundsLikeCrisis } from './safety';
 import { sendPersonaMessage, type ChatMessage } from '@/features/ai';
 import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
@@ -29,7 +30,7 @@ const TOUCH = Platform.OS !== 'web' || (typeof window !== 'undefined' && !!windo
 // The letter keys by where they sit, so they still work with the keyboard set to Hangul.
 const KEY_AT: Record<string, string> = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending', 0: 'riverRocks' };
-const RIVER_PROP: Record<string, SpriteLook> = { C: 'riverCar', A: 'riverTent', R: 'riverReeds' };
+const RIVER_PROP: Record<string, SpriteLook> = { C: 'riverCar', A: 'riverTent', R: 'riverBushes' };
 const MEMORY_MS = 2600;
 
 /** Someone's remembered day, walked through: whose, how far in, and where you were in the hospital before it. */
@@ -503,7 +504,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   }, []);
 
   // Only the fairy's note makes a clue a goal, so a first run still stumbles on them.
-  const todaysClue = CLUES.find((c) => c.day === day && !found.includes(c.id)) ?? null;
+  // the first of her things that's out and not yet found
+  const todaysClue = CLUES.find((c) => c.day <= day && !found.includes(c.id)) ?? null;
   const goal = memory
     ? memory.stage === 'meet'
       ? { text: '강가의 아이에게 가기', floor: 0 as FloorNo, cell: { x: RIVER_MEET.x, y: RIVER_MEET.y }, face: RIVER_MEET.dir }
@@ -512,10 +514,13 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     doneToday,
     metDoctor: day < 7 ? metDoctor : undefined,
     request: requestGoal(asked, solved),
+    somethingOfHers: run < 2 && todaysClue ? (todaysClue.floor as FloorNo) : null,
     boughtToday,
     clueToFind: run >= 2 && todaysClue ? { floor: todaysClue.floor as FloorNo, name: CLUE_TEXT[todaysClue.id].name } : null,
   });
   const arrow = arrowFor(pose, goal);
+  // On the minimap: the goal if it's on this floor, otherwise the lift that gets you there.
+  const goalCell = !goal ? null : goal.floor === pose.floor ? goal.cell : pose.floor === 0 ? null : LIFT_FRONT;
   const textSize = { fontSize: 14 * fontScale, lineHeight: 21 * fontScale };
 
   const nextLesson = tutorialAfter(tutorial, {
@@ -604,6 +609,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               <TouchableOpacity style={[styles.mapButton, VISIT_DEV && styles.belowDev, memory && styles.hidden]} disabled={!!memory} onPress={() => panel === 'none' && !transit && setPanel('map')}>
                 <Text style={styles.mapButtonText}>지도</Text>
               </TouchableOpacity>
+              {!memory && (
+                <View style={[styles.minimap, VISIT_DEV && styles.belowDev]} pointerEvents="none">
+                  <Minimap pose={pose} goal={goalCell} path={goalCell ? pathTo(pose.floor, pose, goalCell) : []} />
+                </View>
+              )}
             </>
           )
         )}
@@ -909,6 +919,7 @@ const styles = StyleSheet.create({
   goalRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2', paddingHorizontal: 9, paddingVertical: 5 },
   goalArrow: { color: AMBER, fontSize: 20, fontWeight: '700', lineHeight: 22 },
   goalText: { color: '#fff', fontFamily: 'serif', flexShrink: 1 },
+  minimap: { position: 'absolute', right: 10, top: 52 },
   mapButton: { position: 'absolute', right: 10, top: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2' },
   mapButtonText: { color: '#fff', fontSize: 14, fontFamily: 'serif' },
   bottomStack: { position: 'absolute', left: 14, right: 14, bottom: 12, gap: 8 },
