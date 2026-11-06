@@ -12,6 +12,8 @@ const OUT = path.join(ROOT, 'src', 'assets', 'visit');
 // One by one here; pack-hospital-sheets.js stacks them into the one file the hospital fetches.
 const { pack, SINGLES: SHEETS_OUT } = require('./pack-hospital-sheets');
 const SHEET = 1024;
+// A Gemini drawing as it came, or as retouch-hospital-art.js left it (PhotoCraft) when the name says so.
+const rawFile = (src) => path.join(RAW, src.endsWith('-retouched') ? `${src}.png` : `${src}-raw.png`);
 const EDGE = 6;
 // The darkest ink a sheet may hold, so that hair isn't taken for nothing.
 const INK_FLOOR = 20;
@@ -73,7 +75,12 @@ const ITEMS = {
     { src: 'river', box: [198, 562, 582, 722], cell: { x: 768, y: 768, w: 256, h: 256 } },
   ],
   // Sofas, chairs and so on, drawn further down.
-  furniture: [],
+  // v0.86: two drawings keyed in PhotoCraft (retouch-hospital-art.js) because their leaves are the background's green,
+  // in the room left at the top of the furniture sheet (hospitalArt.ts FURNITURE_PART)
+  furniture: [
+    { src: 'market-props-keyed-retouched', box: [256, 448, 472, 678], cell: { x: 0, y: 0, w: 256, h: 256 } },
+    { src: 'night-props-keyed-retouched', box: [438, 468, 764, 748], cell: { x: 256, y: 0, w: 512, h: 256 } },
+  ],
   // v0.79: the remembered places' things (hospitalArt.ts MEMORY_PART)
   memoryprops: [
     { src: 'rehab-props', box: [18, 476, 324, 690], cell: { x: 0, y: 0, w: 256, h: 256 } },
@@ -153,11 +160,13 @@ function blanketOnly(x, y) {
 }
 
 async function cut({ src, box, solid, keep, tone }) {
-  const { data, info } = await sharp(path.join(RAW, `${src}-raw.png`)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(rawFile(src)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  // keyed in PhotoCraft (retouch-hospital-art.js): its own transparency says what's background, so green leaves stay
+  const alpha = src.endsWith('-keyed-retouched') ? await sharp(rawFile(src)).ensureAlpha().extractChannel(3).raw().toBuffer() : null;
   const [x0, y0, x1, y1] = box;
   const w = x1 - x0;
   const h = y1 - y0;
-  const isGreen = (i) => data[i * 3 + 1] - Math.max(data[i * 3], data[i * 3 + 2]) > GREEN_BY;
+  const isGreen = alpha ? (i) => alpha[i] < 128 : (i) => data[i * 3 + 1] - Math.max(data[i * 3], data[i * 3 + 2]) > GREEN_BY;
   const at = (x, y) => (y0 + y) * info.width + x0 + x;
   const on = new Uint8Array(w * h);
   if (solid) {
@@ -440,7 +449,8 @@ const MEMORY = [
   { tile: 8, src: 'beach-tex', box: [56, 300, 458, 590], seam: 'xy' },
   { tile: 9, src: 'beach-tex', box: [560, 294, 972, 696], seam: 'x' },
   // v0.81: the market's paving, and its street at dusk
-  { tile: 10, src: 'tex-ground', box: [84, 546, 482, 939], seam: 'xy' },
+  // v0.86: through PhotoCraft's Curves first, at less contrast (retouch-hospital-art.js)
+  { tile: 10, src: 'tex-ground-soft-retouched', box: [84, 546, 482, 939], seam: 'xy' },
   { tile: 11, src: 'market-scene', box: [62, 264, 560, 776], seam: 'x' },
   // v0.82: the yard's dirt and its wall under an autumn sky; the night alley's asphalt and its houses
   { tile: 12, src: 'yard-scene', box: [557, 308, 973, 706], seam: 'xy' },
@@ -464,7 +474,7 @@ async function tilePixels(t) {
     const [x0, y0, x1, y1] = t.box;
     const n = t.seam ? TILE + SEAM : TILE;
     // a little more than a tile: the extra goes into the cross-fade that makes the edges meet
-    let { data } = await sharp(path.join(RAW, `${t.src}-raw.png`))
+    let { data } = await sharp(rawFile(t.src))
       .extract({ left: x0, top: y0, width: x1 - x0, height: y1 - y0 })
       .resize(n, n, { fit: 'fill', kernel: 'lanczos3' })
       .grayscale()

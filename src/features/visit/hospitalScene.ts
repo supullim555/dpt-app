@@ -235,6 +235,8 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   plant: { w: 0.32, h: 0.64 },
   signGuide: { w: 0.6, h: 0.15 },
   signShop: { w: 0.6, h: 0.15 },
+  vegStall: { w: 1.0, h: 1.0 },
+  stoneWall: { w: 1.2, h: 0.6 },
   noticeBoard: { w: 0.48, h: 0.48 },
   hillsPicture: { w: 0.42, h: 0.42 },
   wallClock: { w: 0.28, h: 0.28 },

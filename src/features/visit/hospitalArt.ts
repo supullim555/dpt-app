@@ -467,6 +467,9 @@ export type LyingPart = keyof typeof LYING_PART;
 export const FURNITURE_PART = {
   wheelchair: { x: 768, y: 0, w: 256, h: 256 },
   plant: { x: 0, y: 256, w: 256, h: 512 },
+  // v0.86: the market's vegetable stall and the night alley's wall with a pot on it
+  vegStall: { x: 0, y: 0, w: 256, h: 256 },
+  stoneWall: { x: 256, y: 0, w: 512, h: 256 },
 } as const;
 export type FurniturePart = keyof typeof FURNITURE_PART;
 

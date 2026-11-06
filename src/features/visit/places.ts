@@ -176,7 +176,7 @@ export const PLACES: Record<PlaceId, Place> = {
     lostGoal: '엄마 찾기',
     lostArrow: false,
   },
-  // An old market at dusk, years ago: S your own fruit stall, F another, T rice cakes, X stacked crates (the child who
+  // An old market at dusk, years ago: S your own fruit stall, F a vegetable stall, T rice cakes, X stacked crates (the child who
   // comes every day is behind them).
   market: {
     map: [
@@ -198,7 +198,7 @@ export const PLACES: Record<PlaceId, Place> = {
     spread: '',
     things: {
       S: { look: 'fruitStall', text: '내 과일 좌판이다. 귤이 오늘도 그대로다.' },
-      F: { look: 'fruitStall', text: '건너편 과일 가게다. 저기도 한산하다.' },
+      F: { look: 'vegStall', text: '건너편 채소 가게다. 저기도 한산하다.' },
       T: { look: 'riceCakes', text: '떡집 좌판이다. 떡이 굳어 간다.' },
       X: { look: 'marketCrates', text: '빈 과일 상자가 키보다 높이 쌓여 있다.' },
     },
@@ -253,16 +253,16 @@ export const PLACES: Record<PlaceId, Place> = {
     lostGoal: '마당 둘러보기',
     lostArrow: false,
   },
-  // A night alley to the postbox: L streetlamps, P the postbox. k is the husband at the front door, j the same man,
+  // A night alley to the postbox: L streetlamps, P the postbox, W low stone walls with a pot on top. k is the husband at the front door, j the same man,
   // who took the short way and got there first.
   night: {
     map: [
       '###########',
-      '#.....L...#',
+      '#.....L.W.#',
       '#k........#',
       '#.........#',
       '#..L....j.#',
-      '#........P#',
+      '#....W...P#',
       '###########',
     ],
     outdoors: true,
@@ -271,11 +271,12 @@ export const PLACES: Record<PlaceId, Place> = {
     meet: { x: 2, y: 2, dir: 3 },
     found: { x: 9, y: 4, dir: 3 },
     lostAt: { x: 2, y: 2, dir: 1 },
-    stops: 'LP',
+    stops: 'LPW',
     spread: '',
     things: {
       L: { look: 'streetLamp', text: '가로등이다. 불빛 아래만 환하다.' },
       P: { look: 'postbox', text: '우체통이다. 편지 넣는 구멍이 생각보다 좁다.' },
+      W: { look: 'stoneWall', text: '화분을 얹은 돌담이다. 누가 매일 물을 주나 보다.' },
     },
     ground: 'asphalt',
     wall: 'nightAlley',
