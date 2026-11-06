@@ -1006,7 +1006,23 @@ async function main() {
         await sleep(200);
       }
       t.note('병문안: 해피엔딩의 수첩 뒤엔 같이 내려감', await t.clickText('같이 내려가기'));
-      t.note('병문안: 내려가서 알 수 없는 빛', await tapUntil('알 수 없는 빛'));
+      // v0.87: the light is filmed and plays in place of the turn and light cards (CardScene's fallback brings them back)
+      let film = false;
+      for (let i = 0; i < 16 && !film; i++) {
+        film = await t.evalJs(`!!document.querySelector('video')`);
+        if (!film) {
+          await t.click(195, 170);
+          await sleep(300);
+        }
+      }
+      t.note('병문안: 내려가서 마지막 빛 영상이 나옴', film);
+      let playing = false;
+      for (let i = 0; i < 20 && !playing; i++) {
+        await sleep(250);
+        playing = await t.evalJs(`(() => { const v = document.querySelector('video'); return !!v && !v.paused && v.currentTime > 0.5; })()`);
+      }
+      t.note('병문안: 마지막 빛 영상이 재생됨', playing);
+      await sleep(2500);
       await t.shot('visit_light.png');
       t.note('병문안: 소녀의 세상에 색이 돌아옴', await tapUntil('소녀의 세상에 색이 돌아왔다.'));
       await sleep(700);

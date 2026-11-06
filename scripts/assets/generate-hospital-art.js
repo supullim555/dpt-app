@@ -211,6 +211,11 @@ feet visible.`,
 front, drawn from the waist up only, both forearms resting forward on an invisible desk, hands loosely together. Short
 greying hair, plain glasses, tired kind eyes, a small patient smile. Nothing below the waist, no desk, no chair, no
 stethoscope.`,
+  // The last light (v0.87 cutscene): she turns under the ginkgo and looks at you. Waist up, three steps of one turn.
+  'girl-turn': `${SAME} Her hair down, the shoulder-length bob, no hairpin. Three drawings of her from the waist up, side by
+side at the same size and height, standing, arms at her sides, in the modest pajamas buttoned to the neck: seen from
+directly behind so no face shows; turning to look back over her right shoulder at the viewer; and facing the viewer, a
+small calm smile, a little surprised.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);

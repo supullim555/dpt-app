@@ -32,15 +32,20 @@ const JOBS = [
   { name: 'tex-ground-soft', src: 'tex-ground', steps: [['image.adjustments.curves', { points: [[0, 64], [96, 128], [190, 200], [255, 236]] }]] },
 ];
 
-if (!fs.existsSync(PHOTOCRAFT)) {
-  console.error(`PhotoCraft CLI not found at ${PHOTOCRAFT} (set PHOTOCRAFT_CLI).`);
-  process.exit(1);
-}
-for (const job of JOBS) {
-  const args = ['run', path.join(RAW, `${job.src}-raw.png`)];
-  for (const [cmd, params] of job.steps) args.push('--cmd', cmd, '--params', JSON.stringify(params));
-  const out = path.join(RAW, `${job.name}-retouched.png`);
+/** Runs the steps on one image in PhotoCraft and writes the result to `out`. */
+function photocraft(src, out, steps) {
+  if (!fs.existsSync(PHOTOCRAFT)) throw new Error(`PhotoCraft CLI not found at ${PHOTOCRAFT} (set PHOTOCRAFT_CLI).`);
+  const args = ['run', src];
+  for (const [cmd, params] of steps) args.push('--cmd', cmd, '--params', JSON.stringify(params));
   args.push('--out', out);
   execFileSync(PHOTOCRAFT, args, { stdio: ['ignore', 'ignore', 'inherit'] });
-  console.log(`${job.name}-retouched.png`, fs.statSync(out).size);
+}
+
+module.exports = { KEY, photocraft };
+if (require.main === module) {
+  for (const job of JOBS) {
+    const out = path.join(RAW, `${job.name}-retouched.png`);
+    photocraft(path.join(RAW, `${job.src}-raw.png`), out, job.steps);
+    console.log(`${job.name}-retouched.png`, fs.statSync(out).size);
+  }
 }

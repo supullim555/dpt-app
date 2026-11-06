@@ -1,3 +1,5 @@
+import type { Beat } from './CardScene';
+import { LAST_LIGHT_URL } from './cutscenes';
 import type { LyingPart, PersonLook } from './hospitalArt';
 import { CLUES, type ClueId, type EndingId } from './progress';
 
@@ -338,12 +340,14 @@ export const FAIRY_LINES = [
 // The way down, floor by floor, and the light. The turn: the grey we've watched all week was her sight.
 // A fairy tale, and it says so.
 const AMBER_WORLD = '#e3b64f';
-export const HAPPY_BEATS: { text: string; bg?: string; ink?: string }[] = [
+export const HAPPY_BEATS: Beat[] = [
   { text: '소녀는 침대에서 내려와 바닥에 발을 댔다. 한참이 걸렸다.' },
   { text: '4층. 복도 불빛을 하나씩 지나간다.' },
   { text: '3층. 의자에 앉아 오래 쉰다. "괜찮아. 가."' },
   { text: '2층. "숨차다." 소녀가 웃는다.' },
   { text: '1층. 사람들 사이를 지나 안뜰로 나간다.' },
+  // filmed (v0.87): she turns, the light, the colour, ending on the amber below. The two cards are its fallback.
+  { video: LAST_LIGHT_URL, covers: 2 },
   { text: '은행나무 아래에서 소녀가 돌아서서 나를 본다.' },
   { text: '그때, 알 수 없는 빛이 눈앞을 가렸다.', bg: '#ffffff', ink: '#111111' },
   { text: '빛이 걷히자 소녀의 세상에 색이 돌아왔다.', bg: AMBER_WORLD, ink: '#1a1200' },

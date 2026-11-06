@@ -296,6 +296,9 @@ export default function VisitScreen(_props: VisitScreenProps) {
       <TouchableOpacity onPress={() => go({ ...state, skippedDays: state.skippedDays + TOTAL_DAYS })}>
         <Text style={styles.devButton}>7일 뒤</Text>
       </TouchableOpacity>
+      <TouchableOpacity onPress={() => setPhase('descent')}>
+        <Text style={styles.devButton}>엔딩</Text>
+      </TouchableOpacity>
     </View>
   );
 
