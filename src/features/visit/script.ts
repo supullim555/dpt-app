@@ -122,7 +122,7 @@ export const TUTORIAL_TIPS: Partial<Record<string, string | [string, string]>> =
     '화면을 누르거나 Enter 키를 누르면 다음 말로 넘어가요. 다 들었으면 뒤로가기나 Esc 키를 누르세요.',
   ],
   shop: '화살표를 따라 매점으로 가서, 매점 주인 앞에 서 보세요.',
-  buy: '말을 걸면 아래에 오늘의 선물이 떠요. 여러 개 사도 괜찮아요. 하나 골라 보세요.',
+  buy: '말을 걸면 아래에 오늘의 선물이 떠요. 하루에 하나만 살 수 있어요. 하나 골라 보세요.',
   shopBack: '산 선물은 병실에서 소녀에게 건넬 수 있어요. 뒤로가기를 눌러 나오세요.',
   lift: [
     '이제 4층으로 올라가요. 화살표가 엘리베이터로 이끌어요. 앞에 서면 타는 버튼이 떠요. 옆의 계단도 괜찮아요.',
@@ -133,7 +133,7 @@ export const TUTORIAL_TIPS: Partial<Record<string, string | [string, string]>> =
   nextDay: '1층 정문으로 나가면 다음 날을 바로 이어서 할 수 있어요. 꼭 그래야 하는 건 아니에요. 하루에 하루씩 와도 돼요.',
 };
 export const TUTORIAL_TELL = '고르거나 직접 써서 오늘 일을 들려주세요. 쓰고 싶은 만큼만 쓰면 돼요.';
-export const TUTORIAL_GIVE = '가져온 선물을 건네거나, 그냥 두어도 돼요.';
+export const TUTORIAL_GIVE = '가진 선물과 주운 물건은 모두 건넬 수 있어요. 그냥 두어도 돼요.';
 export const TUTORIAL_SKIP = '튜토리얼 건너뛰기';
 export const TUTORIAL_OK = '알겠어요';
 // Writing to someone yourself (AI on): what shows while waiting, when there's no answer, and instead of sending at all.
@@ -207,9 +207,12 @@ export const GIFTS: Record<number, { name: string; line: string }[]> = {
 };
 export const giftLine = (name: string) => Object.values(GIFTS).flat().find((g) => g.name === name)?.line ?? '';
 export const boughtLine = (name: string) => `${name} 하나를 샀다. 다음에 갈 때 건네자.`;
-export const SOLD_TODAY = '오늘 고를 수 있는 건 다 골랐다.';
+export const SOLD_TODAY = '오늘은 이미 하나 샀다.';
 export const GIVE_QUESTION = '뭐 들고 있어? 아까부터 궁금했어.';
 export const GIVE_NOTHING = '오늘은 그냥 둘래';
+// after the first: whatever else you carry can be given too
+export const GIVE_MORE = '또 있어? 다 보여 줘.';
+export const GIVE_DONE = '이제 됐어';
 
 // Clues aren't hers: strangers' things, left about the hospital, each close to something she could do
 // before she got this sick. Picked up one day, shown to her on a later visit.

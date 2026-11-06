@@ -366,7 +366,7 @@ async function main() {
       await press('오른쪽');
       await press('앞으로');
       await press('왼쪽');
-      t.note('병문안: 튜토리얼이 선물 고르기를 설명', await t.hasText('여러 개 사도 괜찮아요'));
+      t.note('병문안: 튜토리얼이 선물 고르기를 설명', await t.hasText('하루에 하나만'));
       await readTip();
       await t.clickText('매점 주인에게 말 걸기');
       await sleep(600);
@@ -768,10 +768,7 @@ async function main() {
       t.note('병문안: 매점은 하루에 3개', (await t.waitText('귤', 2000)) && (await t.hasText('볼펜')) && (await t.hasText('머리끈')));
       await t.shot('visit_shop.png');
       await t.clickText('귤');
-      // v0.88: as many of the day's gifts as you like, each once
-      t.note('병문안: 산 선물은 매점 목록에서 빠짐', (await t.waitText('귤 하나를 샀다', 2000)) && (await t.hasText('볼펜')) && !(await t.evalJs(`[...document.querySelectorAll('div')].some((e) => !e.children.length && e.textContent.trim() === '귤')`)));
-      await t.clickText('볼펜');
-      t.note('병문안: 하루에 선물을 여러 개 살 수 있음', await t.waitText('볼펜 하나를 샀다', 2000));
+      t.note('병문안: 선물은 하루에 1개', (await t.waitText('귤 하나를 샀다', 2000)) && !(await t.hasText('볼펜')));
       await stepBack();
 
       await nextDay();
@@ -781,10 +778,7 @@ async function main() {
       await t.shot('visit_give.png');
       await t.clickText('귤');
       t.note('병문안: 선물에 따라 반응', await t.waitText('못 먹는데 왜 사 왔어', 2000));
-      await tapUntil('뭐 들고 있어');
-      await t.clickText('볼펜');
-      t.note('병문안: 한 번에 선물을 여러 개 건넴', await t.waitText('볼펜이네. 잘 나오는데?', 2000));
-      await tapUntil('뭐 들고 있어');
+      t.note('병문안: 선물 뒤에 다른 물건도 건넬 수 있음', (await tapUntil('또 있어? 다 보여 줘.')) && (await t.hasText('이제 됐어')));
       t.note('병문안: 단서를 보여 주면 회상', await showMemory('개목걸이', '아침 산책', '오늘 얘기 잘 들었어'));
       await tapUntil('병실 앞 복도');
       await openMap();

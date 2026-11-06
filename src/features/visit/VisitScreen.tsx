@@ -37,6 +37,8 @@ import {
   FIRST_GREETING,
   GAME_TITLE,
   giftLine,
+  GIVE_DONE,
+  GIVE_MORE,
   GIVE_NOTHING,
   GIVE_QUESTION,
   GOODBYE,
@@ -73,7 +75,7 @@ type VisitState = {
   done: number[];
   told: Told[];
   ending: EndingId | '';
-  /** The day a gift was last bought (the goal moves on once you've bought one; you may buy more). */
+  /** The day a gift was last bought: one a day. */
   boughtDay: number;
   /** Gifts bought and not yet given. */
   gifts: string[];
@@ -124,6 +126,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const [replyLines, setReplyLines] = useState<string[]>([]);
   const [askEmotion, setAskEmotion] = useState(false);
   const [ackLine, setAckLine] = useState('');
+  // Something's been given this visit: everything you carry can be given, one after another (gifts and the things you found)
+  const [gaveSome, setGaveSome] = useState(false);
   const [memory, setMemory] = useState<ClueId>('collar');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
@@ -223,12 +227,14 @@ export default function VisitScreen(_props: VisitScreenProps) {
   };
 
   const giveGift = (name: string) => {
+    setGaveSome(true);
     setState({ ...state, gifts: state.gifts.filter((g) => g !== name) });
     setAckLine(giftLine(name));
     setPhase('gift');
   };
 
   const showClue = (clue: ClueId) => {
+    setGaveSome(true);
     setState({ ...state, shown: [...state.shown, clue] });
     setMemory(clue);
     setPhase('memory');
@@ -268,7 +274,10 @@ export default function VisitScreen(_props: VisitScreenProps) {
                 : [];
 
   const afterLines = () => {
-    if (phase === 'arrive') setPhase('greet');
+    if (phase === 'arrive') {
+      setGaveSome(false);
+      setPhase('greet');
+    }
     else if (phase === 'greet') setPhase('tell');
     else if (phase === 'reply') {
       if (askEmotion) setPhase('emotion');
@@ -494,7 +503,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
 
   // What she's saying now, in a bubble beside her. With no girl in the room the same lines are
   // narration and sit in the box below instead, as does whoever comes in to send you out.
-  const spoken = phase === 'tell' ? TELL_QUESTION.text : phase === 'emotion' ? EMOTION_QUESTION : phase === 'give' ? GIVE_QUESTION : lines[lineIndex];
+  const spoken = phase === 'tell' ? TELL_QUESTION.text : phase === 'emotion' ? EMOTION_QUESTION : phase === 'give' ? (gaveSome ? GIVE_MORE : GIVE_QUESTION) : lines[lineIndex];
   const inBubble = showGirl && !!spoken && phase !== 'staff' && phase !== 'arrive';
   const canTapThrough = lines.length > 0;
 
@@ -516,7 +525,7 @@ export default function VisitScreen(_props: VisitScreenProps) {
           {toShow.map((c) => (
             <PaperButton key={c} label={CLUE_TEXT[c].name} onPress={() => showClue(c)} />
           ))}
-          <PaperButton label={GIVE_NOTHING} onPress={finishDay} />
+          <PaperButton label={gaveSome ? GIVE_DONE : GIVE_NOTHING} onPress={finishDay} />
         </View>
       )}
 
@@ -575,12 +584,11 @@ export default function VisitScreen(_props: VisitScreenProps) {
           light={light}
           doneToday={phase === 'outside'}
           boughtToday={state.boughtDay === day}
-          held={state.gifts}
           found={state.clues}
           floorsSeen={state.floorsSeen}
           onSeeFloor={(floor) => setState((s) => (s && !s.floorsSeen.includes(floor) ? { ...s, floorsSeen: [...s.floorsSeen, floor] } : s))}
           onEnterRoom={enterRoom}
-          onBuy={(gift) => setState((s) => (s && !s.gifts.includes(gift) ? { ...s, boughtDay: day, gifts: [...s.gifts, gift] } : s))}
+          onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
           onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
           onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
           metDoctor={state.doctorDays.includes(day)}

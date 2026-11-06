@@ -69,8 +69,6 @@ type Props = {
   /** She's been seen today: you've been sent out, and the goal is the rest of the hospital. */
   doneToday: boolean;
   boughtToday: boolean;
-  /** Gifts bought and not yet given: the shop doesn't sell you the same one twice. */
-  held: readonly string[];
   found: readonly ClueId[];
   floorsSeen: readonly number[];
   onSeeFloor: (floor: number) => void;
@@ -118,7 +116,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, held, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -545,8 +543,6 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
   // Only the fairy's note makes a clue a goal, so a first run still stumbles on them.
   // the first of her things that's out and not yet found
-  // Today's gifts, as many as you like, each once (v0.88: it used to be one a day)
-  const forSale = (GIFTS[day] ?? []).filter((g) => !held.includes(g.name));
   const todaysClue = CLUES.find((c) => c.day <= day && !found.includes(c.id)) ?? null;
   const goal = memory
     ? memory.stage === 'meet'
@@ -829,10 +825,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         <View style={styles.controls}>
           {focused.kind === 'person' && focused.shop && (
             <View style={styles.shop}>
-              {forSale.length === 0 ? (
+              {boughtToday ? (
                 !shopLine && <Text style={[styles.text, textSize]}>{SOLD_TODAY}</Text>
               ) : (
-                forSale.map((g) => (
+                (GIFTS[day] ?? []).map((g) => (
                   <PaperButton
                     key={g.name}
                     label={g.name}
