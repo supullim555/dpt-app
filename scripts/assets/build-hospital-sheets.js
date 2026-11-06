@@ -103,6 +103,11 @@ const ITEMS = {
     { src: 'yard-props', box: [890, 352, 990, 658], cell: { x: 256, y: 256, w: 256, h: 512 }, height: 400 },
     { src: 'night-props', box: [296, 156, 402, 752], cell: { x: 512, y: 256, w: 256, h: 512 }, height: 490 },
     { src: 'night-props', box: [794, 228, 970, 764], cell: { x: 768, y: 256, w: 256, h: 512 }, height: 470 },
+    // v0.85: things on the hospital's walls, along the bottom row
+    { src: 'wall-decor', box: [40, 352, 276, 658], cell: { x: 0, y: 768, w: 256, h: 256 } },
+    { src: 'wall-decor', box: [316, 372, 540, 650], cell: { x: 256, y: 768, w: 256, h: 256 } },
+    { src: 'wall-decor', box: [580, 410, 816, 644], cell: { x: 512, y: 768, w: 256, h: 256 } },
+    { src: 'wall-decor', box: [872, 440, 978, 636], cell: { x: 768, y: 768, w: 256, h: 256 } },
   ],
   // v0.74: everyone who shared a drawing now has their own (hospitalArt.ts PERSON2_SLOT).
   people2: [
@@ -567,8 +572,40 @@ async function buildOpening({ name, src, crop, mark }) {
   console.log(`${name}.jpg`, fs.statSync(file).size);
 }
 
+// v0.85: the skies over the remembered places, one strip each, top to bottom (hospitalArt.ts SKY_STRIP). Wrapped round
+// you three times, so each strip's ends are blended into each other and it runs on without a seam.
+const SKIES = ['sky-summer', 'sky-autumn', 'sky-dusk'];
+const SKY_H = 340;
+const SKY_BLEND = 160;
+// Red, not grey: a blue sky and the shade on a white cloud come out the same grey, and the clouds would vanish.
+// Halfway to white: a far sky, pale as paper, its ink lines softened to grey.
+const lift = (v) => 255 - (255 - v) * 0.55;
+async function buildSky() {
+  const sheet = new Uint8Array(SHEET * SHEET);
+  for (const [n, src] of SKIES.entries()) {
+    const { data, info } = await sharp(path.join(RAW, `${src}-raw.png`)).removeAlpha().extractChannel('red').raw().toBuffer({ resolveWithObject: true });
+    const w = info.width - SKY_BLEND;
+    const looped = Buffer.alloc(w * info.height);
+    for (let y = 0; y < info.height; y++) {
+      for (let x = 0; x < w; x++) {
+        const here = lift(data[y * info.width + x]);
+        // the start fades in over what follows the end, so the last column meets the first
+        looped[y * w + x] = x < SKY_BLEND ? Math.round(lift(data[y * info.width + w + x]) * (1 - x / SKY_BLEND) + here * (x / SKY_BLEND)) : here;
+      }
+    }
+    const strip = await sharp(looped, { raw: { width: w, height: info.height, channels: 1 } }).resize(SHEET, SKY_H, { fit: 'fill', kernel: 'lanczos3' }).extractChannel(0).raw().toBuffer();
+    // never quite black: on a sheet black means nothing is there
+    for (let i = 0; i < strip.length; i++) sheet[n * (SKY_H + 1) * SHEET + i] = Math.max(INK_FLOOR, strip[i]);
+  }
+  fs.mkdirSync(SHEETS_OUT, { recursive: true });
+  const file = path.join(SHEETS_OUT, 'sheet-sky.png');
+  await sharp(Buffer.from(sheet), { raw: { width: SHEET, height: SHEET, channels: 1 } }).toColourspace('b-w').png({ compressionLevel: 9, palette: false }).toFile(file);
+  console.log('sheet-sky.png', fs.statSync(file).size);
+}
+
 (async () => {
   for (const name of Object.keys(ITEMS)) await buildSheet(name);
+  await buildSky();
   await buildStructure();
   await buildMemory();
   for (const item of OPENING) await buildOpening(item);

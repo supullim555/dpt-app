@@ -2,12 +2,21 @@
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, currentPlace, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
 import type { Place } from './places';
-import { MEMORY2_PART, MEMORY_PART, MEMORY_TILES, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
+import { MEMORY_SKYLINE, SKY_H, SKY_STRIP, type Sky, MEMORY2_PART, MEMORY_PART, MEMORY_TILES, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
 // With people 1.7m tall, a cell is about 2.1m across, the ceiling about 2.7m and your eyes about 1.35m (docs/병원_지도.md).
 const EYE = 0.64;
+// The sky's ring: far enough to be behind every backdrop from anywhere in a place, and the view reaches it out of doors.
+const SKY_RADIUS = 24;
+const SKY_HEIGHT = 22;
+const SKY_REPEATS = 3;
+const FAR_INDOORS = 12;
+const FAR_OUT = 32;
+// Out of doors, how far past where you can walk the backdrop stands, and how much taller it is for being further off.
+const OPEN_BEYOND = 2;
+const BEYOND_TALLER = 1.3;
 const WALL_H = 1.25;
 const YARD_WALL_H = 3;
 // A little behind the middle of the cell, or a wall ahead would fill the screen.
@@ -25,6 +34,8 @@ const FLIP_MS = 340;
 const SWING = 0.34;
 const WOBBLE = 0.012;
 const SHADOW_OPACITY = 0.34;
+// How much darker a floor's corner gets for each wall it touches.
+const CORNER_SHADE = 0.13;
 const UV_INSET = 3;
 // Her window: to one side of the head of the bed, where lying there she can look out of it.
 const WINDOW_X = GIRL_FRONT.x + 1;
@@ -39,6 +50,10 @@ const FOG_COLOR: Record<FloorNo, number[]> = { 0: [0.8, 0.8, 0.77], 1: [0.26, 0.
 const VERTEX = /* glsl */ `
 attribute float aShade;
 attribute float aLit;
+#ifdef BACKDROP
+attribute vec3 aSky;
+varying vec3 vSky;
+#endif
 varying vec2 vUv;
 varying float vShade;
 varying float vLit;
@@ -47,6 +62,9 @@ void main() {
   vUv = uv;
   vShade = aShade;
   vLit = aLit;
+#ifdef BACKDROP
+  vSky = aSky;
+#endif
   vec4 view = modelViewMatrix * vec4(position, 1.0);
   vDist = length(view.xyz);
   gl_Position = projectionMatrix * view;
@@ -70,9 +88,16 @@ varying vec2 vUv;
 varying float vShade;
 varying float vLit;
 varying float vDist;
+#ifdef BACKDROP
+// a backdrop's own sky gives way to the place's (MEMORY_SKYLINE): x where it starts, y where it's all sky, z how high here
+varying vec3 vSky;
+#endif
 void main() {
   float v = texture2D(uMap, vUv).r;
   if (uCutout > 0.5 && v < 0.05) discard;
+#ifdef BACKDROP
+  if (vSky.y > 0.0 && (vSky.z > vSky.y || (vSky.z > vSky.x && v > 0.74))) discard;
+#endif
   vec3 c = mix(uInk, uPaper, v) * vShade * uFloorLight;
   if (vLit > 1.5) c = vec3(0.64, 0.15, 0.25) * v;
   // the day's light through the glass: its colour, but over the paper, so a grey day still reads as daylight (v0.78)
@@ -81,6 +106,32 @@ void main() {
   // the window's light stays when the room dims around whoever you're looking at
   if (vLit > 0.5 && vLit < 1.5 && v > 0.75) gl_FragColor = vec4(c, 1.0);
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
+}`;
+
+// v0.85: the sky over a remembered place, on a ring round you that moves with you, so it's as far away wherever you
+// stand. Down at the horizon it goes into the haze, which is where the backdrops' own tops go too.
+const SKY_VERTEX = /* glsl */ `
+varying vec2 vUv;
+varying float vUp;
+void main() {
+  vUv = uv;
+  vUp = position.y / ${SKY_HEIGHT.toFixed(1)};
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const SKY_FRAGMENT = /* glsl */ `
+precision mediump float;
+uniform sampler2D uMap;
+uniform float uFloorLight;
+uniform vec3 uInk;
+uniform vec3 uPaper;
+uniform vec3 uFog;
+uniform float uDim;
+varying vec2 vUv;
+varying float vUp;
+void main() {
+  float v = texture2D(uMap, vUv).r;
+  vec3 c = mix(uInk, uPaper, v) * uFloorLight;
+  gl_FragColor = vec4(mix(uFog, c, smoothstep(0.02, 0.2, vUp)) * uDim, 1.0);
 }`;
 
 export type SpriteLook = PersonLook | keyof typeof PROP | GirlPart | LyingPart | ExtraPart | FurniturePart | MemoryPart | Memory2Part | SolidLook;
@@ -184,6 +235,10 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   plant: { w: 0.32, h: 0.64 },
   signGuide: { w: 0.6, h: 0.15 },
   signShop: { w: 0.6, h: 0.15 },
+  noticeBoard: { w: 0.48, h: 0.48 },
+  hillsPicture: { w: 0.42, h: 0.42 },
+  wallClock: { w: 0.28, h: 0.28 },
+  sanitizer: { w: 0.26, h: 0.26 },
 };
 const PERSON_SIZE = { w: 0.4, h: 0.8 };
 
@@ -292,7 +347,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), people2: texture(sheets.people2), memory: texture(sheets.memory), memoryProps: texture(sheets.memoryProps), memoryProps2: texture(sheets.memoryProps2), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), people2: texture(sheets.people2), memory: texture(sheets.memory), memoryProps: texture(sheets.memoryProps), memoryProps2: texture(sheets.memoryProps2), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture), sky: texture(sheets.sky) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -304,9 +359,54 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   };
   // Only the building dims when you focus: whoever you're looking at stays in the light.
   const buildingDim = { value: 1 };
-  const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }) =>
-    new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), people2: material(textures.people2, true, { value: 1 }), memory: material(textures.memory, false, buildingDim), memoryProps: Object.assign(material(textures.memoryProps, true, { value: 1 }), { side: THREE.DoubleSide }), memoryProps2: Object.assign(material(textures.memoryProps2, true, { value: 1 }), { side: THREE.DoubleSide }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }) };
+  const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }, backdrop = false) =>
+    new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, defines: backdrop ? { BACKDROP: 1 } : {}, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), people2: material(textures.people2, true, { value: 1 }), memory: material(textures.memory, false, buildingDim, true), memoryProps: Object.assign(material(textures.memoryProps, true, { value: 1 }), { side: THREE.DoubleSide }), memoryProps2: Object.assign(material(textures.memoryProps2, true, { value: 1 }), { side: THREE.DoubleSide }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }) };
+  const skyMaterial = new THREE.ShaderMaterial({ vertexShader: SKY_VERTEX, fragmentShader: SKY_FRAGMENT, depthWrite: false, side: THREE.DoubleSide, uniforms: { ...shared, uDim: buildingDim, uMap: { value: textures.sky } } });
+  /** The ring, its drawing going round SKY_REPEATS times; `strip` picks which sky. */
+  const skyGeometry = (strip: number) => {
+    const g = new THREE.BufferGeometry();
+    const pos: number[] = [];
+    const uv: number[] = [];
+    const idx: number[] = [];
+    const steps = 24;
+    const v0 = (strip * (SKY_H + 1) + 2) / SHEET;
+    const v1 = (strip * (SKY_H + 1) + SKY_H - 2) / SHEET;
+    for (let r = 0; r < SKY_REPEATS; r++) {
+      const base = pos.length / 3;
+      for (let i = 0; i <= steps; i++) {
+        const a = ((r * steps + i) / (steps * SKY_REPEATS)) * Math.PI * 2;
+        const x = Math.sin(a) * SKY_RADIUS;
+        const z = Math.cos(a) * SKY_RADIUS;
+        // the sheet's first row is its top (v 0, as for every quad here): the bottom of the ring takes the strip's bottom
+        // and above the drawing, its top row on up, so the corners of a tall screen never look past the ring
+        pos.push(x, 0, z, x, SKY_HEIGHT, z, x, SKY_HEIGHT * 3, z);
+        uv.push(i / steps, v1, i / steps, v0, i / steps, v0);
+      }
+      for (let i = 0; i < steps; i++) {
+        const k = base + i * 3;
+        idx.push(k, k + 3, k + 4, k, k + 4, k + 1, k + 1, k + 4, k + 5, k + 1, k + 5, k + 2);
+      }
+    }
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    return g;
+  };
+  let skyStrip = -1;
+  const sky = new THREE.Mesh(skyGeometry(0), skyMaterial);
+  sky.frustumCulled = false;
+  sky.renderOrder = -1;
+  sky.visible = false;
+  const showSky = (which: Sky | undefined) => {
+    sky.visible = !!which;
+    camera.far = which ? FAR_OUT : FAR_INDOORS;
+    camera.updateProjectionMatrix();
+    if (!which || SKY_STRIP[which] === skyStrip) return;
+    skyStrip = SKY_STRIP[which];
+    sky.geometry.dispose();
+    sky.geometry = skyGeometry(skyStrip);
+  };
   // A soft dark spot on the floor under each cutout, so they stand on it instead of floating over it.
   const shadowMaterial = new THREE.ShaderMaterial({
     transparent: true,
@@ -319,9 +419,10 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   shadowGeometry.rotateX(-Math.PI / 2);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(78, 1, 0.05, 12);
+  const camera = new THREE.PerspectiveCamera(78, 1, 0.05, FAR_INDOORS);
   camera.rotation.order = 'YXZ';
   let building: InstanceType<typeof THREE.Mesh> | null = null;
+  scene.add(sky);
   type Cutout = {
     mesh: InstanceType<typeof THREE.Mesh>;
     key: string;
@@ -354,6 +455,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
 
   const draw = (bob = 0) => {
     camera.position.set(cam.x, cam.y + bob, cam.z);
+    sky.position.set(cam.x, 0, cam.z);
     camera.rotation.set(cam.pitch, cam.yaw, 0);
     const now = performance.now();
     for (const o of cutouts) {
@@ -410,7 +512,9 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const indices: number[] = [];
 
     // `part`: [k, n], the kth of n strips of the tile, for a drawing that runs on across n cells (the riverside's backdrop)
-    const quad = (corners: number[][], tile: number, o: { flip?: boolean; shade: number; lit?: boolean; flat?: boolean; part?: [number, number] }) => {
+    // `corner`: a shade for each corner as well, in the order they're given (the darker floor along a wall)
+    const skies: number[] = [];
+    const quad = (corners: number[][], tile: number, o: { flip?: boolean; shade: number; lit?: boolean; flat?: boolean; part?: [number, number]; corner?: number[]; skyline?: [number, number] }) => {
       const base = positions.length / 3;
       const { x, y } = tileAt(tile);
       const pad = 2;
@@ -426,8 +530,9 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       corners.forEach((p, i) => {
         positions.push(p[0], p[1], p[2]);
         uvs.push(quadUv[i][0], quadUv[i][1]);
-        shades.push(i < 2 && !o.flat ? o.shade * 0.82 : o.shade); // walls darken toward the floor
+        shades.push((i < 2 && !o.flat ? o.shade * 0.82 : o.shade) * (o.corner?.[i] ?? 1)); // walls darken toward the floor
         lits.push(o.lit ? 1 : 0);
+        skies.push(o.skyline?.[0] ?? 0, o.skyline?.[1] ?? 0, i < 2 ? 0 : 1);
       });
       indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
     };
@@ -460,12 +565,32 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const isYard = (c: string) => (place ? place.outdoors : floor === 1 && 'YTb'.includes(c));
     const SIDE_SHADE = [1, 0.84, 0.94, 0.84];
 
+    // the stones or footprints of some places go twice across a cell, or they come out too big
+    const groundAt = (x: number, y: number, here: string, ground: number, corner?: number[]) => {
+      const g = (place && place.groundOn?.[here] === undefined ? place.groundScale : undefined) ?? 1;
+      for (let i = 0; i < g; i++) {
+        for (let j = 0; j < g; j++) {
+          const [x0, x1, y0, y1] = [x + i / g, x + (i + 1) / g, y + j / g, y + (j + 1) / g];
+          quad([[x0, 0, y1], [x1, 0, y1], [x1, 0, y0], [x0, 0, y0]], ground, { shade: 0.92, flat: true, flip: hash(x * g + i, y * g + j, 5) < 0.5, corner: g === 1 ? corner : undefined });
+        }
+      }
+    };
+    // v0.85: out of doors the backdrop stands OPEN_BEYOND cells past where you can go, with the ground running on to it,
+    // so a place is a stretch of country and not a box. Only its edge is a wall: the maps have none inside.
+    // Not at night: there the alley's houses stand close, and further off the dark would swallow them.
+    const outdoors = !!place?.outdoors && !!place.sky;
+
     for (const k of open) {
       const [x, y] = k.split(',').map(Number);
       const here = charAt(floor, x, y);
       const yard = isYard(here);
-      quad([[x, 0, y + 1], [x + 1, 0, y + 1], [x + 1, 0, y], [x, 0, y]], place ? MEMORY_TILES[place.groundOn?.[here] ?? place.ground] : yard ? TILES.yardGround : TILES.floor, { shade: 0.92, flat: true, flip: hash(x, y, 5) < 0.5 });
-      if (!yard) quad([[x, WALL_H, y], [x + 1, WALL_H, y], [x + 1, WALL_H, y + 1], [x, WALL_H, y + 1]], place ? MEMORY_TILES.ceiling : TILES.ceiling, { shade: 0.78, flat: true });
+      const ground = place ? MEMORY_TILES[place.groundOn?.[here] ?? place.ground] : yard ? TILES.yardGround : TILES.floor;
+      // v0.85: indoors, the floor and ceiling a little darker where they meet a wall, so a room has corners
+      const walled = [0, 1, 2, 3].map((d) => !yard && !open.has(`${x + DX[d]},${y + DY[d]}`));
+      const nearWall = (a: number, b: number) => 1 - CORNER_SHADE * ((walled[a] ? 1 : 0) + (walled[b] ? 1 : 0));
+      const [sw, se, ne, nw] = [nearWall(2, 3), nearWall(2, 1), nearWall(0, 1), nearWall(0, 3)];
+      groundAt(x, y, here, ground, [sw, se, ne, nw]);
+      if (!yard) quad([[x, WALL_H, y], [x + 1, WALL_H, y], [x + 1, WALL_H, y + 1], [x, WALL_H, y + 1]], place ? MEMORY_TILES.ceiling : TILES.ceiling, { shade: 0.78, flat: true, corner: [nw, ne, se, sw] });
 
       for (let d = 0; d < 4; d++) {
         const nx = x + DX[d];
@@ -475,6 +600,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         // The front desk has a wall behind it, seen from either side, though the map leaves that gap open.
         if (open.has(`${nx},${ny}`) && !shutHere) continue;
         const c = charAt(floor, nx, ny);
+        if (outdoors && c === '#') continue;
         // the riverside's far trees, lower than the courtyard's walls
         const h = place ? place.wallHeight : yard ? YARD_WALL_H : WALL_H;
         let tile: number = TILES.wall + Math.floor(hash(x, y, d) * 2);
@@ -509,11 +635,44 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       }
     }
 
+    if (place && outdoors) {
+      const w = place.map[0].length;
+      const h = place.map.length;
+      const [X0, X1, Y0, Y1] = [1 - OPEN_BEYOND, w - 1 + OPEN_BEYOND, 1 - OPEN_BEYOND, h - 1 + OPEN_BEYOND];
+      const clampX = (x: number) => Math.min(w - 2, Math.max(1, x));
+      const clampY = (y: number) => Math.min(h - 2, Math.max(1, y));
+      for (let y = Y0; y < Y1; y++) {
+        for (let x = X0; x < X1; x++) {
+          if (open.has(`${x},${y}`)) continue;
+          // the nearest ground inside: the river and the sea run on out of sight
+          const near = charAt(floor, clampX(x), clampY(y));
+          groundAt(x, y, near, MEMORY_TILES[place.groundOn?.[near] ?? place.ground]);
+        }
+      }
+      const wallH = place.wallHeight * BEYOND_TALLER;
+      const side = (x: number, y: number, d: number) => {
+        const along = d === 0 ? x : d === 2 ? -x - 1 : d === 1 ? y : -y - 1;
+        const span = place.span;
+        const part: [number, number] | undefined = span > 1 ? [((along % span) + span) % span, span] : undefined;
+        const tile = d === 2 && place.southWall ? place.southWall : place.wall;
+        quad(wallCorners(x, y, d, wallH), MEMORY_TILES[tile], { shade: SIDE_SHADE[d], part, skyline: MEMORY_SKYLINE[tile] });
+      };
+      for (let x = X0; x < X1; x++) {
+        side(x, Y0, 0);
+        side(x, Y1 - 1, 2);
+      }
+      for (let y = Y0; y < Y1; y++) {
+        side(X0, y, 3);
+        side(X1 - 1, y, 1);
+      }
+    }
+
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setAttribute('aShade', new THREE.Float32BufferAttribute(shades, 1));
     geometry.setAttribute('aLit', new THREE.Float32BufferAttribute(lits, 1));
+    geometry.setAttribute('aSky', new THREE.Float32BufferAttribute(skies, 3));
     geometry.setIndex(indices);
     if (building) {
       scene.remove(building);
@@ -731,6 +890,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       shared.uFog.value.set(fog[0], fog[1], fog[2]);
       shared.uFogFar.value = place?.outdoors && !place.thickFog ? 2 : 1;
       renderer.setClearColor(new THREE.Color(fog[0], fog[1], fog[2]));
+      showSky(place?.sky);
       buildFloor(floor, roomShut);
       buildSprites(sprites, pose);
       jump(pose);
@@ -801,6 +961,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       for (const o of cutouts) o.mesh.geometry.dispose();
       for (const m of solids) m.geometry.dispose();
       shadowGeometry.dispose();
+      sky.geometry.dispose();
+      skyMaterial.dispose();
       shadowMaterial.dispose();
       for (const m of Object.values(materials)) m.dispose();
       for (const t of Object.values(textures)) t.dispose();

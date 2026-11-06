@@ -165,6 +165,10 @@ function doorShape(p: Pen, x: number, y: number) {
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
 /** v0.79: the remembered places' own sheet of tiles (places.ts MemoryTile), the same layout as the structure sheet. */
 export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7, sand: 8, sea: 9, paving: 10, marketStreet: 11, yardDirt: 12, yardWall: 13, asphalt: 14, nightAlley: 15 } as const;
+/** v0.85: on a backdrop drawn with its own sky, where that sky starts, as fractions of the height from the bottom: below the
+ * first all of it stays; between the two only what isn't pale sky (treetops, roofs); above the second none, so the sky
+ * over the place (SKY_STRIP) shows instead. */
+export const MEMORY_SKYLINE: Partial<Record<keyof typeof MEMORY_TILES, [number, number]>> = { woods: [0.5, 0.82], farBank: [0.3, 0.5], sea: [0.48, 0.54], marketStreet: [0.5, 0.66], yardWall: [0.18, 0.97] };
 /** And their things and people, cut out like the rest. */
 export const MEMORY_PART = {
   rehabBars: { x: 0, y: 0, w: 256, h: 256 },
@@ -193,8 +197,18 @@ export const MEMORY2_PART = {
   grandson: { x: 256, y: 256, w: 256, h: 512 },
   streetLamp: { x: 512, y: 256, w: 256, h: 512 },
   husband: { x: 768, y: 256, w: 256, h: 512 },
+  // v0.85: what hangs on the hospital's walls (hospitalMap.ts ON_THE_WALLS)
+  noticeBoard: { x: 0, y: 768, w: 256, h: 256 },
+  hillsPicture: { x: 256, y: 768, w: 256, h: 256 },
+  wallClock: { x: 512, y: 768, w: 256, h: 256 },
+  sanitizer: { x: 768, y: 768, w: 256, h: 256 },
 } as const;
 export type Memory2Part = keyof typeof MEMORY2_PART;
+
+/** v0.85: the skies over the remembered places, strips down the sky sheet (build-hospital-sheets.js buildSky). */
+export const SKY_STRIP = { summer: 0, autumn: 1, dusk: 2 } as const;
+export type Sky = keyof typeof SKY_STRIP;
+export const SKY_H = 340;
 
 /** Which window each floor looks out of: the higher, the further down onto the tree. */
 export const WINDOW_TILE: Record<number, number> = { 1: TILES.windowF1, 2: TILES.windowF2, 3: TILES.windowF3, 4: TILES.window };

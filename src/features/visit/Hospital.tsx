@@ -3,7 +3,7 @@ import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, ALONG_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, ON_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
@@ -49,6 +49,9 @@ const BED_FOOT = -0.2;
 // Off the middle of the room, toward the wall with the window: her bed and everything on it.
 const BED_X = 0.4;
 // A chair backs onto the wall it's beside, facing the room.
+// Just off the wall, so it's never lost in it; and how high the bottom of each hangs (the ceiling is at 1.25).
+const WALL_GAP = 0.485;
+const HANG_AT = { noticeBoard: 0.4, hillsPicture: 0.46, wallClock: 0.8, sanitizer: 0.42 } as const;
 const awayFromWall = (across: number, along: number): Dir => (along > 0 ? 0 : along < 0 ? 2 : across > 0 ? 3 : 1);
 // Against the lobby's south wall, the floor guide on the wall behind (v0.78; it stood out in the middle before).
 const GUIDE_CELL = { x: 5, y: 6 };
@@ -175,6 +178,12 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       })
     );
     for (const d of ALONG_THE_WALLS[floor]) out.push({ cell: { x: d[0], y: d[1] }, look: d[2], shift: [d[3], d[4], 0], face: awayFromWall(d[3], d[4]) });
+    // flat against the wall, at the height each would hang, facing out of it
+    for (const [x, y, look, d] of ON_THE_WALLS[floor]) {
+      const across = d === 1 ? WALL_GAP : d === 3 ? -WALL_GAP : 0;
+      const along = d === 2 ? WALL_GAP : d === 0 ? -WALL_GAP : 0;
+      out.push({ cell: { x, y }, look, shift: [across, along, HANG_AT[look]], fixed: true, face: awayFromWall(across, along) });
+    }
     if (floor === 1) {
       // The front desk, between you and whoever's at it, and the shop's counter. Each sign sticks out over the
       // lobby, so you can see it coming along the corridor.

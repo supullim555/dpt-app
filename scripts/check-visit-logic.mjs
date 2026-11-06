@@ -7,7 +7,7 @@ import { PLACES } from '../src/features/visit/places.ts';
 import { findKeyword, validateKeyword } from '../src/features/visit/keyword.ts';
 import { soundsLikeCrisis } from '../src/features/visit/safety.ts';
 import { GIRL_DAYS, girlOn, PIN_ON } from '../src/features/visit/girlDays.ts';
-import { ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, pathTo, LIFT_FRONT, OUTSIDE_ROOM, enterPlace, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
+import { ON_THE_WALLS, ALONG_THE_WALLS, arrival, arrowFor, charAt, canStand, CLUE_CELLS, ENTRANCE, FLOOR_ORDER, BEDSIDE, firstStep, goalFor, HOSPITAL, pathTo, LIFT_FRONT, OUTSIDE_ROOM, enterPlace, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal } from '../src/features/visit/hospitalMap.ts';
 
 // docs/계획서.md
 // the first walk in moves on by what you've done, only forward, and can't strand you
@@ -52,6 +52,25 @@ for (const floor of FLOOR_ORDER) {
     assert.ok(!'#=%NTES&^'.includes(charAt(floor, x, y)), where);
     if (along !== 0) assert.equal(charAt(floor, x, y + Math.sign(along)), '#', `${where}: 벽이어야 함`);
     if (across !== 0) assert.equal(charAt(floor, x + Math.sign(across), y), '#', `${where}: 벽이어야 함`);
+  }
+}
+
+// what hangs on the walls hangs on a plain wall, seen from somewhere you can stand: not a door, and not where a floor
+// number or a window is drawn (hospitalScene.ts buildFloor)
+const SOUTH_WINDOW_ROW = { 1: 6, 2: 7, 3: 7 };
+for (const floor of FLOOR_ORDER) {
+  const used = new Set();
+  for (const [x, y, look, d] of ON_THE_WALLS[floor]) {
+    const where = `${floor}층 ${x},${y} ${look}`;
+    assert.ok(canStand(floor, x, y), `${where}: 설 수 있는 칸`);
+    const dx = [0, 1, 0, -1][d];
+    const dy = [-1, 0, 1, 0][d];
+    assert.equal(charAt(floor, x + dx, y + dy), '#', `${where}: 벽이어야 함`);
+    assert.ok(!(x === 4 && y === 4 && d === 2) && !(((x === 4 || x === 6) && y === 2) && d % 2 === 1), `${where}: 층 번호 자리`);
+    assert.ok(!(floor < 4 && x === 13 && y === SOUTH_WINDOW_ROW[floor] && d === 2) && charAt(floor, x, y) !== 'W', `${where}: 창 자리`);
+    assert.ok(!ALONG_THE_WALLS[floor].some(([ax, ay, , across, along]) => ax === x && ay === y && ((d === 0 && along < 0) || (d === 2 && along > 0) || (d === 1 && across > 0) || (d === 3 && across < 0))), `${where}: 의자나 화분과 겹침`);
+    assert.ok(!used.has(`${x},${y},${d}`), `${where}: 한 벽에 하나`);
+    used.add(`${x},${y},${d}`);
   }
 }
 

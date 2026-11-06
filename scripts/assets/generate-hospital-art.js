@@ -88,6 +88,20 @@ hands unfolding a letter, the writing not visible. Only the hands and forearms s
   // The first day: hair down, both shoulders on the mattress, only her head turning.
   'lying-loose-window': `${LYING_LOOSE} Only her head is turned to the side, her face in profile looking far away out of a window. Calm, a little distant.`,
   'lying-loose-turned': `${LYING_LOOSE} Only her head is turned about halfway back toward the viewer, both eyes visible, looking up from the pillow. The faintest playful hint at the corner of her mouth.`,
+  // v0.85: skies over the remembered places, wrapped round them above the backdrops; and things on the hospital's walls.
+  'sky-summer': `${SAME_STYLE} One square panel completely filled edge to edge with sky only, flat, no frame: a bright open
+summer sky, a few soft rounded cumulus clouds drifting across the lower half, clear and plain towards the top. No ground,
+no horizon, no trees, no buildings, no birds, no sun.`,
+  'sky-autumn': `${SAME_STYLE} One square panel completely filled edge to edge with sky only, flat, no frame: a high clear
+autumn sky, long thin streaks of high wispy clouds and a few small clouds in the lower half, plain towards the top. No
+ground, no horizon, no trees, no buildings, no birds, no sun.`,
+  'sky-dusk': `${SAME_STYLE} One square panel completely filled edge to edge with sky only, flat, no frame: an evening sky at
+dusk just after sunset, long low layered clouds lit softly from below in the lower half, the sky growing darker towards
+the top. No ground, no horizon, no trees, no buildings, no birds, no sun, no moon.`,
+  'wall-decor': `${SAME_STYLE} Four separate things that hang flat on a hospital corridor wall, each whole and seen straight
+on from the front, with no wall drawn around them: a cork notice board with a few blank pinned papers; a simple framed
+picture of calm rolling hills; a round plain wall clock; a small wall-mounted hand sanitizer dispenser. No writing
+anywhere.`,
   // v0.82: the fifth request's memory, an autumn yard with a janggi board
   'yard-scene': `${SAME_STYLE} Two separate square panels side by side with a wide plain gap, each completely filled edge to
 edge, flat, no frame: the far side of a traditional Korean house yard seen straight across, a low stone wall topped with
@@ -200,6 +214,7 @@ stethoscope.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
+const SKY = `${INK} The image fills the whole square canvas edge to edge with no margins. ${NO_MARKS}`;
 const TIRED = path.join(OUT_DIR, 'heads-tied-2-raw.png');
 const LYING_POSE = path.join(OUT_DIR, 'lying-window-raw.png');
 const REFS = { 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
@@ -208,7 +223,7 @@ const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 runGenerateCli({
   outDir: OUT_DIR,
   names: Object.keys(ART),
-  promptFor: (name) => (name.startsWith('lying-') ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
+  promptFor: (name) => (name.startsWith('lying-') ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
   // Null, not undefined: undefined would send the old room's character sheet.
   refFor: (name) => (name === 'heads-loose' ? null : REFS[name] ?? FIRST),
 });

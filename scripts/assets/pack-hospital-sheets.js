@@ -13,7 +13,7 @@ const SINGLES = path.join(GENERATED_DIR, 'hospital-sheets');
 const OUT = path.join(ROOT, 'public', 'hospital', 'sheets.webp');
 const LIST = path.join(ROOT, 'src', 'features', 'visit', 'hospitalSheets.ts');
 // Top to bottom. The key is the name hospitalArt.ts loads it by, the value the file it was built as.
-const ORDER = { structure: 'structure', people: 'people', people2: 'people2', props: 'props', girl: 'girl', lying: 'lying', extra: 'extra', furniture: 'furniture', memory: 'memory', memoryProps: 'memoryprops', memoryProps2: 'memoryprops2' };
+const ORDER = { structure: 'structure', people: 'people', people2: 'people2', props: 'props', girl: 'girl', lying: 'lying', extra: 'extra', furniture: 'furniture', memory: 'memory', memoryProps: 'memoryprops', memoryProps2: 'memoryprops2', sky: 'sky' };
 
 async function pack() {
   const sheets = await Promise.all(Object.values(ORDER).map((n) => sharp(path.join(SINGLES, `sheet-${n}.png`)).extractChannel(0).raw().toBuffer()));

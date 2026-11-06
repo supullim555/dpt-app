@@ -99,6 +99,17 @@ export const ALONG_THE_WALLS: Record<FloorNo, [number, number, 'chairBox' | 'pla
 };
 
 // Same cells as CLUES in progress.ts, by floor.
+/** v0.85: what hangs on the walls, so a corridor isn't a bare white run: the cell it's seen from, what, and which of
+ * that cell's walls (0 north … 3 west). Never a door, a window or a floor number (scripts/check-visit-logic.mjs). */
+export type WallThing = 'noticeBoard' | 'hillsPicture' | 'wallClock' | 'sanitizer';
+export const ON_THE_WALLS: Record<FloorNo, [number, number, WallThing, Dir][]> = {
+  0: [],
+  4: [[2, 4, 'noticeBoard', 0], [8, 4, 'hillsPicture', 0], [12, 4, 'sanitizer', 2], [13, 4, 'wallClock', 1]],
+  3: [[8, 4, 'hillsPicture', 0], [11, 4, 'noticeBoard', 0], [9, 7, 'wallClock', 0], [2, 7, 'sanitizer', 2]],
+  2: [[7, 4, 'noticeBoard', 0], [10, 4, 'hillsPicture', 0], [5, 7, 'wallClock', 2], [2, 7, 'sanitizer', 2]],
+  1: [[7, 4, 'noticeBoard', 0], [10, 4, 'hillsPicture', 0], [13, 4, 'wallClock', 1], [1, 6, 'sanitizer', 3]],
+};
+
 export const CLUE_CELLS: Record<FloorNo, Cell> = { 0: { x: -1, y: -1 }, 4: { x: 11, y: 1 }, 3: { x: 5, y: 9 }, 2: { x: 5, y: 9 }, 1: { x: 13, y: 1 } };
 
 export const DX = [0, 1, 0, -1];

@@ -36,6 +36,10 @@ export type Place = {
   /** How many cells one drawing of the wall runs on across (a backdrop); 1 for an ordinary wall. */
   span: number;
   fog: [number, number, number];
+  /** v0.85: the sky over it (hospitalArt.ts SKY_STRIP), out of doors by day; none at night. */
+  sky?: 'summer' | 'autumn' | 'dusk';
+  /** v0.85: how many times its ground drawing goes across one cell, where once makes the stones or the footprints too big. */
+  groundScale?: number;
   /** Out of doors but with the full fog, not a haze: at night. */
   thickFog?: boolean;
   light: number;
@@ -83,6 +87,7 @@ export const PLACES: Record<PlaceId, Place> = {
     wallHeight: 2.6,
     span: 3,
     fog: [0.8, 0.8, 0.77],
+    sky: 'summer',
     light: 1.14,
     people: { k: { name: '아이', look: 'riverBoy' }, j: { name: '아이', look: 'riverBoy' } },
     meetGoal: '강가의 아이에게 가기',
@@ -163,6 +168,8 @@ export const PLACES: Record<PlaceId, Place> = {
     wallHeight: 2.6,
     span: 3,
     fog: [0.84, 0.84, 0.82],
+    sky: 'summer',
+    groundScale: 2,
     light: 1.16,
     people: { k: { name: '엄마', look: 'mother' }, j: { name: '엄마', look: 'mother' } },
     meetGoal: '파라솔 밑의 엄마에게 가기',
@@ -200,6 +207,8 @@ export const PLACES: Record<PlaceId, Place> = {
     wallHeight: 2.6,
     span: 3,
     fog: [0.62, 0.58, 0.52],
+    sky: 'dusk',
+    groundScale: 2,
     light: 1.04,
     people: { k: { name: '옆 가게 아주머니', look: 'stallKeeper' }, j: { name: '꼬마', look: 'marketKid' } },
     meetGoal: '옆 가게 아주머니에게 가기',
@@ -236,6 +245,8 @@ export const PLACES: Record<PlaceId, Place> = {
     wallHeight: 2.6,
     span: 3,
     fog: [0.78, 0.76, 0.72],
+    sky: 'autumn',
+    groundScale: 2,
     light: 1.12,
     people: { k: { name: '손주', look: 'grandson' }, j: { name: '손주', look: 'grandson' } },
     meetGoal: '장기판 앞에 앉기',
