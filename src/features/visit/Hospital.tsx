@@ -90,6 +90,8 @@ type Props = {
   onTitle: () => void;
   tutorial: TutorialStep;
   onTutorial: (step: TutorialStep) => void;
+  /** Something written to someone sounded like a crisis, and their fixed answer is showing: the hotlines stand out meanwhile. */
+  onCrisis?: (showing: boolean) => void;
   /** Set while the story has you at her bedside: no walking, and the panel below takes the controls' place. */
   bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean; arriving?: string };
 };
@@ -116,7 +118,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, onCrisis, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -140,6 +142,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
   const [aside, setAside] = useState<string | null>(null);
+  const crisisShowing = aside === WRITE_CRISIS;
+  useEffect(() => onCrisis?.(crisisShowing), [crisisShowing, onCrisis]);
   const written = useRef<ChatMessage[]>([]);
   // The step whose explanation has been read in the middle of the screen; after that it waits small at the bottom.
   const [lessonRead, setLessonRead] = useState<TutorialStep | null>(null);

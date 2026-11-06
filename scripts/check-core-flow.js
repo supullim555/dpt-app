@@ -556,12 +556,15 @@ async function main() {
       await t.clickText('들려주기');
       t.note('병문안: 위기 표현엔 고정 대사', await t.waitText('그 말, 그냥 넘기고 싶지 않아.', 3000));
       t.note('병문안: 위기 표현엔 대본·키워드 없음', !(await t.hasText('얘기구나')) && !(await t.hasText('이 핀은 내가 고른 거고')));
+      t.note('병문안: 위기 표현엔 상담 번호가 크게', await t.hasText('지금 바로 이야기할 수 있어요'));
+      await t.shot('crisis_alert.png');
       await t.clickText('그 말, 그냥 넘기고 싶지 않아.');
       await sleep(300);
       await t.clickText('혼자 견디지 않아도 돼. 아래 번호는 24시간 받아 줘.');
       await t.waitText('오늘 얘기 잘 들었어', 3000);
       await t.clickText('오늘 얘기 잘 들었어. 내일 또 와도 되고, 천천히 와도 돼.');
       t.note('병문안: 위기 표현 뒤엔 내보내는 말 대신 배웅', (await t.waitText('조심히 들어가세요', 3000)) && !(await t.hasText('나가 주')));
+      t.note('병문안: 배웅까지 상담 번호가 크게', await t.hasText('지금 바로 이야기할 수 있어요'));
 
       // the week runs out: the empty bed
       await t.clickText('7일 뒤');
@@ -686,8 +689,10 @@ async function main() {
       await sleep(150);
       await t.clickText('말하기');
       t.note('병문안: 직접 쓴 위기 표현은 보내지 않고 안내', await t.waitText('그 말은 그냥 넘기고 싶지 않아요. 혼자 견디지 말고, 아래 번호로 전화해 보세요. 24시간 받아 줘요.', 2000));
+      t.note('병문안: 인물의 안내 동안 상담 번호가 크게', await t.hasText('지금 바로 이야기할 수 있어요'));
       await t.click(195, 170);
       await sleep(200);
+      t.note('병문안: 안내가 지나가면 상담 번호는 원래대로', !(await t.hasText('지금 바로 이야기할 수 있어요')));
       await t.clickText('직접 말하기');
       await sleep(300);
       await t.fillTextarea('아이 열은 언제부터 났어요?');

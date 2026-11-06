@@ -128,6 +128,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const [ackLine, setAckLine] = useState('');
   // Something's been given this visit: everything you carry can be given, one after another (gifts and the things you found)
   const [gaveSome, setGaveSome] = useState(false);
+  // Someone in the hospital is giving their fixed answer to words that sounded like a crisis (Hospital's onCrisis)
+  const [hospitalCrisis, setHospitalCrisis] = useState(false);
   const [memory, setMemory] = useState<ClueId>('collar');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
@@ -508,6 +510,8 @@ export default function VisitScreen(_props: VisitScreenProps) {
   const canTapThrough = lines.length > 0;
 
   const walking = phase === 'walk' || phase === 'outside';
+  // From her answer to words that sounded like a crisis until you're sent out: her lines point at the numbers below
+  const crisisInRoom = replyLines === CRISIS_LINES && (phase === 'reply' || phase === 'bye' || phase === 'staff');
 
   // Everything from the walk up to the goodbye happens in the one 3D hospital. She's a person in her room
   // like everyone else: at her bedside the view comes in on her, and the panel takes the controls' place.
@@ -601,10 +605,11 @@ export default function VisitScreen(_props: VisitScreenProps) {
           onTitle={() => setPhase('title')}
           tutorial={state.tutorial}
           onTutorial={(tutorial) => setState((s) => (s ? { ...s, tutorial } : s))}
+          onCrisis={setHospitalCrisis}
           bedside={walking ? undefined : { below, bubble: inBubble ? spoken : undefined, more: canTapThrough, onPress: canTapThrough ? advance : undefined, girlHere: showGirl, staffIn: phase === 'staff', arriving: phase === 'arrive' ? lines[0] : undefined }}
         />
         {devBar}
-        <CrisisFooter tone="dark" />
+        <CrisisFooter tone="dark" alert={crisisInRoom || hospitalCrisis} />
       </RoomColumn>
     </KeyboardAvoidingView>
   );
