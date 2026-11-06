@@ -216,19 +216,27 @@ stethoscope.`,
 side at the same size and height, standing, arms at her sides, in the modest pajamas buttoned to the neck: seen from
 directly behind so no face shows; turning to look back over her right shoulder at the viewer; and facing the viewer, a
 small calm smile, a little surprised.`,
+  // The cover for showing the game (v0.88). The one place colour is asked for: the amber light and the ginkgo, the
+  // colour her world gets back at the end. The title is set over the empty left side afterwards, not drawn.
+  cover: `${SAME} Her hair loosely tied back, no hairpin. A quiet square cover illustration filling the whole canvas edge
+to edge: she sits up in a hospital bed under a plain blanket, seen from the side, her face in profile, looking out of a
+large window at the right at a big ginkgo tree in the courtyard below. Everything is black ink lines and grey screentone,
+except two things, the only colour in the image: warm amber light coming in through the window and falling across the
+blanket and her face, and the ginkgo's golden leaves outside. The left third of the image is calm and empty, a plain
+hospital wall in soft shadow. Gentle, hopeful, still. ${NO_MARKS}`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
 const SKY = `${INK} The image fills the whole square canvas edge to edge with no margins. ${NO_MARKS}`;
 const TIRED = path.join(OUT_DIR, 'heads-tied-2-raw.png');
 const LYING_POSE = path.join(OUT_DIR, 'lying-window-raw.png');
-const REFS = { 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
+const REFS = { cover: path.join(OUT_DIR, 'heads-tied-raw.png'), 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
 const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 
 runGenerateCli({
   outDir: OUT_DIR,
   names: Object.keys(ART),
-  promptFor: (name) => (name.startsWith('lying-') ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
+  promptFor: (name) => (name.startsWith('lying-') || name === 'cover' ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
   // Null, not undefined: undefined would send the old room's character sheet.
   refFor: (name) => (name === 'heads-loose' ? null : REFS[name] ?? FIRST),
 });

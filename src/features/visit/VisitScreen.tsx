@@ -73,7 +73,7 @@ type VisitState = {
   done: number[];
   told: Told[];
   ending: EndingId | '';
-  /** The day a gift was last bought: one a day. */
+  /** The day a gift was last bought (the goal moves on once you've bought one; you may buy more). */
   boughtDay: number;
   /** Gifts bought and not yet given. */
   gifts: string[];
@@ -575,11 +575,12 @@ export default function VisitScreen(_props: VisitScreenProps) {
           light={light}
           doneToday={phase === 'outside'}
           boughtToday={state.boughtDay === day}
+          held={state.gifts}
           found={state.clues}
           floorsSeen={state.floorsSeen}
           onSeeFloor={(floor) => setState((s) => (s && !s.floorsSeen.includes(floor) ? { ...s, floorsSeen: [...s.floorsSeen, floor] } : s))}
           onEnterRoom={enterRoom}
-          onBuy={(gift) => setState({ ...state, boughtDay: day, gifts: [...state.gifts, gift] })}
+          onBuy={(gift) => setState((s) => (s && !s.gifts.includes(gift) ? { ...s, boughtDay: day, gifts: [...s.gifts, gift] } : s))}
           onFind={(clue) => setState({ ...state, clues: [...state.clues, clue] })}
           onNextDay={() => go({ ...state, skippedDays: state.skippedDays + 1 })}
           metDoctor={state.doctorDays.includes(day)}
