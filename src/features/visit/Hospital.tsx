@@ -6,7 +6,7 @@ import { createHospitalScene, type FocusTarget, type HospitalScene, type Hospita
 import { ahead, ALONG_THE_WALLS, ON_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
+import { boughtLine, CLUE_SPOT, linesOn, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
 import { doctorTalk, personTalk, requestGoal, REQUESTS, type Request, type Talk } from './requests';
 import BreatheTogether from './BreatheTogether';
 import { PLACES, type Place } from './places';
@@ -511,7 +511,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       else {
         // in the hospital, everyone has lines of their own (a remembered place always has a talk)
         const own = PEOPLE[thing.id];
-        setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : own?.clue?.day === day ? [own.clue.line] : own?.lines ?? [] });
+        setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : own?.clue?.day === day ? [own.clue.line] : own ? linesOn(own, day) : [] });
       }
       if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
       else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
@@ -668,13 +668,15 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         )}
 
         <View style={styles.bottomStack} pointerEvents="box-none">
-          {note !== '' && !focused && !bedside && (
+          {/* v0.91: with a tutorial tip up, the note goes in the same box as its first line, not a second box */}
+          {note !== '' && !focused && !bedside && (lesson === undefined || lessonOpen) && (
             <View style={styles.noteBox} pointerEvents="none">
               <Text style={[styles.note, textSize]}>{note}</Text>
             </View>
           )}
           {lesson !== undefined && !lessonOpen && (
             <View style={styles.lesson}>
+              {note !== '' && !focused && !bedside && <Text style={[styles.note, styles.noteInLesson, textSize]}>{note}</Text>}
               <Text style={[styles.lessonText, textSize]}>{lesson}</Text>
               <TouchableOpacity onPress={() => onTutorial('done')} style={styles.lessonLink}>
                 <Text style={[styles.lessonLinkText, { fontSize: 12 * fontScale }]}>{tutorial === 'nextDay' ? TUTORIAL_OK : TUTORIAL_SKIP}</Text>
@@ -992,6 +994,7 @@ const styles = StyleSheet.create({
   lessonLinkText: { color: AMBER, textDecorationLine: 'underline', fontFamily: 'serif' },
   caption: { position: 'absolute', left: 14, right: 14, bottom: 14, backgroundColor: 'rgba(0,0,0,0.85)', borderWidth: 1.5, borderColor: '#f2f2f2', padding: 12 },
   note: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },
+  noteInLesson: { paddingBottom: 8, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.18)' },
   // Above whoever the view has come in on, its tail pointing down at them.
   bubbleWrap: { position: 'absolute', left: 20, right: 20, top: 40, alignItems: 'center' },
   bubble: { alignSelf: 'stretch', backgroundColor: '#f7f7f4', borderWidth: 2.5, borderColor: '#111', paddingHorizontal: 18, paddingVertical: 12, borderTopLeftRadius: 22, borderTopRightRadius: 8, borderBottomRightRadius: 26, borderBottomLeftRadius: 12 },

@@ -81,6 +81,7 @@ export const PLACES: Record<PlaceId, Place> = {
       '~': { text: '강물이 얕게 반짝인다. 깊은 데는 저 멀리다.' },
     },
     ground: 'pebbles',
+    groundScale: 2, // v0.91: once across a cell, each pebble was the size of a person (3 made a frame too slow to draw)
     groundOn: { '~': 'water' },
     wall: 'woods',
     southWall: 'farBank',

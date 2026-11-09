@@ -152,24 +152,29 @@ export const ROOM_SHUT = '치료 중이다. 오늘은 더 들어갈 수 없다.'
 // Who you can talk to, by floor and map letter. `clue` is what they let slip on the day there's something
 // to find near them.
 // She talks through VisitScreen; this entry only names her and draws her.
-export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart; lines: string[]; clue?: { day: number; line: string } }> = {
-  '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'] },
-  '4p': { name: '옆 병실 보호자', look: 'reader', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' } },
-  '4v': { name: '자원봉사자', look: 'volunteer', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'] },
-  '3N': { name: '3층 간호사', look: 'nurse', lines: ['지금은 안 돼요. 저기 의자에 앉아 계세요.'] },
-  '3t': { name: '이송 요원', look: 'porter', lines: ['이거 오늘 못 치워요. 반대로 돌아가세요.'] },
-  '3c': { name: '미화원', look: 'worker', lines: ['층마다 냄새가 달라요. 오래 일하면 알게 돼요.'], clue: { day: 3, line: '휴게실 의자 밑 봉지요, 치우려다 말았어요. 일부러 둔 것 같아서.' } },
-  '3b': { name: '지친 보호자', look: 'visitor', lines: ['미안한데, 화가 나요. 누구한테인지는 모르겠어요.'] },
-  '2d': { name: '곧 퇴원하는 청년', look: 'patient', lines: ['재활실이요? 아래쪽 복도, 가운데 문이요. 저는 이제 안 가도 돼요.'] },
-  '2k': { name: '심심한 아이', look: 'child', lines: ['끝말잇기 할래요? 이기면 재활실 어딘지 알려 줄게요.', '…사실 아래쪽 복도 가운데예요. 수레 때문에 옆으로 돌아가야 해요.'] },
-  '2h': { name: '창가의 할아버지', look: 'grandpa', lines: ['둘 줄 몰라도 돼요. 앉아만 있어요.'] },
-  '2y': { name: '물리치료사', look: 'physio', lines: ['천천히 하면 돼요. 여긴 다들 천천히 해요.'], clue: { day: 4, line: '저 끈이요? 퇴원하는 분이 두고 가셨어요. 찾으러 안 오시네요.' } },
+// `lines` on days 1–2; `later` on days 3–4 and 5–7 (v0.91), so a week of visits doesn't hear the same words. A clue's
+// line still comes first on its day, and the doctor keeps his one line (his requests are their own talk).
+/** What someone says today, apart from their clue and their requests. */
+export const linesOn = (p: { lines: string[]; later?: [string, string] }, day: number) => (p.later && day >= 3 ? [p.later[day >= 5 ? 1 : 0]] : p.lines);
+
+export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart; lines: string[]; later?: [string, string]; clue?: { day: number; line: string } }> = {
+  '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'], later: ['다녀가신 뒤로 그 아이가 창보다 문을 더 봐요.', '요즘 잠이 많아요. 그래도 오실 시간엔 깨어 있으려고 해요.'] },
+  '4p': { name: '옆 병실 보호자', look: 'reader', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' }, later: ['어머니가 오늘은 제 이름을 두 번 불렀어요.', '옆방에서 웃음소리가 나요. 손님 오시는 날만요.'] },
+  '4v': { name: '자원봉사자', look: 'volunteer', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'], later: ['그 아이 편지 부친 거, 저예요. 주소는 정말 아무렇게나 골랐더라고요.', '답장 온 건 당신 하나예요. 그러니까 천천히, 오래 와 주세요.'] },
+  '3N': { name: '3층 간호사', look: 'nurse', lines: ['지금은 안 돼요. 저기 의자에 앉아 계세요.'], later: ['지금은 안 돼요. 오늘은 좀 조용하죠? 조용한 날이 좋은 날이에요.', '아직이에요. 기다리시는 동안 자판기 커피라도 드세요. 따뜻해요.'] },
+  '3t': { name: '이송 요원', look: 'porter', lines: ['이거 오늘 못 치워요. 반대로 돌아가세요.'], later: ['이 수레, 오늘도 못 치워요. 내일은 꼭이요. 아마도요.', '또 막혀 있죠. 반대로 도시면 창이 하나 더 보여요.'] },
+  '3c': { name: '미화원', look: 'worker', lines: ['층마다 냄새가 달라요. 오래 일하면 알게 돼요.'], clue: { day: 3, line: '휴게실 의자 밑 봉지요, 치우려다 말았어요. 일부러 둔 것 같아서.' }, later: ['은행잎이 신발에 붙어 올라와요. 4층까지 따라가더라고요.', '바닥은 매일 닦는데 매일 누가 걸어요. 그게 좋아요.'] },
+  '3b': { name: '지친 보호자', look: 'visitor', lines: ['미안한데, 화가 나요. 누구한테인지는 모르겠어요.'], later: ['어제는 두 시간 잤어요. 많이 잔 거예요.', '아이가 오늘 밥을 반 그릇 먹었어요. …반이요. 반이나요.'] },
+  '2d': { name: '곧 퇴원하는 청년', look: 'patient', lines: ['재활실이요? 아래쪽 복도, 가운데 문이요. 저는 이제 안 가도 돼요.'], later: ['재활실 가는 길은 이제 눈 감고도 가요. 문제는 바깥이죠.', '퇴원하면 뭐 할지 생각 중이에요. 일단 계단부터요.'] },
+  '2k': { name: '심심한 아이', look: 'child', lines: ['끝말잇기 할래요? 이기면 재활실 어딘지 알려 줄게요.', '…사실 아래쪽 복도 가운데예요. 수레 때문에 옆으로 돌아가야 해요.'], later: ['오늘은 가위바위보 해요. …졌다. 재활실은 알죠?', '저 다음 주에 집에 간대요. 그럼 끝말잇기는 누구랑 해요?'] },
+  '2h': { name: '창가의 할아버지', look: 'grandpa', lines: ['둘 줄 몰라도 돼요. 앉아만 있어요.'], later: ['장기는 혼자 둬도 져. 신기하지.', '우리 집 앞에도 은행나무가 있었어. 냄새는 여기가 덜하네.'] },
+  '2y': { name: '물리치료사', look: 'physio', lines: ['천천히 하면 돼요. 여긴 다들 천천히 해요.'], clue: { day: 4, line: '저 끈이요? 퇴원하는 분이 두고 가셨어요. 찾으러 안 오시네요.' }, later: ['오늘은 다들 잘 걸어요. 비 오기 전날은 다들 힘들어하는데.', '천천히 걸으면 못 보던 게 보여요. 저 창틀에 앉은 새 같은 거요.'] },
   '4r': { name: '의사 선생님', look: 'doctor', lines: ['아직 면회 전이시죠? 그 아이 먼저 보고 오세요.'] },
-  '1i': { name: '안내 직원', look: 'receptionist', lines: ['4층이요? 엘리베이터는 저쪽이에요. 층마다 표시가 있어요.'] },
-  '1g': { name: '경비', look: 'guard', lines: ['정문은 늘 열려 있어요. 오는 사람보다 가는 사람이 더 천천히 걷죠.'], clue: { day: 1, line: '자판기 뒤에 뭐가 떨어졌던데, 손이 안 닿아요.' } },
-  '1m': { name: '매점 주인', look: 'shopkeeper', lines: ['어서 와요. 오늘은 이것들이 있어요.'] },
-  '1o': { name: '외래의 어르신', look: 'elder', lines: ['번호가 안 불리네. 앉아요, 어차피 안 불려.'] },
-  '1b': { name: '안뜰 벤치의 할머니', look: 'grandma', lines: ['이 나무가 나보다 늙었어. 잎 지는 건 매년 봐도 아깝더라.'] },
+  '1i': { name: '안내 직원', look: 'receptionist', lines: ['4층이요? 엘리베이터는 저쪽이에요. 층마다 표시가 있어요.'], later: ['또 오셨네요. 이제 제가 안내 안 해 드려도 되겠어요.', '매일 이 시간에 오시네요. 4층에서도 아마 시계 보고 있을 거예요.'] },
+  '1g': { name: '경비', look: 'guard', lines: ['정문은 늘 열려 있어요. 오는 사람보다 가는 사람이 더 천천히 걷죠.'], clue: { day: 1, line: '자판기 뒤에 뭐가 떨어졌던데, 손이 안 닿아요.' }, later: ['은행잎을 세 번 쓸었어요. 바람이 자꾸 도로 가져다 놔요.', '나가실 때 고개 한번 들어 보세요. 4층 창이 여기서 보여요.'] },
+  '1m': { name: '매점 주인', look: 'shopkeeper', lines: ['어서 와요. 오늘은 이것들이 있어요.'], later: ['어서 와요. 오늘 새로 들어온 것들이에요.', '또 왔네요. 오늘 건 내가 몇 개 골라 놨어요.'] },
+  '1o': { name: '외래의 어르신', look: 'elder', lines: ['번호가 안 불리네. 앉아요, 어차피 안 불려.'], later: ['오늘도 안 불려. 그래도 사람 구경은 여기가 낫지.', '젊을 땐 과일을 팔았어. 귤은 껍질만 봐도 알아, 단지 안 단지.'] },
+  '1b': { name: '안뜰 벤치의 할머니', look: 'grandma', lines: ['이 나무가 나보다 늙었어. 잎 지는 건 매년 봐도 아깝더라.'], later: ['반은 떨어졌네. 남은 반이 버티는 게 더 예뻐.', '저 위층 창에서 누가 매일 내려다봐. 손 흔들어 줬는데, 봤으려나.'] },
 };
 
 // Six days of shop stock (the seventh day goes straight to the ending). One a day, given on a later visit.

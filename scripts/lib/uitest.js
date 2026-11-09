@@ -7,7 +7,6 @@
 // Usage:
 //   const { withBrowser } = require('./lib/uitest');
 //   const { passed } = await withBrowser(BASE_URL, async (t) => {
-//     await t.passStartupGates();
 //     t.note('무언가 보임', await t.hasText('무언가'));
 //     await t.shot('01_state.png');
 //   }, { shotDir: __dirname });
@@ -146,14 +145,6 @@ class Tester {
   // Runs the v0.28 startup sequence (IntroGate's one disclaimer tap → GateScreen's first
   // question → skip) that sits at the top of nearly every check. AI starts off; a check that
   // needs it turns it on from Home's ✨ prompt.
-  async passStartupGates() {
-    await this.waitText('시작하기 전에', 12000);
-    await this.clickText('시작하기');
-    await sleep(800);
-    await this.waitText('건너뛰기', 12000);
-    await this.clickText('건너뛰기');
-    await sleep(1200);
-  }
 
   // Prints console exceptions + the OK/BAD list and returns whether every check passed.
   summary() {

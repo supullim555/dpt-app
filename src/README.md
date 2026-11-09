@@ -1,53 +1,39 @@
 # src/ 구조 안내
 
-코드는 **역할별 층(layer)** 으로 나뉘고, 기능 코드는 **기능별 폴더(feature)** 에 모여 있다. 한 기능을 고칠 때는 보통 그 기능 폴더 하나만 열면 된다.
+이 앱은 **병문안** 하나다(v0.91에서 예전 앱의 방, 퀘스트, 운동, 탭, 로그인, 자유 AI 대화를 지웠다. git 기록에는 남아 있다). 코드는 **역할별 층(layer)** 으로 나뉘고, 기능 코드는 **기능별 폴더(feature)** 에 모여 있다.
 
-```
+```text
 src/
-├─ core/        앱 내용을 모르는 범용 부품 — 다른 프로젝트에 그대로 가져가도 되는 것
+├─ core/        앱 내용을 모르는 범용 부품
 │  ├─ lib/        date · http · keyedLock · mergeWithDefaults · confirm
 │  ├─ hooks/      useAsyncEffect · useTimeout/useTimer · useSubmitOnEnter
 │  ├─ anim/       nativeDriver · useBreathPacer
-│  └─ storage.ts  saveEntry · loadEntryOr · updateEntry · createLog
-├─ ui/          앱 공통 모양과 틀 — theme, FloatingPanel, IconOrEmoji, ScreenHeader,
-│               CrisisFooter, TapHintChevron, PanelVisibility, useRoomBoxSize
-├─ features/    기능 하나 = 폴더 하나
-│  ├─ onboarding/  IntroGate(첫 실행 고지) · AccountScreen(선택 계정) · Supabase
-│  ├─ gate/        들어오기(S0): 감정 고르기 · 마음의 무게 · (무거우면) 같이 숨 고르기 · 방문 기록
-│  ├─ home/        홈 화면 — 하루 체크인, 실습 패널, 퀘스트 위젯을 조립
-│  ├─ dialogue/    "캐릭터가 묻고 내가 답하는" 대화 엔진(탭 선택지 + 원할 때 글쓰기)과 완료 처리
-│  ├─ exercises/   실습 정의(EXERCISES)와 퀘스트 위젯
-│  ├─ memory/      답변 기록 · 콜백(지난번에 ~라고 했었죠) · 메모 화면
-│  ├─ ai/          Gemini 자유 대화 (README.md 먼저)
-│  ├─ progress/    오늘 한 것 · 방에 놓인 소품 (ProgressContext) — 점수·보상은 없음
-│  ├─ room/        방 그리기 · 가구 배치 · 방 안의 캐릭터
-│  ├─ character/   스프라이트 · 초상화 · 대기 동작
-│  ├─ relief/      숨 고르기
-│  └─ visit/       병문안: 7일 진행과 엔딩, 키워드, 위험 표현 검사, 임시 대사 (?visit=1에서만)
-├─ app/         조립 — 내비게이션, 에셋 미리 불러오기
-└─ assets/      이미지와 그 목록(registry) 파일
+│  └─ storage.ts  saveEntry · loadEntryOr · updateEntry
+├─ ui/          공통 모양과 틀 — theme, CrisisFooter(상담 전화 줄), RoomColumn, useRoomBoxSize
+├─ features/
+│  ├─ ai/          병원 인물의 AI 대답(서버 api/chat.ts를 거침)과 켜고 끄는 설정 (README.md 먼저)
+│  └─ visit/       병문안 전부: 7일 진행과 엔딩, 3D 병원(hospitalScene), 대사(script.ts), 의사의 부탁(requests.ts),
+│                  회상 공간(places.ts), 키워드, 위험 표현 검사, 컷씬(CardScene, cutscenes.ts)
+├─ app/         조립 — 그림 미리 불러오기
+└─ assets/      화면에 쓰는 종이·오프닝 그림과 그 목록(visitUi.ts). 병원 그림은 public/hospital/sheets.webp
 ```
 
 ## 규칙 (`npm run verify`가 자동으로 검사 — `scripts/check-architecture.js`)
 
 1. **아래 층은 위 층을 모른다.** `core` ← `ui` ← `features` ← `app`. 예: `ui/`는 어떤 기능도 import하지 않는다.
-2. **다른 기능은 정문으로만.** 다른 기능의 것은 `@/features/<이름>`(그 폴더의 `index.ts`)에서만 가져온다. 내부 파일을 직접 가리키지 않는다. `index.ts`에 없는 것은 그 기능의 내부 사정이다.
+2. **다른 기능은 정문으로만.** 다른 기능의 것은 `@/features/<이름>`(그 폴더의 `index.ts`)에서만 가져온다.
 3. **같은 기능 안에서는 상대 경로**(`./x`), 층을 넘을 때는 `@/` 별칭(`@/core/...`, `@/ui/...`).
-4. **화면(`*Screen.tsx`)은 `app/navigation`만** 직접 가져다 쓴다. 그래서 기능의 `index.ts`에는 화면을 넣지 않는다.
-5. `import type`은 1·2번 방향 규칙에서 예외다. 런타임에 사라지므로 순환 의존을 만들지 않는다. 예: 화면이 `@/app/navigation/types`에서 props 타입을 가져온다.
+4. `import type`은 1·2번 방향 규칙에서 예외다. 런타임에 사라지므로 순환 의존을 만들지 않는다.
 
-지금 기능 사이 의존은 한 방향으로만 흐른다. `room`→`character`, `dialogue`→`progress`·`memory`·`character`, `exercises`→`ai`, `room`은 `progress`의 `roomItems`를 화면에서 받는다. 이 방향을 거스르는 import가 필요해 보이면 공용 부분을 아래 층으로 내리라는 신호다.
-
-## 자주 하는 추가 작업
+## 자주 하는 작업
 
 | 하고 싶은 것 | 고칠 곳 |
 | :---- | :---- |
-| **실습 추가** | `features/exercises/exercises.ts`의 `EXERCISES`에 항목 하나 추가(`id`, `shortLabel`, `questions` …). 퀘스트 버튼과 메모 제목은 자동으로 따라온다. 아이콘은 선택: 없으면 이모지가 나오고, 만들려면 `scripts/assets/generate-quest-icons.js` → `extract-quest-icons.js` → `assets/questIcons.ts` |
-| **질문을 탭 선택지로** | `questions`에 문자열 대신 `{ text, choices: [...] }`. "직접 쓸게요"는 자동으로 붙는다 |
-| **가구 추가** | `features/room/objects.ts`의 `ROOM_OBJECTS`에 한 줄(`later: true`면 처음엔 없고, `progress`의 `grantRoomItem(id)`으로 방에 나타난다). 그림은 `scripts/assets/generate-room-objects.js`·`extract-room.js`의 목록에 이름 추가 |
-| **저장할 데이터 추가** | 한 값이면 `saveEntry`/`loadEntryOr`, 쌓이는 목록이면 `createLog(key, { max })`, 읽고 고쳐 쓰면 `updateEntry`. 진행 상태 필드면 `ProgressContext`의 `DEFAULT_STATE`에만 추가한다(옛 저장 병합은 `mergeWithDefaults`가 처리) |
-| **타이머** | 컴포넌트에서 `setTimeout`을 직접 쓰지 않는다. 렌더 기반이면 `useTimeout(cb, ms \| null)`, 이벤트에서 걸면 `useTimer().schedule` |
-| **호흡·진정 루틴** | `core/anim/useBreathPacer(phases, { cycles, running, onDone })` |
+| **대사** | `features/visit/script.ts` (소녀, 병원 사람, 선물 반응, 회상, 엔딩). 병원 사람은 `lines`(1~2일째)와 `later`(3~4일째, 5~7일째) |
+| **의사의 부탁과 그 인물** | `features/visit/requests.ts` (대화 흐름, AI에 주는 인물 설명 `personaPrompt`) |
+| **병원 지도** | `features/visit/hospitalMap.ts`, 설명은 `docs/병원_지도.md` |
+| **그림** | `scripts/assets/`의 생성·보정·시트 스크립트. 시트를 바꾸면 `pack-hospital-sheets.js`가 주소의 해시까지 바꾼다 |
+| **영상 컷씬** | `scripts/assets/build-cutscenes.js`와 `scripts/assets/cutscenes/*.jsx`(EffectCraft) |
+| **저장할 데이터** | `features/visit/VisitScreen.tsx`의 `VisitState`와 `INITIAL`(옛 저장 병합은 `mergeWithDefaults`) |
+| **타이머** | 컴포넌트에서 `setTimeout`을 직접 쓰지 않는다. `useTimeout(cb, ms \| null)` 또는 `useTimer().schedule` |
 | **서버 요청** | `core/lib/http.ts`의 `postJson`(시간 제한 포함) |
-| **새 화면** | `features/<기능>/XScreen.tsx` → `app/navigation/types.ts`에 경로 추가 → `RootNavigator`나 `MainTabs`에 등록 |
-| **새 기능 폴더** | `features/<이름>/`을 만들고, 다른 기능이 쓸 것만 `index.ts`에서 export한다 |

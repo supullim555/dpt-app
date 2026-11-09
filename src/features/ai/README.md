@@ -1,3 +1,20 @@
+# AI — 병원 인물의 대답만 (v0.91)
+
+**지금 사실:** 이 폴더는 병문안에서 의사의 부탁을 받은 병원 인물 6명이 플레이어가 직접 쓴 글에 그 인물로서
+대답하는 데만 쓰인다. 소녀는 AI를 쓰지 않는다(대본과 기기 안 규칙, `features/visit/keyword.ts`).
+
+- `chatClient.ts`의 `sendPersonaMessage` → 서버 `api/chat.ts`(키는 서버에만) → Gemini. 서버는 `mode: 'persona'`와
+  `requests.ts`에 있는 인물만 받는다. 인물 설명(`personaPrompt`)은 서버가 정하고, 요청이 바꿀 수 없다.
+- 켜는 곳: 설정의 "AI와 직접 대화"(`preference.ts`, 기본 꺼짐). 서버 쪽에도 `AI_CHAT_ENABLED`와 `GEMINI_API_KEY`가
+  있어야 한다(둘 중 하나라도 없으면 503).
+- 보내기 전에 `features/visit/safety.ts`로 위험 표현을 확인하고, 걸리면 보내지 않는다.
+- v0.91에서 예전 앱의 자유 대화 화면(AiChatScreen), 시스템 프롬프트, 요약 모드를 지웠다. 키가 아무 대화에나
+  쓰이지 않게 하려는 것이다.
+
+---
+
+아래는 이 폴더를 처음 만들 때의 기록이다(예전 앱 기준이라 일부는 더 이상 맞지 않는다).
+
 # AI chat scaffold — active (§25, 2026-10-08)
 
 Prepared ahead of time per the user's 2026-09-23 request ("나중에 Gemini API 사용해서 자율적으로

@@ -1,17 +1,16 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { Image, ImageBackground, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { VisitScreenProps } from '@/app/navigation/types';
 import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
 import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
 import { confirmDestructive } from '@/core/lib/confirm';
 import { daysBetween, localDateKey } from '@/core/lib/date';
 import { mergeWithDefaults } from '@/core/lib/mergeWithDefaults';
 import { loadEntryOr, saveEntry } from '@/core/storage';
-import { EmotionPicker } from '@/features/gate';
+import EmotionPicker from './EmotionPicker';
 import CrisisFooter from '@/ui/CrisisFooter';
 import RoomColumn from '@/ui/RoomColumn';
-import { VISIT_OPENING, VISIT_PANEL } from '@/assets/visitUi';
+import { VISIT_CARDS, VISIT_OPENING, VISIT_PANEL } from '@/assets/visitUi';
 import CardScene from './CardScene';
 import { VISIT_DEV } from './flag';
 import Hospital from './Hospital';
@@ -52,6 +51,7 @@ import {
   TELL_QUESTION,
   TUTORIAL_GIVE,
   TUTORIAL_TELL,
+  HINT_TITLE,
 } from './script';
 
 const STORAGE_KEY = 'visit.state';
@@ -118,7 +118,7 @@ function resume(s: VisitState): { state: VisitState; phase: Phase } {
 // 병문안 (docs/계획서.md): first person, into the room, tell her about today, hear a little of hers. She
 // speaks in a bubble beside her. The player's words only ever come back verbatim: one checked keyword,
 // and her notebook at the end. Everything else she says is human-written (script.ts).
-export default function VisitScreen(_props: VisitScreenProps) {
+export default function VisitScreen() {
   const insets = useSafeAreaInsets();
   const [state, setState] = useState<VisitState | null>(null);
   const [phase, setPhase] = useState<Phase>('title');
@@ -318,9 +318,16 @@ export default function VisitScreen(_props: VisitScreenProps) {
       <View style={styles.screen}>
         <RoomColumn>
           <View style={styles.titleCard}>
+            <Text style={[styles.noticeTitle, { fontSize: 18 * scale }]}>시작하기 전에</Text>
             <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>
               오래 아픈 아이를 찾아가는 이야기예요. 아픔과 이별을 다뤄요. 가까운 사람을 잃은 지 얼마 안 됐거나 지금 많이
               힘들다면, 나중에 시작해도 괜찮아요.
+            </Text>
+            {/* From the earlier app's first screen (v0.91), corrected: with AI on, what's written to the hospital's people does leave the device */}
+            <Text style={[styles.noticeSmall, { fontSize: 13 * scale, lineHeight: 20 * scale }]}>
+              이 게임은 치료가 아니에요. 전문가의 도움을 대신하지 않아요.{'\n'}
+              여기에 쓰는 글은 이 기기에만 저장돼요. 설정에서 AI 대화를 켤 때만, 병원 사람에게 쓴 글이 Google Gemini로
+              보내져요.
             </Text>
             <PaperButton
               label="들어가 볼게요"
@@ -566,11 +573,28 @@ export default function VisitScreen(_props: VisitScreenProps) {
       )}
 
       {phase === 'fairy' && (
-        <View style={styles.textBox}>
-          <View style={styles.center}>
-            <Text style={[styles.prompt, { fontSize: 15 * scale, lineHeight: 23 * scale }]}>{[...FAIRY_LINES, ...hintLines()].join('\n')}</Text>
-            <PaperButton label="다시 찾아가기" onPress={startOver} />
-          </View>
+        // v0.91: the narration, her words with room between them, and the list on a note of its own
+        <ScrollView style={styles.fairyBox} contentContainerStyle={styles.fairyInner}>
+          <Text style={[styles.fairyNarration, { fontSize: 13 * scale, lineHeight: 20 * scale }]}>{FAIRY_LINES[0]}</Text>
+          {FAIRY_LINES.slice(1).map((line) => (
+            <Text key={line} style={[styles.prompt, { fontSize: 14 * scale, lineHeight: 21 * scale }]}>
+              {line}
+            </Text>
+          ))}
+          <ImageBackground source={VISIT_CARDS[0]} resizeMode="stretch" imageStyle={styles.fillImage} style={styles.fairyNote}>
+            <Text style={[styles.fairyNoteTitle, { fontSize: 13 * scale }]}>{HINT_TITLE}</Text>
+            {hintLines().map((line) => (
+              <Text key={line} style={[styles.fairyNoteLine, { fontSize: 13 * scale, lineHeight: 19 * scale }]}>
+                {line}
+              </Text>
+            ))}
+          </ImageBackground>
+        </ScrollView>
+      )}
+      {/* outside the scroll, so it's never below the fold */}
+      {phase === 'fairy' && (
+        <View style={styles.fairyAction}>
+          <PaperButton label="다시 찾아가기" onPress={startOver} />
         </View>
       )}
 
@@ -629,6 +653,13 @@ const styles = StyleSheet.create({
   answer: { gap: 10, alignItems: 'center' },
   input: { alignSelf: 'stretch', minHeight: 84, color: '#fff', borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000', padding: 12, lineHeight: 22, textAlignVertical: 'top', fontFamily: 'serif' },
   prompt: { color: '#fff', textAlign: 'center', fontFamily: 'serif' },
+  fairyAction: { alignItems: 'center', paddingTop: 10 },
+  fairyBox: { flexShrink: 1, maxHeight: '86%', borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000' },
+  fairyInner: { padding: 14, gap: 7, alignItems: 'center' },
+  fairyNarration: { color: 'rgba(255,255,255,0.65)', fontFamily: 'serif', fontStyle: 'italic', textAlign: 'center' },
+  fairyNote: { alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 18, marginTop: 6, alignItems: 'center', gap: 4 },
+  fairyNoteTitle: { color: '#3a3428', fontFamily: 'serif', opacity: 0.75, marginBottom: 4 },
+  fairyNoteLine: { color: '#1f1b14', fontFamily: 'serif', textAlign: 'center' },
   // ImageBackground's image otherwise keeps the file's own size on web and overflows.
   fillImage: { width: '100%', height: '100%' },
   titleCard: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
@@ -639,6 +670,8 @@ const styles = StyleSheet.create({
   titleMenu: { alignItems: 'center', gap: 12, paddingBottom: 26 },
   titleDay: { color: AMBER, fontSize: 40, fontFamily: 'serif' },
   titleText: { color: '#fff', fontSize: 24, fontFamily: 'serif' },
+  noticeTitle: { color: '#fff', fontFamily: 'serif', textAlign: 'center', marginBottom: 14 },
+  noticeSmall: { color: 'rgba(255,255,255,0.7)', fontFamily: 'serif', textAlign: 'center', marginTop: 4, marginBottom: 18 },
   titleLine: { color: 'rgba(255,255,255,0.65)', fontSize: 14, marginBottom: 18, fontFamily: 'serif' },
   settingsHeading: { color: '#fff', fontFamily: 'serif', marginBottom: 10 },
   settingsLabel: { color: 'rgba(255,255,255,0.75)', fontFamily: 'serif' },

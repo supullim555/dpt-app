@@ -14,23 +14,22 @@
 // vs. this server switch: a user deciding to turn AI on, and this deployment having a key
 // configured at all, are separate facts.
 
-import { SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT } from '../src/features/ai/systemPrompt';
 import { personaPrompt, REQUESTS } from '../src/features/visit/requests';
 
 export const config = { runtime: 'edge' };
 
 type ChatMessage = { role: 'user' | 'assistant'; text: string };
-type ChatRequest = { history?: ChatMessage[]; message?: string; mode?: 'chat' | 'summarize' | 'persona'; persona?: string };
+// v0.91: only the hospital's people answer here. The earlier app's free chat and summaries are gone with it, so
+// this key can't be used as a general chatbot: who answers, and how, is always one of REQUESTS, set here.
+type ChatRequest = { history?: ChatMessage[]; message?: string; mode?: 'persona'; persona?: string };
 
-// Keep in sync with src/features/ai/config.ts's AI_CHAT_MODEL. gemini-2.5-flash (tried first) returned
-// HTTP 404 "no longer available to new users" for this project's key — Google's own error
-// pointed to this one instead. Verified with one real generateContent call on 2026-10-08:
-// HTTP 200, system_instruction honored (reply matched systemPrompt.ts's tone and didn't
-// diagnose or advise), reply text at candidates[0].content.parts[0].text as expected. Re-check
-// against the live catalogue (GET v1beta/models) before assuming this is still current later.
+// Keep in sync with src/features/ai/config.ts's AI_CHAT_MODEL. Re-check against the live catalogue
+// (GET v1beta/models) before assuming it's still current.
 const MODEL = 'gemini-3.8-flash';
-const MAX_HISTORY_TURNS = 20;
-const MAX_MESSAGE_LENGTH = 2000;
+// A conversation with one person is short (the client keeps the last 12 turns); a longer one is cut here.
+const MAX_HISTORY_TURNS = 12;
+const MAX_HISTORY_TEXT = 600;
+const MAX_MESSAGE_LENGTH = 1000;
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -38,7 +37,6 @@ function json(body: unknown, status: number): Response {
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
-
   if (process.env.AI_CHAT_ENABLED !== 'true') {
     return json({ error: 'AI chat is not enabled.' }, 503);
   }
@@ -52,40 +50,17 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ error: 'Invalid JSON body.' }, 400);
   }
 
-  const history = (body.history ?? []).slice(-MAX_HISTORY_TURNS);
-  const toContent = (m: ChatMessage) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
-
-  let systemPrompt: string;
-  let contents: ReturnType<typeof toContent>[];
-
-  if (body.mode === 'summarize') {
-    // No new message — the whole point is to recap `history` itself. Needs at least one real
-    // user turn, otherwise there's nothing to summarize (the chat's opening line is local UI
-    // framing never sent as history in the first place — see AiChatScreen).
-    if (!history.some((m) => m.role === 'user')) {
-      return json({ error: 'Nothing to summarize yet.' }, 400);
-    }
-    // Replaying `history` as alternating turns (like the chat branch does) fails here: Gemini
-    // rejects any request ending on a model turn ("Requests ending with a model turn are not
-    // supported", confirmed with a real call) — and a conversation naturally ends on whichever
-    // side spoke last, often the assistant. Sidestepped by flattening the whole transcript into
-    // ONE user-role message instead of replaying it as multi-turn history; SUMMARY_SYSTEM_PROMPT
-    // already tells the model what to do with a transcript shaped like this.
-    const transcript = history.map((m) => `${m.role === 'user' ? '사용자' : '캐릭터'}: ${m.text}`).join('\n');
-    systemPrompt = SUMMARY_SYSTEM_PROMPT;
-    contents = [{ role: 'user', parts: [{ text: transcript }] }];
-  } else {
-    const message = body.message?.trim();
-    if (!message) return json({ error: 'message is required.' }, 400);
-    if (message.length > MAX_MESSAGE_LENGTH) return json({ error: 'message is too long.' }, 400);
-    // 병문안: someone in the hospital answers. Who they are comes from here, never from the request.
-    if (body.mode === 'persona') {
-      const who = REQUESTS.find((r) => r.who === body.persona);
-      if (!who) return json({ error: 'Unknown persona.' }, 400);
-      systemPrompt = personaPrompt(who);
-    } else systemPrompt = SYSTEM_PROMPT;
-    contents = [...history.map(toContent), { role: 'user', parts: [{ text: message }] }];
-  }
+  const who = REQUESTS.find((r) => r.who === body.persona);
+  if (body.mode !== 'persona' || !who) return json({ error: 'Unknown persona.' }, 400);
+  const message = body.message?.trim();
+  if (!message) return json({ error: 'message is required.' }, 400);
+  if (message.length > MAX_MESSAGE_LENGTH) return json({ error: 'message is too long.' }, 400);
+  const history = (Array.isArray(body.history) ? body.history : [])
+    .slice(-MAX_HISTORY_TURNS)
+    .filter((m) => m && typeof m.text === 'string')
+    .map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text.slice(0, MAX_HISTORY_TEXT) }] }));
+  const systemPrompt = personaPrompt(who);
+  const contents = [...history, { role: 'user', parts: [{ text: message }] }];
 
   let res: Response;
   try {
