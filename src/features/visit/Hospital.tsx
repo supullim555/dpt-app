@@ -13,6 +13,7 @@ import { PLACES, type Place } from './places';
 import Minimap from './Minimap';
 import { soundsLikeCrisis } from './safety';
 import { sendPersonaMessage, type ChatMessage } from '@/features/ai';
+import { play } from './sound';
 import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
 
 const AMBER = '#d9a441';
@@ -338,6 +339,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const nextStep = facingShutDoor ? null : stepped(pose);
   const forward = () => {
     if (blocked() || !nextStep) return;
+    play('step');
     moveTo(nextStep);
     if (memory?.stage === 'lost') {
       const step = memory.step + 1;

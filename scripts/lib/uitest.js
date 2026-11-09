@@ -56,7 +56,7 @@ class Tester {
   }
 
   async evalJs(expression) {
-    return (await this.send('Runtime.evaluate', { expression, returnByValue: true })).result?.result?.value;
+    return (await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })).result?.result?.value;
   }
 
   async click(x, y) {

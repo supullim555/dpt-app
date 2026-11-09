@@ -11,7 +11,9 @@ import EmotionPicker from './EmotionPicker';
 import CrisisFooter from '@/ui/CrisisFooter';
 import RoomColumn from '@/ui/RoomColumn';
 import { VISIT_CARDS, VISIT_OPENING, VISIT_PANEL } from '@/assets/visitUi';
-import CardScene from './CardScene';
+import CardScene, { type Beat } from './CardScene';
+import { MEMORY_FILM } from './cutscenes';
+import { play, setSoundOn, unlockSound } from './sound';
 import { VISIT_DEV } from './flag';
 import Hospital from './Hospital';
 import { findKeyword } from './keyword';
@@ -56,6 +58,13 @@ import {
 
 const STORAGE_KEY = 'visit.state';
 
+// Her memory as she tells it, with the remembered day filmed after she's said what it was (v0.92). The film stands in
+// for no card (covers 0): if it can't play, she just goes on talking.
+const memoryBeats = (clue: ClueId): Beat[] => {
+  const lines = CLUE_TEXT[clue].lines.map((text) => ({ text }));
+  return [...lines.slice(0, 2), { video: MEMORY_FILM[clue], covers: 0 }, ...lines.slice(2)];
+};
+
 // The one colour in the game (docs/병문안_모티브와_아트_구상.md): the light in the window, grey at
 // first and full amber by the last day. Without the girl it stays grey.
 const AMBER = '#d9a441';
@@ -88,6 +97,8 @@ type VisitState = {
   tutorial: TutorialStep;
   /** Setting. Survives starting over. */
   fontScale: number;
+  /** v0.92: music and the small sounds (settings). */
+  sound: boolean;
   /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
   skippedDays: number;
   /** Days on which you went to the doctor's room after seeing her. */
@@ -98,7 +109,7 @@ type VisitState = {
   requestsTold: number[];
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, sound: true, skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
@@ -147,6 +158,7 @@ export default function VisitScreen() {
     // Saved before there was a tutorial, by someone already on their way.
     const loaded = merged.startDate && !(saved as { tutorial?: string }).tutorial ? { ...merged, tutorial: 'done' as const } : merged;
     setState(loaded);
+    setSoundOn(loaded.sound);
     setPhase(loaded.noticeSeen ? 'title' : 'notice');
   }, []);
 
@@ -168,6 +180,7 @@ export default function VisitScreen() {
   };
 
   const enterRoom = () => {
+    play('door');
     const startDate = state.startDate || localDateKey();
     setState({ ...state, startDate, visited: state.visited.includes(day) ? state.visited : [...state.visited, day] });
     setPhase('arrive');
@@ -229,6 +242,7 @@ export default function VisitScreen() {
   };
 
   const giveGift = (name: string) => {
+    play('give');
     setGaveSome(true);
     setState({ ...state, gifts: state.gifts.filter((g) => g !== name) });
     setAckLine(giftLine(name));
@@ -236,6 +250,7 @@ export default function VisitScreen() {
   };
 
   const showClue = (clue: ClueId) => {
+    play('give');
     setGaveSome(true);
     setState({ ...state, shown: [...state.shown, clue] });
     setMemory(clue);
@@ -332,6 +347,7 @@ export default function VisitScreen() {
             <PaperButton
               label="들어가 볼게요"
               onPress={() => {
+                unlockSound();
                 setState({ ...state, noticeSeen: true });
                 setPhase('title');
               }}
@@ -353,7 +369,13 @@ export default function VisitScreen() {
             <Text style={styles.gameTitle}>{GAME_TITLE}</Text>
           </View>
           <View style={styles.titleMenu}>
-            <PaperButton label={state.startDate ? '이어하기' : '이야기 시작'} onPress={() => go(state)} />
+            <PaperButton
+              label={state.startDate ? '이어하기' : '이야기 시작'}
+              onPress={() => {
+                unlockSound();
+                go(state);
+              }}
+            />
             <PaperButton label="설정" onPress={() => setPhase('settings')} />
           </View>
           <CrisisFooter tone="dark" />
@@ -381,6 +403,26 @@ export default function VisitScreen() {
                   onPress={() => setState({ ...state, fontScale: o.value })}
                 >
                   <Text style={[styles.optionText, state.fontScale === o.value && styles.optionTextOn]}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>소리</Text>
+            <View style={styles.settingsRow}>
+              {[
+                { label: '끄기', value: false },
+                { label: '켜기', value: true },
+              ].map((o) => (
+                <TouchableOpacity
+                  key={o.label}
+                  style={[styles.option, state.sound === o.value && styles.optionOn]}
+                  onPress={() => {
+                    setState({ ...state, sound: o.value });
+                    setSoundOn(o.value);
+                    if (o.value) unlockSound();
+                  }}
+                >
+                  <Text style={[styles.optionText, state.sound === o.value && styles.optionTextOn]}>{o.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -458,7 +500,13 @@ export default function VisitScreen() {
             <Text style={styles.titleDay}>{day}일째</Text>
             <Text style={styles.titleText}>{DAY_TITLES[day]}</Text>
             <Text style={styles.titleLine}>병원 정문 앞에 서 있다.</Text>
-            <PaperButton label="들어가기" onPress={() => setPhase('walk')} />
+            <PaperButton
+              label="들어가기"
+              onPress={() => {
+                play('door');
+                setPhase('walk');
+              }}
+            />
           </View>
           <CrisisFooter tone="dark" />
         </RoomColumn>
@@ -470,7 +518,7 @@ export default function VisitScreen() {
     return (
       <View style={styles.screen}>
         <RoomColumn>
-          <CardScene title={CLUE_TEXT[memory].memory} beats={CLUE_TEXT[memory].lines.map((text) => ({ text }))} fontScale={scale} onDone={afterGiving} />
+          <CardScene title={CLUE_TEXT[memory].memory} beats={memoryBeats(memory)} fontScale={scale} onDone={afterGiving} />
         </RoomColumn>
       </View>
     );

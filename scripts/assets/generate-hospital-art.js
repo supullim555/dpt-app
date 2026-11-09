@@ -224,6 +224,39 @@ large window at the right at a big ginkgo tree in the courtyard below. Everythin
 except two things, the only colour in the image: warm amber light coming in through the window and falling across the
 blanket and her face, and the ginkgo's golden leaves outside. The left third of the image is calm and empty, a plain
 hospital wall in soft shadow. Gentle, hopeful, still. ${NO_MARKS}`,
+  // Her four memories as short films (v0.92): a square place, and its people cut out on green to stand in front of it.
+  // She is younger there, about eleven and well, the same face and the same bob, modestly dressed.
+  'mem-collar-bg': `${SAME_STYLE} One square panel completely filled edge to edge, no frame, nobody in it: a quiet residential
+street at early morning seen from the pavement, low houses with small gates, telephone poles and wires, long soft
+shadows, the sky pale with dawn, a little mist far down the street.`,
+  'mem-collar-fig': `The same girl as in the attached image, but younger, about eleven, healthy and lively, the same face and
+shoulder-length bob, in exactly the same drawing style, in a plain hooded sweatshirt, trousers and sneakers. Two separate
+things: her full body running to the right seen from the side, laughing, one hand holding a dog's leash out in front of
+her; and a small scruffy mixed-breed dog running to the right seen from the side, ears flying, its leash trailing
+behind.`,
+  'mem-snack-bg': `${SAME_STYLE} One square panel completely filled edge to edge, no frame, nobody in it: the front of a small
+neighbourhood convenience store in the late afternoon after school, seen straight on, its glass door and shelves inside,
+a striped awning, and a plastic table with two plastic chairs on the pavement in front.`,
+  'mem-snack-fig': `The same girl as in the attached image, but younger, about eleven, healthy and lively, the same face and
+shoulder-length bob, in exactly the same drawing style, in a plain school uniform with a cardigan. Three separate
+things: her full body sitting on a low invisible seat seen from the side facing right, reaching out with one hand,
+laughing; a different girl the same age, her friend, with a short ponytail and round glasses, full body sitting facing
+left, holding a small snack bag away and laughing; and an open snack bag with one last piece showing.`,
+  'mem-laces-bg': `${SAME_STYLE} One square panel completely filled edge to edge, no frame, nobody in it: a primary school sports
+ground on sports day, a dirt running track with white lane lines curving away, strings of small flags overhead, a low
+school building far behind, a bright open sky.`,
+  'mem-laces-fig': `The same girl as in the attached image, but younger, about eleven, healthy and lively, the same face and
+shoulder-length bob, in exactly the same drawing style, in a plain gym t-shirt and shorts with a headband. Two separate
+things: her full body running straight toward the viewer, out of breath, cheeks puffed, last in the race but smiling;
+and two other children running away from the viewer far ahead, small, seen from behind.`,
+  'mem-coupon-bg': `${SAME_STYLE} One square panel completely filled edge to edge, no frame, nobody in it: a small karaoke room
+seen from the doorway, a big screen on the far wall with blank lyrics bars, a long sofa along the side, a low table with
+a song book, soft disco light spots on the walls.`,
+  'mem-coupon-fig': `The same girl as in the attached image, but a little younger, about twelve, healthy and lively, the same
+face and shoulder-length bob, in exactly the same drawing style, in a plain school uniform. Three separate things: her
+full body standing seen from the front, eyes shut, singing very loudly into a microphone, one fist up; a friend the same
+age with a short ponytail and round glasses, full body, laughing and clapping; another friend with short hair, full
+body, holding a tambourine up.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
@@ -236,7 +269,7 @@ const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 runGenerateCli({
   outDir: OUT_DIR,
   names: Object.keys(ART),
-  promptFor: (name) => (name.startsWith('lying-') || name === 'cover' ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
+  promptFor: (name) => (name.startsWith('lying-') || name === 'cover' ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') || name.endsWith('-bg') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
   // Null, not undefined: undefined would send the old room's character sheet.
   refFor: (name) => (name === 'heads-loose' ? null : REFS[name] ?? FIRST),
 });

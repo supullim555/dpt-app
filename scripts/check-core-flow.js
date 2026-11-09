@@ -45,6 +45,9 @@ async function main() {
       t.note('병문안: 시작 전에 어떤 이야기인지 안내', await t.waitText('아픔과 이별을 다뤄요', 12000));
       t.note('병문안: 치료가 아님과 글이 어디로 가는지 안내', (await t.hasText('이 게임은 치료가 아니에요')) && (await t.hasText('설정에서 AI 대화를 켤 때만')));
       await t.clickText('들어가 볼게요');
+      // v0.92: the tap that starts it unlocks sound; the music and the small sounds are there to load
+      t.note('병문안: 소리 파일이 있음', await t.evalJs(`Promise.all(['/sound/music.webm', '/sound/step0.wav', '/sound/door.wav', '/sound/page.wav', '/sound/give.wav'].map((u) => fetch(u).then((r) => r.ok))).then((a) => a.every(Boolean))`));
+      t.note('병문안: 음악을 불러옴', await waitFor(() => t.evalJs(`[...document.querySelectorAll('audio')].length > 0 || (window.performance.getEntriesByType('resource').some((e) => /music\.webm/.test(e.name)))`), 4000));
 
       // title screen and settings
       t.note('병문안: 타이틀 화면', (await t.waitText('이야기 시작', 3000)) && (await t.hasText('병문안')));
@@ -435,6 +438,18 @@ async function main() {
       const showMemory = async (name, title, thenText) => {
         await t.clickText(name);
         const ok = await t.waitText(title, 3000);
+        // v0.92: after her second line the remembered day is filmed
+        let film = false;
+        for (let i = 0; i < 6 && !film; i++) {
+          await t.click(195, 170);
+          await sleep(350);
+          film = await t.evalJs(`!!document.querySelector('video')`);
+        }
+        t.note(`병문안: ${name} 회상 영상이 나옴`, film);
+        if (film) {
+          await sleep(1800);
+          await t.shot(`memory_film_${name}.png`);
+        }
         await tapUntil(thenText);
         return ok;
       };

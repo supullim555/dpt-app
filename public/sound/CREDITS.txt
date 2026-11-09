@@ -1,0 +1,11 @@
+병문안 — sounds (all CC0 1.0, public domain: https://creativecommons.org/publicdomain/zero/1.0/)
+
+music.webm   "Forget Me Not" (looped) by Kistol — https://opengameart.org/content/forget-me-not
+             re-encoded as Opus 48 kbps in EffectCraft
+step0-3.wav  footstep00-03 from "RPG Sound Pack" by Kenney (www.kenney.nl)
+door.wav     doorOpen_1, same pack
+page.wav     bookFlip1, same pack
+give.wav     cloth2, same pack
+             (pack via https://opengameart.org/content/50-rpg-sound-effects, converted to 22 kHz WAV in SoundCraft)
+
+Credit is not required by CC0; it's given here with thanks.

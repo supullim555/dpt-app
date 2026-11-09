@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { play } from './sound';
 import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { VISIT_CARDS, VISIT_SCRIBBLES } from '@/assets/visitUi';
 import { NOTEBOOK_PAGES, NOTEBOOK_TITLE } from './script';
@@ -44,7 +45,13 @@ export default function Notebook({ told, fontScale, doneLabel = '병원을 나�
         ))}
         {page.scribble !== null && <Image source={VISIT_SCRIBBLES[page.scribble]} resizeMode="stretch" style={styles.scribble} />}
       </ImageBackground>
-      <TouchableOpacity style={styles.turn} onPress={() => (last ? onDone() : setIndex(index + 1))}>
+      <TouchableOpacity style={styles.turn} onPress={() => {
+          if (last) onDone();
+          else {
+            play('page');
+            setIndex(index + 1);
+          }
+        }}>
         <Text style={styles.turnText}>{last ? doneLabel : '다음 장 ›'}</Text>
       </TouchableOpacity>
     </View>
