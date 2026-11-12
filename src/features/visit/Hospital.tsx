@@ -33,6 +33,7 @@ const TOUCH = Platform.OS !== 'web' || (typeof window !== 'undefined' && !!windo
 const KEY_AT: Record<string, string> = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
 const MEMORY_MS = 2600;
+const PLACE_SOUND: Partial<Record<string, 'river' | 'birds' | 'crickets'>> = { river: 'river', beach: 'river', yard: 'birds', night: 'crickets' };
 
 /** Someone's remembered day, walked through: whose, how far in, and where you were in the hospital before it. */
 type Memory = { request: Request; place: Place; stage: 'meet' | 'lost'; back: Pose; step: number };
@@ -162,10 +163,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const latest = useRef({ pose, bedside, doneToday, found, day, talking, memory, uncovered });
   latest.current = { pose, bedside, doneToday, found, day, talking, memory, uncovered };
   const bars = useRef(new Animated.Value(0)).current;
-  // v0.93: the river runs under the first request's memory, in place of the music
+  // v0.93: a remembered place's own sound under it, in place of the music: water by the river and the sea, birds in the
+  // autumn yard, crickets in the night alley (the rehab room and the market keep the music)
   const memoryPlace = memory?.request.memory.place;
   useEffect(() => {
-    setAmbience(memoryPlace === 'river' ? 'river' : null);
+    setAmbience(memoryPlace ? PLACE_SOUND[memoryPlace] ?? null : null);
     return () => setAmbience(null);
   }, [memoryPlace]);
 

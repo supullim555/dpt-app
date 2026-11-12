@@ -336,6 +336,17 @@ const SOLIDS = {
       allOver([-0.5, 0.5], [0.92, 0.96], [-0.3, 0.16], 'boxPale'),
     ],
   },
+  // v0.93: the yard's maru, a low wide wooden deck on short legs
+  maruBox: {
+    shadow: [1.1, 0.8],
+    boxes: [
+      { x: [-0.5, 0.5], y: [0.1, 0.18], z: [-0.34, 0.34], front: 'counterSide', rear: 'counterSide', side: 'counterSide', top: 'counterTop' },
+      leg(-0.45, -0.29, 0.1),
+      leg(0.45, -0.29, 0.1),
+      leg(-0.45, 0.29, 0.1),
+      leg(0.45, 0.29, 0.1),
+    ],
+  },
   tableBox: {
     shadow: [0.9, 0.5],
     boxes: [

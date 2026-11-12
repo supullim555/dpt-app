@@ -14,11 +14,11 @@ const MUSIC_VOLUME = 0.28;
 let on = true;
 let ctx: AudioContext | null = null;
 let music: HTMLAudioElement | null = null;
-// v0.93: a place's own sound in place of the music (the river in the first request's memory)
-type Ambience = 'river';
+// v0.93: a remembered place's own sound in place of the music (Hospital.tsx PLACE_SOUND)
+type Ambience = 'river' | 'birds' | 'crickets';
 let ambience: Ambience | null = null;
 let ambienceEl: HTMLAudioElement | null = null;
-const AMBIENCE_VOLUME: Record<Ambience, number> = { river: 0.5 };
+const AMBIENCE_VOLUME: Record<Ambience, number> = { river: 0.5, birds: 0.45, crickets: 0.4 };
 const buffers = new Map<string, AudioBuffer>();
 let stepTurn = 0;
 

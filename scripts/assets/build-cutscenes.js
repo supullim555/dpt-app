@@ -84,6 +84,8 @@ const MEMORIES = [
   {
     id: 'mem-laces', // last in the race, out of breath and smiling
     duration: 8,
+    // her running steps coming closer, one after another (the step sounds from public/sound, copied to generated/sound)
+    sounds: [1.4, 1.85, 2.3, 2.75, 3.2, 3.65, 4.1, 4.55, 5.0, 5.45, 5.9].map((at, i) => ({ file: `step${i % 4}.wav`, at, from: 0, length: 0.24, gain: -14 + i })),
     camera: { from: [270, 470], to: [270, 500], push: 60, focus: -60, aperture: 9 },
     layers: [
       ['track', 'mem-laces-bg', [0, 0, 1024, 1024], false, { pos: [270, 470, 800], scale: 210, anchor: 'center' }],
@@ -94,6 +96,10 @@ const MEMORIES = [
   {
     id: 'mem-coupon', // shouting more than singing, after the exams
     duration: 8,
+    sounds: [
+      { file: 'giggle.wav', at: 1.6, from: 0.4, length: 2.2, gain: -5 },
+      { file: 'giggle.wav', at: 4.8, from: 2.8, length: 1.8, gain: -7 },
+    ],
     camera: { from: [230, 500], to: [300, 520], push: 150, focus: 0, aperture: 10 },
     layers: [
       ['room', 'mem-coupon-bg', [0, 0, 1024, 1024], false, { pos: [270, 470, 700], scale: 195, anchor: 'center' }],
@@ -101,6 +107,47 @@ const MEMORIES = [
     ],
   },
 ];
+
+// v0.93: the way down to the ginkgo. Its corridors are the game's own on the seventh day, photographed from the 3D
+// hospital with nothing else on screen (generated/cutscenes/descent/plate-*.png: 4F from (7, 4) west, 3F (7, 7) west,
+// 2F (4, 4) east, 1F (7, 9) south); she's generate-hospital-art.js girl-walk.
+const STEP_TIMES = (from, to) => Array.from({ length: Math.floor((to - from) / 0.55) + 1 }, (_, i) => from + i * 0.55);
+const DESCENT = {
+  segment: 3.4,
+  crossfade: 0.7,
+  floors: [
+    { plate: 'plate-4', lines: ['4층. 복도 불빛을 하나씩 지나간다.'], at: [270, 785], to: [258, 735], scale: 50 },
+    // on the chair nearest, held still so she stays on it (the plate from (7, 7) looking west); turned to face as it does
+    { plate: 'plate-3', lines: ['3층. 의자에 앉아 오래 쉰다.', '"괜찮아. 가."'], rest: true, still: true, at: [112, 776], scale: 54, mirror: true },
+    { plate: 'plate-2', lines: ['2층. "숨차다." 소녀가 웃는다.'], at: [282, 785], to: [270, 740], scale: 50 },
+    { plate: 'plate-1', lines: ['1층. 사람들 사이를 지나 안뜰로 나간다.'], at: [270, 790], to: [270, 725], scale: 48 },
+  ],
+};
+
+async function buildDescent() {
+  const work = path.join(WORK_ROOT, 'descent');
+  fs.mkdirSync(work, { recursive: true });
+  const walk = await cutLayer(work, 'walk', 'girl-walk', [78, 128, 370, 774], true);
+  const rest = await cutLayer(work, 'rest', 'girl-walk', [518, 168, 430, 738], true);
+  const seg = DESCENT.segment;
+  // steps while she walks (not on the third floor, where she sits)
+  const steps = [0, 2, 3].flatMap((i) => STEP_TIMES(i * seg + 0.6, (i + 1) * seg + 0.2)).map((at, n) => ({ file: slash(path.join(GENERATED_DIR, 'sound', `step${n % 4}.wav`)), at, gain: -12 }));
+  const project = path.join(work, 'descent.ecproj');
+  const scene = {
+    name: 'descent',
+    segment: seg,
+    crossfade: DESCENT.crossfade,
+    walk: slash(walk),
+    rest: slash(rest),
+    floors: DESCENT.floors.map((f) => ({ ...f, plate: slash(path.join(work, `${f.plate}.png`)) })),
+    steps,
+    save: slash(project),
+  };
+  const script = path.join(work, 'descent.jsx');
+  fs.writeFileSync(script, fs.readFileSync(path.join(__dirname, 'cutscenes', 'descent.jsx'), 'utf8').replace('__SCENE__', JSON.stringify(scene)));
+  execFileSync(EFFECTCRAFT, ['script', script], { stdio: ['ignore', 'inherit', 'inherit'] });
+  return { project, comp: 'descent', times: [1.5, 4.8, 8.3, 11.8], audio: true };
+}
 
 function render(project, comp, out, audio = false) {
   execFileSync(EFFECTCRAFT, ['render', '--project', project, '--comp', comp, '--format', 'h264', '--bitrate', '900', '--audio', audio ? 'on' : 'off', '--out', out], { stdio: ['ignore', 'ignore', 'inherit'] });
@@ -169,6 +216,8 @@ function writeList() {
       `import type { ClueId } from './progress';\n\n` +
       `/** The last light: she turns under the ginkgo, the light, the world in colour, ending on amber. 540x960. */\n` +
       `export const LAST_LIGHT_URL = '${url('last-light')}';\n\n` +
+      `/** The way down to the ginkgo, floor by floor in the seventh day's corridors, from black to black. 540x960. */\n` +
+      `export const DESCENT_URL = '${url('descent')}';\n\n` +
       `/** Her memories, one for each thing found: from black to black, 8 seconds, 540x960. */\n` +
       `export const MEMORY_FILM: Record<ClueId, string> = {\n` +
       Object.entries(ids)
@@ -184,7 +233,7 @@ async function main() {
   const onlyFrames = args.includes('--frames');
   const only = args.filter((a) => !a.startsWith('--'));
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const scenes = [{ id: 'last-light', build: buildLastLight }, ...MEMORIES.map((m) => ({ id: m.id, build: () => buildMemory(m) }))];
+  const scenes = [{ id: 'last-light', build: buildLastLight }, { id: 'descent', build: buildDescent }, ...MEMORIES.map((m) => ({ id: m.id, build: () => buildMemory(m) }))];
   for (const s of scenes) {
     if (only.length && !only.includes(s.id)) continue;
     const built = await s.build();

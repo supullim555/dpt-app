@@ -18,3 +18,7 @@ In the films (public/cutscenes/mem-collar.mp4, mem-snack.mp4):
              "Dog barking (mono)" by Brandon Morris, submitted by HaelDB, OGA-BY 3.0 / CC0 (used under CC0) —
              https://opengameart.org/content/dog-barking-mono
              a snack bag's rustle, made in code for this game (scripts/assets/sound/make-rustle.js)
+birds.webm   "Ambient Bird Sounds" by isaiah658, CC0 — https://opengameart.org/content/ambient-bird-sounds (the yard's memory)
+crickets.webm "Crickets Ambient Noise - loopable" by Wolfgang_, CC0 — https://opengameart.org/content/crickets-ambient-noise-loopable
+             (the night alley's memory). Both looped by scripts/assets/sound/build-ambience.js.
+In the films mem-laces.mp4 and descent.mp4: the Kenney footsteps above; in mem-coupon.mp4: "Group Giggling" above.

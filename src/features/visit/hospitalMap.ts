@@ -117,9 +117,12 @@ export const ON_THE_WALLS: Record<FloorNo, [number, number, WallThing, Dir][]> =
 export const CLUE_CELLS: Record<FloorNo, Cell> = { 0: { x: -1, y: -1 }, 4: { x: 11, y: 1 }, 3: { x: 6, y: 9 }, 2: { x: 5, y: 10 }, 1: { x: 12, y: 1 } };
 
 /** v0.93: some things only turn up once you look where they're hidden: face `behind` and use it, `text` shows, and the
- * thing then lies at CLUE_CELLS (beside the vending machine; by the chair next to the tired guardian). */
+ * thing then lies at CLUE_CELLS (beside the vending machine; by the chair next to the tired guardian; by the lounge's
+ * sofa). The 2F laces lie out in the rehab room, to be found by looking round it. */
 export const HIDDEN_CLUE: Partial<Record<FloorNo, { behind: Cell; action: string; text: string }>> = {
   1: { behind: { x: 13, y: 2 }, action: '자판기 흔들어 보기', text: '자판기를 흔들어 보았다. 자판기 뒤에서 무언가가 굴러 나왔다.' },
+  // the coupon in the books piled on the 4F lounge's sofa, which the guardian next door has read through
+  4: { behind: { x: 11, y: 2 }, action: '책 더미 넘겨 보기', text: '소파에 쌓인 책을 한 권씩 넘겨 보았다. 책 사이에서 무언가 떨어졌다.' },
   3: { behind: { x: 6, y: 9 }, action: '의자 밑 살펴보기', text: '보호자 옆 의자 밑을 들여다보았다. 무언가 끼어 있다.' },
 };
 

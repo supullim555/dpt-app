@@ -230,6 +230,9 @@ assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 0 }, false), null);
 // and the snack bag by the chair next to the tired guardian
 assert.equal(thingAt({ floor: 3, x: 7, y: 9, dir: 3 }, false, true).kind, 'hide');
 assert.equal(thingAt({ floor: 3, x: 7, y: 9, dir: 3 }, true).kind, 'clue');
+// and the coupon in the books on the 4F lounge's sofa
+assert.equal(thingAt({ floor: 4, x: 12, y: 2, dir: 3 }, false, true).kind, 'hide');
+assert.equal(thingAt({ floor: 4, x: 12, y: 1, dir: 3 }, true).kind, 'clue');
 // the 3F nurse is spoken to across her desk, from the way into the station
 assert.equal(thingAt({ floor: 3, x: 7, y: 5, dir: 2 }, false).id, '3q');
 assert.equal(thingAt({ floor: 3, x: 7, y: 4, dir: 2 }, false), null);

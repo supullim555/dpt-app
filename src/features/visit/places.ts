@@ -250,7 +250,7 @@ export const PLACES: Record<PlaceId, Place> = {
     stops: 'MPBG',
     spread: '',
     things: {
-      M: { look: 'maru', text: '마루다. 볕이 들어 따뜻하다.' },
+      M: { solid: 'maruBox', face: 2, text: '마루다. 볕이 들어 따뜻하다.' }, // v0.93: built, not drawn
       P: { look: 'persimmonTree', text: '감나무다. 감이 몇 개 남아 있다.' },
       B: { look: 'janggiTable', text: '장기판이다. 판이 두다 만 그대로다.' },
       G: { look: 'yardGate', text: '나무 대문이다. 조금 열려 있다.' },

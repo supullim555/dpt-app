@@ -337,13 +337,18 @@ hair loose and messy, the coat rumpled, holding a paper cup in both hands at her
 above, with no table, stand or legs under them: a generous heap of tangerines and apples piled in two shallow wooden crates
 set side by side, wider than tall; and a wide flat wooden tray of Korean rice cakes laid out in neat rows, some round, some
 long, a few dusted, wider than tall.`,
+  // v0.93: the way down to the ginkgo, filmed: her walking on ahead of you, and resting on the third floor
+  'girl-walk': `${SAME} Her hair loosely tied back, no hairpin, in the modest pajamas buttoned to the neck and plain slippers. Two
+separate drawings of her, full body, feet visible: walking slowly away from the viewer, seen from directly behind, one
+hand lightly touching an invisible wall rail at her side, careful small steps; and sitting on an invisible low seat, seen
+from the side facing left, resting, shoulders down, eyes closed, a small tired smile.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
 const SKY = `${INK} The image fills the whole square canvas edge to edge with no margins. ${NO_MARKS}`;
 const TIRED = path.join(OUT_DIR, 'heads-tied-2-raw.png');
 const LYING_POSE = path.join(OUT_DIR, 'lying-window-raw.png');
-const REFS = { 'visitor-tired': path.join(OUT_DIR, 'people-b-raw.png'), 'relax-shoulders-up': path.join(OUT_DIR, 'relax-shoulders-calm.png'), cover: path.join(OUT_DIR, 'heads-tied-raw.png'), 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
+const REFS = { 'girl-walk': path.join(OUT_DIR, 'heads-tied-raw.png'), 'visitor-tired': path.join(OUT_DIR, 'people-b-raw.png'), 'relax-shoulders-up': path.join(OUT_DIR, 'relax-shoulders-calm.png'), cover: path.join(OUT_DIR, 'heads-tied-raw.png'), 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
 const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 
 runGenerateCli({

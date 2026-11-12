@@ -419,7 +419,7 @@ async function main() {
         await openMap();
         await t.clickText('(시험) 단서 앞');
         await sleep(300);
-        for (const [action, said] of [['자판기 흔들어 보기', '자판기 뒤에서 무언가가 굴러 나왔다'], ['의자 밑 살펴보기', '무언가 끼어 있다']]) {
+        for (const [action, said] of [['자판기 흔들어 보기', '자판기 뒤에서 무언가가 굴러 나왔다'], ['의자 밑 살펴보기', '무언가 끼어 있다'], ['책 더미 넘겨 보기', '책 사이에서 무언가 떨어졌다']]) {
           if (!(await t.hasText(action))) continue;
           await t.clickText(action);
           t.note(`병문안: ${action} → 숨은 물건이 나옴`, await t.waitText(said, 2000));
@@ -648,7 +648,8 @@ async function main() {
       await t.clickText('잠깐 같이 몸에 힘 좀 빼고 갈까요?');
       // v0.93: the body part by part, each with a picture of how: the hands first
       t.note('병문안: 같이 힘 빼기', await t.waitText('두 손을 꽉 주먹 쥐어요', 2000));
-      t.note('병문안: 힘 빼기에 그림', await t.evalJs(`[...document.querySelectorAll('img')].some((i) => /hands-tense/.test(i.src) && i.complete && i.naturalWidth > 0)`));
+      // over the network the picture takes a moment to arrive
+      t.note('병문안: 힘 빼기에 그림', await waitFor(() => t.evalJs(`[...document.querySelectorAll('img')].some((i) => /hands-tense/.test(i.src) && i.complete && i.naturalWidth > 0)`), 4000));
       t.note('병문안: 부위마다 한 번씩 (1 / 7)', await t.hasText('1 / 7'));
       await sleep(5600);
       t.note('병문안: 힘을 준 뒤 풀기', await t.hasText('손을 펴고, 무릎 위에 툭 내려놓아요'));
@@ -828,22 +829,25 @@ async function main() {
         await sleep(200);
       }
       t.note('병문안: 해피엔딩의 수첩 뒤엔 같이 내려감', await t.clickText('같이 내려가기'));
-      // v0.87: the light is filmed and plays in place of the turn and light cards (CardScene's fallback brings them back)
-      let film = false;
-      for (let i = 0; i < 16 && !film; i++) {
-        film = await t.evalJs(`!!document.querySelector('video')`);
-        if (!film) {
-          await t.click(195, 170);
-          await sleep(300);
+      // v0.87 / v0.93: the way down and then the light are filmed, each in place of its cards (CardScene's fallback brings
+      // them back); a tap skips a film
+      const filmPlaying = async (name) => {
+        let playing = false;
+        for (let i = 0; i < 24 && !playing; i++) {
+          await sleep(250);
+          playing = await t.evalJs(`(() => { const v = document.querySelector('video'); return !!v && /${name}/.test(v.src) && !v.paused && v.currentTime > 0.5; })()`);
         }
+        return playing;
+      };
+      for (let i = 0; i < 4 && !(await t.evalJs(`!!document.querySelector('video')`)); i++) {
+        await t.click(195, 170);
+        await sleep(300);
       }
-      t.note('병문안: 내려가서 마지막 빛 영상이 나옴', film);
-      let playing = false;
-      for (let i = 0; i < 20 && !playing; i++) {
-        await sleep(250);
-        playing = await t.evalJs(`(() => { const v = document.querySelector('video'); return !!v && !v.paused && v.currentTime > 0.5; })()`);
-      }
-      t.note('병문안: 마지막 빛 영상이 재생됨', playing);
+      t.note('병문안: 내려가는 길 영상이 재생됨', await filmPlaying('descent'));
+      await sleep(2500);
+      await t.shot('visit_descent.png');
+      await t.click(195, 170);
+      t.note('병문안: 이어서 마지막 빛 영상이 재생됨', await filmPlaying('last-light'));
       await sleep(2500);
       await t.shot('visit_light.png');
       t.note('병문안: 소녀의 세상에 색이 돌아옴', await tapUntil('소녀의 세상에 색이 돌아왔다.'));
