@@ -32,7 +32,7 @@ import {
   DAY_LINES,
   DAY_TITLES,
   EMOTION_QUESTION,
-  emotionLine,
+  emotionLines,
   ENDINGS,
   FAIRY_LINES,
   FIRST_GREETING,
@@ -48,7 +48,7 @@ import {
   keywordLine,
   RETURN_GREETING,
   STAFF_CALL_GENTLE,
-  DOCTOR_CALL,
+  doctorCall,
   STAFF_CALLS,
   TELL_QUESTION,
   TUTORIAL_GIVE,
@@ -136,7 +136,7 @@ export default function VisitScreen() {
   const [lineIndex, setLineIndex] = useState(0);
   const [replyLines, setReplyLines] = useState<string[]>([]);
   const [askEmotion, setAskEmotion] = useState(false);
-  const [ackLine, setAckLine] = useState('');
+  const [ackLines, setAckLines] = useState<string[]>([]);
   // Something's been given this visit: everything you carry can be given, one after another (gifts and the things you found)
   const [gaveSome, setGaveSome] = useState(false);
   // Someone in the hospital is giving their fixed answer to words that sounded like a crisis (Hospital's onCrisis)
@@ -228,7 +228,7 @@ export default function VisitScreen() {
 
   const pickEmotion = (word: string | null) => {
     setState({ ...state, told: state.told.map((t) => (t.day === day ? { ...t, label: word } : t)) });
-    setAckLine(emotionLine(word));
+    setAckLines(emotionLines(word));
     setPhase('ack');
   };
 
@@ -245,7 +245,7 @@ export default function VisitScreen() {
     play('give');
     setGaveSome(true);
     setState({ ...state, gifts: state.gifts.filter((g) => g !== name) });
-    setAckLine(giftLine(name));
+    setAckLines([giftLine(name)]);
     setPhase('gift');
   };
 
@@ -281,13 +281,13 @@ export default function VisitScreen() {
       : phase === 'reply'
         ? replyLines
         : phase === 'ack' || phase === 'gift'
-          ? [ackLine]
+          ? ackLines
           : phase === 'ending' && ending
             ? ENDINGS[ending].lines
             : phase === 'bye'
               ? [GOODBYE]
               : phase === 'staff' && staffCall
-                ? staffCall === STAFF_CALL_GENTLE ? [staffCall.line] : [staffCall.line, DOCTOR_CALL[staffCall.who]]
+                ? staffCall === STAFF_CALL_GENTLE ? [staffCall.line] : [staffCall.line, doctorCall(day)]
                 : [];
 
   const afterLines = () => {
@@ -647,6 +647,8 @@ export default function VisitScreen() {
       )}
 
       {(inBubble || phase === 'arrive') && canTapThrough && <Text style={styles.hint}>화면을 눌러 넘기기</Text>}
+      {/* v0.93: while there are lines to read, the panel below goes on with them too, not only the view above */}
+      {canTapThrough && <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={advance} accessibilityLabel="대화 넘기기" />}
     </ImageBackground>
   );
 

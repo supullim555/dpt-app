@@ -164,6 +164,12 @@ function doorShape(p: Pen, x: number, y: number) {
 
 // Tiles taken whole from the drawn sheet when it's there; the rest are painted here, over the drawn wall where they have one.
 /** v0.79: the remembered places' own sheet of tiles (places.ts MemoryTile), the same layout as the structure sheet. */
+/** v0.93: the floors sheet (build-floor-tiles.js): a row per kind of ground, five drawings across, FLOOR_CELL square. */
+export const FLOOR_CELL = 128;
+export const FLOOR_VARIANTS = 5;
+export const FLOOR_ROW = { hospital: 0, courtyard: 1, pebbles: 2, rehab: 3, sand: 4, paving: 5, dirt: 6, asphalt: 7 } as const;
+/** Which row a remembered place's ground uses, by its tile; water and the rest keep their single drawing. */
+export const FLOOR_ROW_OF_TILE: Partial<Record<string, keyof typeof FLOOR_ROW>> = { pebbles: 'pebbles', rehabFloor: 'rehab', sand: 'sand', paving: 'paving', yardDirt: 'dirt', asphalt: 'asphalt' };
 export const MEMORY_TILES = { pebbles: 0, water: 1, woods: 2, farBank: 3, rehabFloor: 4, rehabWall: 5, plainWall: 6, ceiling: 7, sand: 8, sea: 9, paving: 10, marketStreet: 11, yardDirt: 12, yardWall: 13, asphalt: 14, nightAlley: 15 } as const;
 /** v0.85: on a backdrop drawn with its own sky, where that sky starts, as fractions of the height from the bottom: below the
  * first all of it stays; between the two only what isn't pale sky (treetops, roofs); above the second none, so the sky

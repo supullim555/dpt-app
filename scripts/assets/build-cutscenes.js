@@ -54,6 +54,13 @@ const MEMORIES = [
   {
     id: 'mem-collar', // the morning walk: down the street with the dog
     duration: 8,
+    // children laughing and the dog barking, twice each (generated/sound: CREDITS.txt)
+    sounds: [
+      { file: 'giggle.wav', at: 1.3, from: 2.6, length: 1.5, gain: -9 },
+      { file: 'dog.wav', at: 3.1, from: 0.0, length: 0.42, gain: -4 },
+      { file: 'giggle.wav', at: 4.4, from: 3.3, length: 1.2, gain: -11 },
+      { file: 'dog.wav', at: 6.0, from: 0.5, length: 0.45, gain: -6 },
+    ],
     camera: { from: [250, 470], to: [300, 500], push: 140, focus: 0, aperture: 10 },
     layers: [
       ['street', 'mem-collar-bg', [0, 0, 1024, 1024], false, { pos: [270, 420, 900], scale: 225, anchor: 'center' }],
@@ -63,6 +70,7 @@ const MEMORIES = [
   {
     id: 'mem-snack', // the last one in the bag, in front of the shop after school
     duration: 8,
+    sounds: [{ file: 'rustle.wav', at: 3.2, from: 0, length: 0.7, gain: -6 }], // the bag, once
     camera: { from: [270, 500], to: [270, 540], push: 160, focus: 0, aperture: 10 },
     layers: [
       ['sky', 'sky-dusk', [0, 0, 1024, 1024], false, { pos: [270, 300, 1400], scale: 300, anchor: 'center' }],
@@ -94,8 +102,8 @@ const MEMORIES = [
   },
 ];
 
-function render(project, comp, out) {
-  execFileSync(EFFECTCRAFT, ['render', '--project', project, '--comp', comp, '--format', 'h264', '--bitrate', '900', '--out', out], { stdio: ['ignore', 'ignore', 'inherit'] });
+function render(project, comp, out, audio = false) {
+  execFileSync(EFFECTCRAFT, ['render', '--project', project, '--comp', comp, '--format', 'h264', '--bitrate', '900', '--audio', audio ? 'on' : 'off', '--out', out], { stdio: ['ignore', 'ignore', 'inherit'] });
 }
 
 async function buildLastLight() {
@@ -127,11 +135,12 @@ async function buildMemory(m) {
     layers.push({ file: slash(file), ...place });
   }
   const project = path.join(work, `${m.id}.ecproj`);
-  const scene = { name: m.id, duration: m.duration, camera: m.camera, layers, save: slash(project) };
+  const sounds = (m.sounds ?? []).map((s) => ({ ...s, file: slash(path.join(GENERATED_DIR, 'sound', s.file)) }));
+  const scene = { name: m.id, duration: m.duration, camera: m.camera, layers, sounds, save: slash(project) };
   const script = path.join(work, `${m.id}.jsx`);
   fs.writeFileSync(script, fs.readFileSync(path.join(__dirname, 'cutscenes', 'memory.jsx'), 'utf8').replace('__SCENE__', JSON.stringify(scene)));
   execFileSync(EFFECTCRAFT, ['script', script], { stdio: ['ignore', 'inherit', 'inherit'] });
-  return { project, comp: m.id, times: [1.2, 4, 6.8] };
+  return { project, comp: m.id, times: [1.2, 4, 6.8], audio: sounds.length > 0 };
 }
 
 async function stills(id, { project, comp, times }) {
@@ -184,7 +193,7 @@ async function main() {
       continue;
     }
     const out = path.join(OUT_DIR, `${s.id}.mp4`);
-    render(built.project, built.comp, out);
+    render(built.project, built.comp, out, built.audio);
     console.log(`${s.id}.mp4`, fs.statSync(out).size);
   }
   if (!onlyFrames && scenes.every((s) => fs.existsSync(path.join(OUT_DIR, `${s.id}.mp4`)))) writeList();

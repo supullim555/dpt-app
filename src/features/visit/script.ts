@@ -83,17 +83,16 @@ export type StaffCall = { who: '간호사' | '의사'; line: string };
 export const STAFF_CALLS: Record<number, StaffCall> = {
   1: { who: '간호사', line: '이제 치료 시간이에요. 보호자분 아니시죠? 오늘은 나가 주셔야 해요.' },
   2: { who: '간호사', line: '죄송해요, 치료 시작해야 해서요. 밖으로 나가 주세요.' },
-  3: { who: '의사', line: '검사 들어갑니다. 오늘은 여기까지 해 주세요.' },
+  3: { who: '간호사', line: '검사 들어가야 해요. 오늘은 여기까지 해 주세요.' },
   4: { who: '간호사', line: '오늘은 치료가 길어질 거예요. 나가 주세요.' },
-  5: { who: '의사', line: '치료해야 하니 이제 나가 주시겠어요?' },
+  5: { who: '간호사', line: '치료해야 해서요, 이제 나가 주시겠어요?' },
   6: { who: '간호사', line: '치료 시간이에요. 내일 또 오세요.' },
 };
 // After the crisis lines being ordered out would read as a dismissal, so this one only sees you off.
-// Whoever sends you out then sends you on to the doctor's room (not after the crisis lines).
-export const DOCTOR_CALL: Record<StaffCall['who'], string> = {
-  간호사: '아, 그리고 의사 선생님이 잠깐 뵙자고 하셨어요. 복도 오른쪽 끝 방이에요.',
-  의사: '나가시는 길에 제 방에 잠깐 들러 주시겠어요? 복도 오른쪽 끝이에요.',
-};
+// The nurse who sends you out then sends you on to the doctor's room (not after the crisis lines). v0.93: always the
+// nurse (when the doctor said "제 방에", the nurse on screen seemed to mean hers), and from day 2 "again".
+export const doctorCall = (day: number) =>
+  day <= 1 ? '아, 그리고 의사 선생님이 잠깐 뵙자고 하셨어요. 복도 오른쪽 끝 방이에요.' : '아, 이번에도 선생님이 부르셔요. 복도 오른쪽 끝 방이에요.';
 export const STAFF_CALL_GENTLE: StaffCall = { who: '간호사', line: '치료 시간이 됐어요. 오늘은 여기까지예요. 조심히 들어가세요.' };
 
 // The hospital. She's at the top; the higher the floor, the heavier. No one else's suffering is shown.
@@ -112,7 +111,7 @@ export const TUTORIAL_TIPS: Partial<Record<string, string | [string, string]>> =
     '화면 아래의 버튼을 눌러 움직여요. ↑는 한 칸 앞으로, ↺와 ↻는 왼쪽과 오른쪽으로 돌기, ↓는 뒤돌기예요. 먼저 한 걸음 걸어 보세요.',
     '방향키나 W, A, S, D 키로 움직여요. ↑(W)는 한 칸 앞으로, ←(A)와 →(D)는 그쪽으로 돌기, ↓(S)는 뒤돌기예요. 화면 아래의 버튼을 눌러도 돼요. 먼저 한 걸음 걸어 보세요.',
   ],
-  goal: '왼쪽 위 네모가 지금 할 일이에요. 노란 화살표는 갈 방향이에요. ↑면 앞으로, →나 ←면 그쪽으로 돌아요. 따라가 보세요.',
+  goal: '왼쪽 위 네모가 지금 할 일이에요. 오른쪽 위 작은 지도에 가는 길이 노란 점으로 이어져 있어요. 빨간 화살표가 나예요. 점을 따라 걸어 보세요.',
   talk: [
     '사람이나 물건 앞에 서면 아래에 흰 버튼이 떠요. 눌러서 말을 걸어 보세요.',
     '사람이나 물건 앞에 서면 아래에 흰 버튼이 떠요. 누르거나 Enter 키로 말을 걸어 보세요.',
@@ -121,7 +120,7 @@ export const TUTORIAL_TIPS: Partial<Record<string, string | [string, string]>> =
     '화면을 누르면 다음 말로 넘어가요. 다 들었으면 뒤로가기를 누르세요.',
     '화면을 누르거나 Enter 키를 누르면 다음 말로 넘어가요. 다 들었으면 뒤로가기나 Esc 키를 누르세요.',
   ],
-  shop: '화살표를 따라 매점으로 가서, 매점 주인 앞에 서 보세요.',
+  shop: '작은 지도의 노란 점을 따라 매점으로 가서, 매점 주인 앞에 서 보세요.',
   buy: '말을 걸면 아래에 오늘의 선물이 떠요. 하루에 하나만 살 수 있어요. 하나 골라 보세요.',
   shopBack: '산 선물은 병실에서 소녀에게 건넬 수 있어요. 뒤로가기를 눌러 나오세요.',
   lift: [
@@ -152,16 +151,17 @@ export const ROOM_SHUT = '치료 중이다. 오늘은 더 들어갈 수 없다.'
 // Who you can talk to, by floor and map letter. `clue` is what they let slip on the day there's something
 // to find near them.
 // She talks through VisitScreen; this entry only names her and draws her.
-// `lines` on days 1–2; `later` on days 3–4 and 5–7 (v0.91), so a week of visits doesn't hear the same words. A clue's
+// `lines` on days 1–2 (`day2`, if given, on day 2); `later` on days 3–4 and 5–7 (v0.91), so a week of visits doesn't hear the same words. A clue's
 // line still comes first on its day, and the doctor keeps his one line (his requests are their own talk).
 /** What someone says today, apart from their clue and their requests. */
-export const linesOn = (p: { lines: string[]; later?: [string, string] }, day: number) => (p.later && day >= 3 ? [p.later[day >= 5 ? 1 : 0]] : p.lines);
+export const linesOn = (p: { lines: string[]; day2?: string; later?: [string, string] }, day: number) =>
+  p.later && day >= 3 ? [p.later[day >= 5 ? 1 : 0]] : day === 2 && p.day2 ? [p.day2] : p.lines;
 
-export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart; lines: string[]; later?: [string, string]; clue?: { day: number; line: string } }> = {
-  '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'], later: ['다녀가신 뒤로 그 아이가 창보다 문을 더 봐요.', '요즘 잠이 많아요. 그래도 오실 시간엔 깨어 있으려고 해요.'] },
-  '4p': { name: '옆 병실 보호자', look: 'reader', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' }, later: ['어머니가 오늘은 제 이름을 두 번 불렀어요.', '옆방에서 웃음소리가 나요. 손님 오시는 날만요.'] },
+export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart; lines: string[]; day2?: string; later?: [string, string]; clue?: { day: number; line: string } }> = {
+  '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'], day2: '오늘도 또 오셨네요. 아이는 병실에서 기다리고 있어요.', later: ['다녀가신 뒤로 그 아이가 창보다 문을 더 봐요.', '요즘 잠이 많아요. 그래도 오실 시간엔 깨어 있으려고 해요.'] },
+  '4p': { name: '옆 병실 보호자', look: 'reader', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 사이에 별게 다 끼어 있더라고요.' }, later: ['어머니가 오늘 제 이름을 불렀어요.', '옆방에서 웃음소리가 나요. 손님 오시는 날만요.'] },
   '4v': { name: '자원봉사자', look: 'volunteer', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'], later: ['그 아이 편지 부친 거, 저예요. 주소는 정말 아무렇게나 골랐더라고요.', '답장 온 건 당신 하나예요. 그러니까 천천히, 오래 와 주세요.'] },
-  '3N': { name: '3층 간호사', look: 'nurse', lines: ['지금은 안 돼요. 저기 의자에 앉아 계세요.'], later: ['지금은 안 돼요. 오늘은 좀 조용하죠? 조용한 날이 좋은 날이에요.', '아직이에요. 기다리시는 동안 자판기 커피라도 드세요. 따뜻해요.'] },
+  '3q': { name: '3층 간호사', look: 'nurse', lines: ['지금은 안 돼요. 저기 의자에 앉아 계세요.'], later: ['지금은 안 돼요. 오늘은 좀 조용하죠? 조용한 날이 좋은 날이에요.', '아직이에요. 기다리시는 동안 자판기 커피라도 드세요. 따뜻해요.'] , clue: { day: 3, line: '보호자분 계신 휴게실 의자 쪽에 뭐가 떨어져 있는 것 같던데요. 한번 보세요.' } },
   '3t': { name: '이송 요원', look: 'porter', lines: ['이거 오늘 못 치워요. 반대로 돌아가세요.'], later: ['이 수레, 오늘도 못 치워요. 내일은 꼭이요. 아마도요.', '또 막혀 있죠. 반대로 도시면 창이 하나 더 보여요.'] },
   '3c': { name: '미화원', look: 'worker', lines: ['층마다 냄새가 달라요. 오래 일하면 알게 돼요.'], clue: { day: 3, line: '휴게실 의자 밑 봉지요, 치우려다 말았어요. 일부러 둔 것 같아서.' }, later: ['은행잎이 신발에 붙어 올라와요. 4층까지 따라가더라고요.', '바닥은 매일 닦는데 매일 누가 걸어요. 그게 좋아요.'] },
   '3b': { name: '지친 보호자', look: 'visitor', lines: ['미안한데, 화가 나요. 누구한테인지는 모르겠어요.'], later: ['어제는 두 시간 잤어요. 많이 잔 거예요.', '아이가 오늘 밥을 반 그릇 먹었어요. …반이요. 반이나요.'] },
@@ -171,7 +171,7 @@ export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart
   '2y': { name: '물리치료사', look: 'physio', lines: ['천천히 하면 돼요. 여긴 다들 천천히 해요.'], clue: { day: 4, line: '저 끈이요? 퇴원하는 분이 두고 가셨어요. 찾으러 안 오시네요.' }, later: ['오늘은 다들 잘 걸어요. 비 오기 전날은 다들 힘들어하는데.', '천천히 걸으면 못 보던 게 보여요. 저 창틀에 앉은 새 같은 거요.'] },
   '4r': { name: '의사 선생님', look: 'doctor', lines: ['아직 면회 전이시죠? 그 아이 먼저 보고 오세요.'] },
   '1i': { name: '안내 직원', look: 'receptionist', lines: ['4층이요? 엘리베이터는 저쪽이에요. 층마다 표시가 있어요.'], later: ['또 오셨네요. 이제 제가 안내 안 해 드려도 되겠어요.', '매일 이 시간에 오시네요. 4층에서도 아마 시계 보고 있을 거예요.'] },
-  '1g': { name: '경비', look: 'guard', lines: ['정문은 늘 열려 있어요. 오는 사람보다 가는 사람이 더 천천히 걷죠.'], clue: { day: 1, line: '자판기 뒤에 뭐가 떨어졌던데, 손이 안 닿아요.' }, later: ['은행잎을 세 번 쓸었어요. 바람이 자꾸 도로 가져다 놔요.', '나가실 때 고개 한번 들어 보세요. 4층 창이 여기서 보여요.'] },
+  '1g': { name: '경비', look: 'guard', lines: ['정문은 늘 열려 있어요. 오는 사람보다 가는 사람이 더 천천히 걷죠.'], clue: { day: 1, line: '자판기 뒤에 뭐가 떨어졌던데, 손이 안 닿아요. 한번 흔들어 보세요.' }, later: ['은행잎을 세 번 쓸었어요. 바람이 자꾸 도로 가져다 놔요.', '나가실 때 고개 한번 들어 보세요. 4층 창이 여기서 보여요.'] },
   '1m': { name: '매점 주인', look: 'shopkeeper', lines: ['어서 와요. 오늘은 이것들이 있어요.'], later: ['어서 와요. 오늘 새로 들어온 것들이에요.', '또 왔네요. 오늘 건 내가 몇 개 골라 놨어요.'] },
   '1o': { name: '외래의 어르신', look: 'elder', lines: ['번호가 안 불리네. 앉아요, 어차피 안 불려.'], later: ['오늘도 안 불려. 그래도 사람 구경은 여기가 낫지.', '젊을 땐 과일을 팔았어. 귤은 껍질만 봐도 알아, 단지 안 단지.'] },
   '1b': { name: '안뜰 벤치의 할머니', look: 'grandma', lines: ['이 나무가 나보다 늙었어. 잎 지는 건 매년 봐도 아깝더라.'], later: ['반은 떨어졌네. 남은 반이 버티는 게 더 예뻐.', '저 위층 창에서 누가 매일 내려다봐. 손 흔들어 줬는데, 봤으려나.'] },
@@ -211,7 +211,13 @@ export const GIFTS: Record<number, { name: string; line: string }[]> = {
   ],
 };
 export const giftLine = (name: string) => Object.values(GIFTS).flat().find((g) => g.name === name)?.line ?? '';
-export const boughtLine = (name: string) => `${name} 하나를 샀다. 다음에 갈 때 건네자.`;
+// 을 after a final consonant, 를 after a vowel
+const objectJosa = (word: string) => {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  return c >= 0 && c <= 11171 && c % 28 !== 0 ? '을' : '를';
+};
+// v0.93: the shopkeeper says it, not a note to yourself
+export const boughtLine = (name: string) => `${name}${objectJosa(name)} 샀네. 소녀와 만나서 주면 좋아할 거야.`;
 export const SOLD_TODAY = '오늘은 이미 하나 샀다.';
 export const GIVE_QUESTION = '뭐 들고 있어? 아까부터 궁금했어.';
 export const GIVE_NOTHING = '오늘은 그냥 둘래';
@@ -244,7 +250,7 @@ export const CLUE_TEXT: Record<ClueId, { name: string; found: string; memory: st
       '학교 끝나면 친구랑 편의점 앞에 앉아서 하나를 나눠 먹었어. 마지막 한 개로 매번 싸웠어.',
       '지금은 뭘 먹어도 되는지 먼저 물어봐야 해. 대부분은 안 된대.',
       '봉지 냄새만 맡아 봐도 돼? …그래, 이 맛이었어.',
-      '한 번만 더, 마지막 한 개로 싸워 보고 싶어.',
+      '한 번만 더, 나 스스로 해 보고 싶어.',
     ],
   },
   laces: {
@@ -281,7 +287,32 @@ export const hintLines = () => CLUES.map((c) => `${c.day}일째 · ${c.floor}층
 // Asked only from the second day, after she's listened, and because she's curious.
 export const EMOTION_QUESTION = '오늘 하루는 어떤 감정으로 지냈어? 궁금하네.';
 
-export const emotionLine = (word: string | null) => (word ? `${word}… 그랬구나.` : '잘 모르겠는 날도 있지.');
+// v0.93: a hard feeling gets more than "그랬구나": she takes it in, says she knows it too, no advice.
+const EMPATHY: Record<string, string[]> = {
+  분노: ['화가 났구나. 화날 만한 일이었겠지.', '나도 가끔 이유 없이 다 미울 때가 있어.'],
+  짜증: ['짜증 나는 날 있지. 나도 링거 줄이 자꾸 걸리면 짜증 나.', '그래도 하루는 지나가더라.'],
+  억울함: ['억울했겠다. 억울한 건 말하지 않으면 계속 남아.', '나한테 말해 줘서 다행이야.'],
+  답답함: ['답답했구나. 나도 창문이 안 열려서 답답할 때가 많아.', '그래도 이렇게 얘기하니까 조금 숨이 트이지?'],
+  불만: ['마음에 안 드는 게 있었구나.', '그런 날은 투덜대도 돼. 내가 들어 줄게.'],
+  미움: ['누군가 미웠구나. 미운 마음도 있을 수 있어.', '그 마음 때문에 네가 나쁜 사람이 되는 건 아니야.'],
+  슬픔: ['슬펐구나. 슬픈 날은 슬픈 대로 있어도 괜찮아.', '나도 그런 날이 많아.'],
+  서운함: ['서운했구나. 서운하다는 건 그만큼 마음을 줬다는 거래.', '나도 누가 안 오면 서운해.'],
+  외로움: ['외로웠구나. 나도 밤에 복도 불빛만 있을 때 외로워.', '그래도 지금은 우리 둘이 있네.'],
+  실망: ['실망했구나. 기대했던 만큼 아팠겠다.', '그래도 기대했던 너는 멋졌어.'],
+  자책: ['자책을 느낄 때도 있지. 나도 내가 뭘 잘못해서 이렇게 된 건 아닐까, 자책이 들 때가 있어.', '그래도 우리는 하루를 이어 갈 수 있는 힘이 있어.'],
+  무기력: ['아무것도 하기 싫은 날이었구나. 나도 그래.', '그런 날은 여기까지 온 것만으로도 충분해.'],
+  피곤함: ['많이 피곤했구나. 피곤한데도 와 줬네.', '여기선 좀 쉬다 가.'],
+  멍함: ['멍한 날도 있지. 나도 하루 종일 은행나무만 볼 때가 있어.', '그것도 쉬는 거야.'],
+  두려움: ['무서웠구나. 무서운 걸 무섭다고 말하는 것도 용기래.', '나도 밤이 좀 무서워.'],
+  걱정: ['걱정이 많았구나. 걱정은 소중한 게 있다는 뜻이래.', '오늘 밤엔 조금만 내려놔 봐.'],
+  불안: ['불안했구나. 나도 검사 전날은 그래.', '그래도 그날도 결국 지나갔어.'],
+  초조함: ['초조했구나. 시간이 안 가는 것 같았지?', '여기선 천천히 해도 돼.'],
+  긴장: ['많이 긴장했구나. 어깨 한번 내려 봐.', '…나도 따라 할게.'],
+  막막함: ['막막했구나. 어디서부터 해야 할지 모를 때 있지.', '오늘은 오늘 하루만 생각하자.'],
+  창피함: ['창피했구나. 나도 병원복 입고 처음 친구 만났을 때 엄청 창피했어.', '시간 지나면 웃긴 얘기가 되더라.'],
+  위축됨: ['작아지는 기분이었구나.', '그래도 너는 여기까지 와서 이야기해 줬잖아. 그건 작지 않아.'],
+};
+export const emotionLines = (word: string | null): string[] => (word ? EMPATHY[word] ?? [`${word}… 그랬구나.`] : ['잘 모르겠는 날도 있지.']);
 export const keywordLine = (word: string) => `${word} 얘기구나.`;
 
 type EndingScript = { title: string; lines: string[] };

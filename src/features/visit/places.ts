@@ -25,7 +25,8 @@ export type Place = {
   spread: string;
   /** What stands on a letter, and what looking at it says. A thing with no `look` is only ground to look at. */
   /** `face`: stood facing that way (0 north … 3 west) instead of turning to you, like the parallel bars along a lane. */
-  things: Record<string, { look?: string; text: string; face?: 0 | 1 | 2 | 3 }>;
+  /** v0.93 `solid`: built in 3D (hospitalScene.ts SOLIDS), facing `face`, with `look` standing on it at height `on`. */
+  things: Record<string, { look?: string; text: string; face?: 0 | 1 | 2 | 3; solid?: string; on?: number }>;
   ground: MemoryTile;
   /** Ground by letter where it isn't `ground`. */
   groundOn?: Record<string, MemoryTile>;
@@ -48,6 +49,11 @@ export type Place = {
   meetGoal: string;
   lostGoal: string;
   lostArrow: boolean;
+  /** v0.93: real parallel bars along a lane of row `row` from x `from` to `to`: you step up onto it (the view rises by
+   * `raise`), and the first time you reach `fallAt` you fall and get up again (`fallLine` is what you think). */
+  bars?: { row: number; from: number; to: number; raise: number; fallAt: number; fallLine: string };
+  /** v0.93: a mirror on the north wall of row `row` from x `x0` to `x1`, showing you as `you` (a person's look). */
+  mirror?: { row: number; x0: number; x1: number; you: string };
 };
 
 export type PlaceId = 'river' | 'rehab' | 'beach' | 'market' | 'yard' | 'night';
@@ -101,7 +107,7 @@ export const PLACES: Record<PlaceId, Place> = {
   rehab: {
     map: [
       '###########',
-      '#S...C..M.#',
+      '#S...CRRM.#',
       '#..PPPPP..#',
       '#........j#',
       '#..QQQQQ..#',
@@ -112,12 +118,16 @@ export const PLACES: Record<PlaceId, Place> = {
     start: { x: 1, y: 2, dir: 2 },
     meet: { x: 1, y: 4, dir: 2 },
     found: { x: 8, y: 3, dir: 1 },
-    lostAt: { x: 4, y: 3, dir: 1 },
-    stops: 'SCMPQ',
-    spread: '',
+    // v0.93: at the near end of the bars, to step up and walk them (the fall comes on the way, bars.fallAt)
+    lostAt: { x: 2, y: 3, dir: 1 },
+    stops: 'SCMPQR',
+    // the floor beside the bars runs on to the mirror, so nothing walls it off from the room
+    spread: 'PQR',
     things: {
-      P: { look: 'rehabBars', text: '평행봉이다. 손때가 반들반들하다.', face: 2 },
-      Q: { look: 'rehabBars', text: '평행봉이다. 손때가 반들반들하다.', face: 0 },
+      // v0.93: the bars are built in 3D now (bars below); P and Q are the floor either side of them
+      P: { text: '평행봉이다. 손때가 반들반들하다.' },
+      Q: { text: '평행봉이다. 손때가 반들반들하다.' },
+      R: { text: '벽에 큰 거울이 붙어 있다. 퇴원을 앞둔 내가 비친다.' },
       S: { look: 'rehabStairs', text: '연습용 계단이다. 아직은 저기까지 못 간다.' },
       C: { look: 'rehabBike', text: '실내 자전거다. 페달이 무거워 보인다.' },
       M: { look: 'rehabMat', text: '매트가 개켜져 있다. 넘어지면 저기 눕는 걸까.' },
@@ -133,9 +143,12 @@ export const PLACES: Record<PlaceId, Place> = {
     meetGoal: '물리치료사에게 가기',
     lostGoal: '평행봉 끝까지 걷기',
     lostArrow: true,
+    bars: { row: 3, from: 3, to: 7, raise: 0.05, fallAt: 5, fallLine: '중간쯤에서 무릎이 꺾였다. 넘어졌다.' },
+    mirror: { row: 1, x0: 6, x1: 8, you: 'patient' },
   },
   // A summer beach, a mother and her grown-up daughter: U the umbrella, B a bench, K a closed snack kiosk (she's found
-  // behind it), O a rowboat on the sand, ~ the sea.
+  // behind it), O a rowboat on the sand, ~ the sea. v0.93: the boat a cell west; where it was, it shut the two cells
+  // behind the kiosk off from everything, and they were drawn walled in, a block of woods in the sand.
   beach: {
     map: [
       '###########',
@@ -143,7 +156,7 @@ export const PLACES: Record<PlaceId, Place> = {
       '#..k......#',
       '#.........#',
       '#.B.....Kj#',
-      '#......O..#',
+      '#.....O...#',
       '#~~~~~~~~~#',
       '#~~~~~~~~~#',
       '###########',
@@ -198,9 +211,10 @@ export const PLACES: Record<PlaceId, Place> = {
     stops: 'SFTX',
     spread: '',
     things: {
-      S: { look: 'fruitStall', text: '내 과일 좌판이다. 귤이 오늘도 그대로다.' },
+      S: { look: 'fruitStall', solid: 'stallBox', face: 2, on: 0.33, text: '내 과일 좌판이다. 귤이 오늘도 그대로다.' },
       F: { look: 'vegStall', text: '건너편 채소 가게다. 저기도 한산하다.' },
-      T: { look: 'riceCakes', text: '떡집 좌판이다. 떡이 굳어 간다.' },
+      // the rice cakes' stall under a tree drawn on paper, the tree set back behind it (Hospital.tsx)
+      T: { look: 'riceCakes', solid: 'tableBox', face: 2, on: 0.26, text: '떡집 좌판이다. 떡이 굳어 간다.' },
       X: { look: 'marketCrates', text: '빈 과일 상자가 키보다 높이 쌓여 있다.' },
     },
     ground: 'paving',

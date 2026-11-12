@@ -122,15 +122,15 @@ export const REQUESTS: Request[] = [
       returnTitle: '다시, 병원',
       meet: {
         start: {
-          lines: ['이것 봐요! 여기 납작한 돌 엄청 많아요.', '물수제비 할 줄 알아요? 내가 가르쳐 줄게요.'],
+          lines: ['엄마, 이것 봐! 여기 납작한 돌 엄청 많아.', '엄마 물수제비 할 줄 알아? 내가 가르쳐 줄게.'],
           choices: [{ label: '텐트부터 치고 올게. 물에는 들어가지 마.', to: 'go' }],
         },
-        go: { lines: ['네에! 여기 있을게요.'], then: 'gone' },
+        go: { lines: ['응! 여기 있을게.'], then: 'gone' },
         gone: { effect: 'lose', lines: [] },
       },
       found: {
         start: {
-          lines: ['어? 여기요! 네 번 튀었어요! 봤어요?', '…왜 그렇게 봐요? 나 여기 계속 있었는데.'],
+          lines: ['어? 엄마! 네 번 튀었어! 봤어?', '…왜 그렇게 봐? 나 여기 계속 있었는데.'],
           choices: [{ label: '…아니야. 다시 해 봐. 이번엔 보고 있을게.', to: 'back' }],
         },
         back: { effect: 'return', lines: [] },
@@ -224,7 +224,7 @@ export const REQUESTS: Request[] = [
       place: 'rehab',
       title: '재활실, 처음 걷던 날',
       opening: '평행봉이 저렇게 길었나. 다리에 힘이 하나도 없다.',
-      lostTitle: '평행봉 중간쯤에서 무릎이 꺾였다. 넘어졌다.',
+      lostTitle: '평행봉을 잡고 올라섰다. 끝까지 가 보자.',
       returnTitle: '다시, 병원',
       meet: {
         start: {
@@ -448,7 +448,7 @@ export const REQUESTS: Request[] = [
       },
       found: {
         start: {
-          lines: ['아저씨! 오늘도 그 귤 있어요?', '엄마가 귤은 꼭 아저씨네 거 사 오래요. 제일 달다고.'],
+          lines: ['할머니! 오늘도 그 귤 있어요?', '엄마가 귤은 꼭 할머니네 거 사 오래요. 제일 달다고.'],
           choices: [{ label: '…있지. 제일 단 걸로 골라 줄게.', to: 'back' }],
         },
         back: { effect: 'return', lines: [] },

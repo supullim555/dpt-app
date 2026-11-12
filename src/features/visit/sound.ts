@@ -14,6 +14,11 @@ const MUSIC_VOLUME = 0.28;
 let on = true;
 let ctx: AudioContext | null = null;
 let music: HTMLAudioElement | null = null;
+// v0.93: a place's own sound in place of the music (the river in the first request's memory)
+type Ambience = 'river';
+let ambience: Ambience | null = null;
+let ambienceEl: HTMLAudioElement | null = null;
+const AMBIENCE_VOLUME: Record<Ambience, number> = { river: 0.5 };
 const buffers = new Map<string, AudioBuffer>();
 let stepTurn = 0;
 
@@ -37,33 +42,59 @@ export function unlockSound() {
       ctx = new Ctor();
       for (const names of Object.values(EFFECTS)) for (const n of names) void load(n);
       document.addEventListener('visibilitychange', () => {
-        if (!music) return;
-        if (document.hidden) music.pause();
-        else if (on) void music.play().catch(() => {});
+        if (!music && !ambienceEl) return;
+        if (document.hidden) {
+          music?.pause();
+          ambienceEl?.pause();
+        } else if (on) playBed();
       });
     }
     if (ctx.state === 'suspended') void ctx.resume();
-    if (on) startMusic();
+    if (on) playBed();
   } catch {
     ctx = null;
   }
 }
 
-function startMusic() {
-  if (!WEB) return;
-  if (!music) {
-    music = new Audio('/sound/music.webm');
-    music.loop = true;
-    music.volume = MUSIC_VOLUME;
-  }
-  void music.play().catch(() => {});
+function loop(src: string, volume: number) {
+  const el = new Audio(src);
+  el.loop = true;
+  el.volume = volume;
+  return el;
 }
+
+// Whatever lies under everything right now: the place's own sound if it has one, else the music.
+function playBed() {
+  if (!WEB || !ctx) return;
+  if (ambience) {
+    music?.pause();
+    if (!ambienceEl) ambienceEl = loop(`/sound/${ambience}.webm`, AMBIENCE_VOLUME[ambience]);
+    void ambienceEl.play().catch(() => {});
+  } else {
+    ambienceEl?.pause();
+    if (!music) music = loop('/sound/music.webm', MUSIC_VOLUME);
+    void music.play().catch(() => {});
+  }
+}
+
+/** A place's own sound instead of the music, or null to have the music back. */
+export function setAmbience(next: Ambience | null) {
+  if (next === ambience) return;
+  ambienceEl?.pause();
+  ambienceEl = null;
+  ambience = next;
+  if (on) playBed();
+}
+
+export const soundIsOn = () => on;
 
 export function setSoundOn(value: boolean) {
   on = value;
   if (!WEB) return;
-  if (!value) music?.pause();
-  else if (ctx) startMusic();
+  if (!value) {
+    music?.pause();
+    ambienceEl?.pause();
+  } else playBed();
 }
 
 export function play(effect: Effect) {

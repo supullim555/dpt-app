@@ -106,7 +106,7 @@ async function main() {
       await t.shot('tutorial_center.png');
       await t.clickText('앞으로');
       await sleep(420);
-      t.note('병문안: 튜토리얼을 읽기 전엔 움직이지 않음', !(await t.hasText('노란 화살표')));
+      t.note('병문안: 튜토리얼을 읽기 전엔 움직이지 않음', !(await t.hasText('노란 점으로')));
       await readTip();
       t.note('병문안: 읽고 나면 아래에 작게 남음', (await t.hasText('방향키나 W, A, S, D')) && !(await t.hasText('알겠어요')));
       t.note('병문안: 3D 화면이 뜸', await waitFor(() => t.evalJs("!!document.querySelector('canvas')"), 8000));
@@ -117,8 +117,8 @@ async function main() {
       // W by where it sits on the keyboard, so it walks with the keyboard set to Hangul too
       await t.evalJs("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ㅈ', code: 'KeyW' })), true");
       await sleep(420);
-      t.note('병문안: 한글 입력 상태의 W 키로도 걸음', await t.hasText('노란 화살표'));
-      t.note('병문안: 튜토리얼이 목표와 화살표를 설명', await t.hasText('노란 화살표'));
+      t.note('병문안: 한글 입력 상태의 W 키로도 걸음', await t.hasText('노란 점으로'));
+      t.note('병문안: 튜토리얼이 목표와 지도의 길을 설명', await t.hasText('노란 점으로'));
       await readTip();
       await press('앞으로', 4);
       await press('오른쪽');
@@ -320,8 +320,12 @@ async function main() {
       await t.clickText('슬픔');
       await sleep(300);
       await t.clickText('서운함');
-      t.note('병문안: 고른 감정을 받아 줌', await t.waitText('서운함… 그랬구나.', 3000));
-      await t.clickText('서운함… 그랬구나.');
+      // v0.93: a hard feeling gets her own words for it, over two lines, the second by Enter
+      t.note('병문안: 고른 감정을 받아 줌', await t.waitText('서운했구나. 서운하다는 건 그만큼 마음을 줬다는 거래.', 3000));
+      await t.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+      await t.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+      t.note('병문안: 엔터로 대화가 넘어감', await t.waitText('나도 누가 안 오면 서운해.', 2000));
+      await t.clickText('나도 누가 안 오면 서운해.');
       await t.waitText('오늘 얘기 잘 들었어', 3000);
 
       // day 3: what sounds like a crisis gets the fixed lines, not the keyword or the script
@@ -410,10 +414,19 @@ async function main() {
         await t.clickText('지도');
         await sleep(200);
       };
+      // v0.93: some things are hidden first (behind the vending machine, under the chair): look there, then go to it
       const toClue = async () => {
         await openMap();
         await t.clickText('(시험) 단서 앞');
         await sleep(300);
+        for (const [action, said] of [['자판기 흔들어 보기', '자판기 뒤에서 무언가가 굴러 나왔다'], ['의자 밑 살펴보기', '무언가 끼어 있다']]) {
+          if (!(await t.hasText(action))) continue;
+          await t.clickText(action);
+          t.note(`병문안: ${action} → 숨은 물건이 나옴`, await t.waitText(said, 2000));
+          await openMap();
+          await t.clickText('(시험) 단서 앞');
+          await sleep(300);
+        }
       };
       const toShop = async () => {
         await openMap();
@@ -536,7 +549,7 @@ async function main() {
       await press('오른쪽');
       await press('앞으로');
       t.note('병문안: 바위 뒤의 아이', await t.clickText('아이에게 말 걸기'));
-      t.note('병문안: 아이는 물수제비를 뜨고 있었음', await t.waitText('네 번 튀었어요', 2000));
+      t.note('병문안: 아이는 물수제비를 뜨고 있었음', await t.waitText('네 번 튀었어!', 2000));
       await sleep(500);
       await t.shot('river_found.png');
       await tapUntil('…아니야. 다시 해 봐. 이번엔 보고 있을게.');
@@ -567,7 +580,7 @@ async function main() {
       t.note('병문안: 매점은 하루에 3개', (await t.waitText('귤', 2000)) && (await t.hasText('볼펜')) && (await t.hasText('머리끈')));
       await t.shot('visit_shop.png');
       await t.clickText('귤');
-      t.note('병문안: 선물은 하루에 1개', (await t.waitText('귤 하나를 샀다', 2000)) && !(await t.hasText('볼펜')));
+      t.note('병문안: 선물은 하루에 1개', (await t.waitText('귤을 샀네. 소녀와 만나서 주면 좋아할 거야.', 2000)) && !(await t.hasText('볼펜')));
       await stepBack();
 
       await nextDay();
@@ -615,10 +628,16 @@ async function main() {
       await tapUntil('…해 볼게요.');
       await t.shot('rehab_meet.png');
       await t.clickText('…해 볼게요.');
-      t.note('병문안: 평행봉 중간에서 넘어짐', await tapUntil('평행봉 끝까지 걷기'));
+      // v0.93: from the near end, up onto the lane between the bars; halfway along you fall, and get up again
+      await tapUntil('평행봉 끝까지 걷기');
       await sleep(500);
+      await t.shot('rehab_bars.png');
+      await press('앞으로', 3);
+      await sleep(250);
       await t.shot('rehab_fall.png');
-      await press('앞으로', 4);
+      t.note('병문안: 평행봉 중간에서 넘어짐', await t.waitText('중간쯤에서 무릎이 꺾였다. 넘어졌다.', 2000));
+      await sleep(2200);
+      await press('앞으로', 3);
       t.note('병문안: 걷는 동안의 생각', await t.hasText('저기, 끝이 보인다.'));
       t.note('병문안: 끝에서 기다리는 물리치료사', await t.clickText('물리치료사에게 말 걸기'));
       t.note('병문안: 넘어진 뒤 네 걸음', await t.waitText('넘어지고 나서 네 걸음 더 왔어요', 2000));
@@ -627,8 +646,12 @@ async function main() {
       await t.clickText('…네. 봤어요.');
       t.note('병문안: 청년이 그날을 돌아봄', await tapUntil('잠깐 같이 몸에 힘 좀 빼고 갈까요?', 30));
       await t.clickText('잠깐 같이 몸에 힘 좀 빼고 갈까요?');
-      t.note('병문안: 같이 힘 빼기', await t.waitText('주먹을 쥐고, 어깨를 귀 쪽으로 올려요', 2000));
-      await sleep(800);
+      // v0.93: the body part by part, each with a picture of how: the hands first
+      t.note('병문안: 같이 힘 빼기', await t.waitText('두 손을 꽉 주먹 쥐어요', 2000));
+      t.note('병문안: 힘 빼기에 그림', await t.evalJs(`[...document.querySelectorAll('img')].some((i) => /hands-tense/.test(i.src) && i.complete && i.naturalWidth > 0)`));
+      t.note('병문안: 부위마다 한 번씩 (1 / 7)', await t.hasText('1 / 7'));
+      await sleep(5600);
+      t.note('병문안: 힘을 준 뒤 풀기', await t.hasText('손을 펴고, 무릎 위에 툭 내려놓아요'));
       await t.shot('relax_muscle.png');
       await t.clickText('충분해요');
       t.note('병문안: 2일차 부탁이 풀림', await t.waitText('다리가 좀 제 거 같네요', 2000));
@@ -716,7 +739,7 @@ async function main() {
       await press('앞으로');
       await press('오른쪽');
       t.note('병문안: 상자 뒤의 꼬마', await t.clickText('꼬마에게 말 걸기'));
-      t.note('병문안: 매일 오던 꼬마', await t.waitText('아저씨! 오늘도 그 귤 있어요?', 2000));
+      t.note('병문안: 매일 오던 꼬마', await t.waitText('할머니! 오늘도 그 귤 있어요?', 2000));
       await t.shot('market_found.png');
       await tapUntil('…있지. 제일 단 걸로 골라 줄게.');
       await t.clickText('…있지. 제일 단 걸로 골라 줄게.');
@@ -791,7 +814,7 @@ async function main() {
       await t.clickText('…같이 부치고 들어가요.');
       t.note('병문안: 자원봉사자가 그날을 돌아봄', await tapUntil('잠깐 같이 어깨 힘 좀 빼고 가요.', 30));
       await t.clickText('잠깐 같이 어깨 힘 좀 빼고 가요.');
-      await t.waitText('주먹을 쥐고, 어깨를 귀 쪽으로 올려요', 2000);
+      await t.waitText('두 손을 꽉 주먹 쥐어요', 2000);
       await t.clickText('충분해요');
       t.note('병문안: 6일차 부탁이 풀림', await t.waitText('손이 가벼워요', 2000));
       await stepBack();

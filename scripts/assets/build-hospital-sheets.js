@@ -30,7 +30,8 @@ const ITEMS = {
     { src: 'people-a', box: [280, 195, 480, 790], cell: slot(1), height: 480 },
     { src: 'people-a', box: [550, 235, 750, 790], cell: slot(2), height: 440 },
     { src: 'people-a', box: [800, 435, 935, 785], cell: slot(3), height: 300 },
-    { src: 'people-b', box: [70, 185, 310, 885], cell: slot(4), height: 480 },
+    // v0.93: the tired guardian, more tired (generate-hospital-art.js visitor-tired)
+    { src: 'visitor-tired', box: [400, 160, 625, 885], cell: slot(4), height: 480 },
     { src: 'people-b', box: [430, 185, 620, 885], cell: slot(5), height: 470 },
     { src: 'people-b', box: [720, 200, 920, 880], cell: slot(6), height: 470 },
     // from the waist up: he sits behind a desk, which hides the rest
@@ -97,8 +98,9 @@ const ITEMS = {
     { src: 'market-props', box: [720, 286, 856, 722], cell: { x: 256, y: 512, w: 256, h: 512 }, height: 470 },
     { src: 'market-props', box: [878, 414, 990, 724], cell: { x: 512, y: 512, w: 256, h: 256 } },
     { src: 'market-scene', box: [684, 258, 950, 780], cell: { x: 512, y: 768, w: 256, h: 256 } },
-    { src: 'market-props', box: [32, 372, 256, 680], cell: { x: 768, y: 512, w: 256, h: 256 } },
-    { src: 'market-props', box: [466, 512, 708, 702], cell: { x: 768, y: 768, w: 256, h: 256 } },
+    // v0.93: the goods on the market's two stalls, which are 3D now (generate-hospital-art.js market-trays)
+    { src: 'market-trays', box: [30, 280, 470, 682], cell: { x: 768, y: 512, w: 256, h: 256 } },
+    { src: 'market-trays', box: [552, 342, 1006, 684], cell: { x: 768, y: 768, w: 256, h: 256 } },
   ],
   // v0.82: the yard and the night alley (hospitalArt.ts MEMORY2_PART)
   memoryprops2: [

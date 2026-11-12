@@ -3,7 +3,7 @@ import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
 import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
-import { ahead, ALONG_THE_WALLS, ON_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
+import { ahead, ALONG_THE_WALLS, ON_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, HIDDEN_CLUE, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
 import { boughtLine, CLUE_SPOT, linesOn, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
@@ -13,7 +13,7 @@ import { PLACES, type Place } from './places';
 import Minimap from './Minimap';
 import { soundsLikeCrisis } from './safety';
 import { sendPersonaMessage, type ChatMessage } from '@/features/ai';
-import { play } from './sound';
+import { play, setAmbience } from './sound';
 import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
 
 const AMBER = '#d9a441';
@@ -155,12 +155,24 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   // Has she turned to you yet? Walking up the corridor she hasn't; come in and she does.
   const turned = useRef(bedside !== undefined);
   const talking = focused?.kind === 'person';
-  const latest = useRef({ pose, bedside, doneToday, found, day, talking, memory });
-  latest.current = { pose, bedside, doneToday, found, day, talking, memory };
+  // v0.93: whether you've fallen on the parallel bars yet, in this remembering of it
+  const fell = useRef(false);
+  // v0.93: floors where the hidden thing has been turned up today (HIDDEN_CLUE)
+  const [uncovered, setUncovered] = useState<number[]>([]);
+  const latest = useRef({ pose, bedside, doneToday, found, day, talking, memory, uncovered });
+  latest.current = { pose, bedside, doneToday, found, day, talking, memory, uncovered };
   const bars = useRef(new Animated.Value(0)).current;
+  // v0.93: the river runs under the first request's memory, in place of the music
+  const memoryPlace = memory?.request.memory.place;
+  useEffect(() => {
+    setAmbience(memoryPlace === 'river' ? 'river' : null);
+    return () => setAmbience(null);
+  }, [memoryPlace]);
 
   const clue = clueOn(day, pose.floor);
-  const clueHere = clue !== null && !found.includes(clue.id);
+  const clueLying = clue !== null && !found.includes(clue.id);
+  const stillHidden = clueLying && !!HIDDEN_CLUE[pose.floor] && !uncovered.includes(pose.floor);
+  const clueHere = clueLying && !stillHidden;
   const atBedside = bedside !== undefined;
   const roomShut = doneToday;
 
@@ -173,11 +185,16 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         const place = floor === 0 ? now.memory?.place : undefined;
         const person = place ? (c === 'k' || c === 'j' ? place.people[c] : undefined) : PEOPLE[`${floor}${c}`];
         const away = !!place && (c === 'k' ? now.memory?.stage !== 'meet' : c === 'j' ? now.memory?.stage !== 'lost' : false);
-        if (person && c !== 'N' && `${floor}${c}` !== '4r' && !away) out.push({ cell: { x, y }, look: person.look as SpriteLook });
+        if (person && `${floor}${c}` !== '4r' && !away) out.push({ cell: { x, y }, look: person.look as SpriteLook });
         const thing = place?.things[c];
-        if (thing?.look) out.push({ cell: { x, y }, look: thing.look as SpriteLook, ...(thing.face !== undefined ? { fixed: true, face: thing.face } : {}) });
+        if (thing?.solid) {
+          // v0.93: a stall built in 3D, and what it sells on top of it
+          out.push({ cell: { x, y }, look: thing.solid as SpriteLook, face: thing.face ?? 2 });
+          if (thing.look) out.push({ cell: { x, y }, look: thing.look as SpriteLook, shift: [0, 0.02, thing.on ?? 0.3] });
+        } else if (thing?.look) out.push({ cell: { x, y }, look: thing.look as SpriteLook, ...(thing.face !== undefined ? { fixed: true, face: thing.face } : {}) });
         if (c === '%' && floor > 0) out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
-        if (c === 'T') out.push({ cell: { x, y }, look: 'tree' });
+        // in a remembered place the tree stands back, behind what's under it (the market's rice cakes)
+        if (c === 'T') out.push({ cell: { x, y }, look: 'tree', ...(floor === 0 ? { shift: [0.25, -0.48, 0] as [number, number, number] } : {}) });
         if (c === '&') out.push({ cell: { x, y }, look: 'sofaBox', face: floor === 4 ? 1 : 0 });
         if (c === '^') out.push({ cell: { x, y }, look: 'plant' });
       })
@@ -196,8 +213,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       // Close up, talking to someone, it would hang across the top of the picture.
       if (!now.talking) out.push({ cell: GUIDE_CELL, look: 'signGuide', shift: [0, -0.62, 0.98], fixed: true });
       out.push({ cell: SHOPKEEPER_CELL, look: 'counterBox', shift: [0, 0.26, 0], face: 2 });
-      out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.52, 0.98], fixed: true });
+      // v0.93: further out over the corridor, so it's seen from down the lobby
+      out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.85, 0.98], fixed: true });
     }
+    // v0.93: the 3F nurse behind her desk at the back of the station's way in, spoken to from in front of it
+    if (floor === 3) out.push({ cell: { x: 7, y: 6 }, look: 'deskBox', shift: [0, -0.2, 0], face: 0 });
     if (floor === 4) {
       // The doctor sits behind his desk, drawn from the waist up: you only ever see him from in front of it.
       out.push({ cell: { x: DOCTOR_FRONT.x, y: DOCTOR_FRONT.y + 1 }, look: 'doctor', shift: [0, 0.06, 0.31] });
@@ -230,10 +250,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         if (g.drip) out.push({ cell: GIRL_CELL, look: 'drip', shift: [BED_X - 0.47, 0.3, 0], fixed: true });
         if (g.notebook) out.push({ cell: GIRL_CELL, look: 'notebook', shift: [BED_X + 0.06, -0.14, 0.33], fixed: true });
       }
-      if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.55, -0.45, 0] });
+      // v0.93: between the bed and the cabinet, in front, so she's in the frame whichever way the view comes in
+      if (now.bedside?.staffIn) out.push({ cell: GIRL_CELL, look: 'nurse', shift: [-0.2, -0.05, 0] });
     }
     const lying = clueOn(now.day, floor);
-    if (lying && !now.found.includes(lying.id)) out.push({ cell: CLUE_CELLS[floor], look: lying.id });
+    if (lying && !now.found.includes(lying.id) && (!HIDDEN_CLUE[floor] || now.uncovered.includes(floor))) out.push({ cell: CLUE_CELLS[floor], look: lying.id });
     return out;
   };
 
@@ -274,7 +295,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   useEffect(() => {
     scene.current?.setSprites(spritesFor(pose.floor));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [found.length, bedside?.girlHere, bedside?.staffIn, talking]);
+  }, [found.length, bedside?.girlHere, bedside?.staffIn, talking, uncovered.length]);
 
   // The black bars of a scene, sliding in over the view while you come in and away once she speaks.
   const inScene = bedside?.arriving !== undefined;
@@ -340,6 +361,21 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const forward = () => {
     if (blocked() || !nextStep) return;
     play('step');
+    // v0.93: halfway along the parallel bars, the first time: down, and up again
+    const b = memory?.stage === 'lost' ? memory.place.bars : undefined;
+    if (b && !fell.current && nextStep.y === b.row && nextStep.x === b.fallAt) {
+      fell.current = true;
+      busy.current = true;
+      setPose(nextStep);
+      const s = scene.current;
+      if (!s) busy.current = false;
+      else
+        s.moveTo(nextStep, () => {
+          think(b.fallLine);
+          s.fall(() => (busy.current = false));
+        });
+      return;
+    }
     moveTo(nextStep);
     if (memory?.stage === 'lost') {
       const step = memory.step + 1;
@@ -365,7 +401,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   };
 
   // The front door is only a way home once she's been seen.
-  const near = thingAt(pose, clueHere);
+  const near = thingAt(pose, clueHere, stillHidden);
   // She isn't someone you walk up to: her door starts the scene. For one render after you're sent out you
   // still stand at her bed, so she's left out by name rather than by phase.
   // Who someone is: in the hospital by floor and letter; in a remembered place, its own k and j.
@@ -438,6 +474,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   // The tent goes up; when you turn round, he's gone.
   function loseHim(m: Memory) {
     const lost: Memory = { ...m, stage: 'lost' };
+    fell.current = false;
     busy.current = true;
     setTransit(m.request.memory.lostTitle);
     setTimeout(() => {
@@ -492,7 +529,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (thing.kind === 'lift') setPanel('lift');
     else if (thing.kind === 'stairs') setPanel('stairs');
     else if (thing.kind === 'leave') setPanel('leave');
-    else if (thing.kind === 'clue' && clue) {
+    else if (thing.kind === 'hide') {
+      setNote(thing.text);
+      setUncovered((u) => (u.includes(pose.floor) ? u : [...u, pose.floor]));
+    } else if (thing.kind === 'clue' && clue) {
       setNote('');
       setFocused({ kind: 'thing', text: CLUE_TEXT[clue.id].found });
       scene.current?.hold(clue.id, CLUE_CELLS[pose.floor]);
@@ -515,8 +555,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         const own = PEOPLE[thing.id];
         setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : own?.clue?.day === day ? [own.clue.line] : own ? linesOn(own, day) : [] });
       }
-      if (thing.id === '3N') scene.current?.focus({ cell: ahead(pose), height: 0.56, away: 1.05 });
-      else scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
+      scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
   };
 
@@ -525,6 +564,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   keys.current = (key: string) => {
     if (lessonOpen) {
       if (key === 'enter' || key === ' ' || key === 'escape') readLesson();
+      return;
+    }
+    // v0.93: at her bedside Enter and Space go on with the talk, as a tap on the view does
+    if (bedside) {
+      if (key === 'enter' || key === ' ') bedside.onPress?.();
       return;
     }
     if ((key === 'enter' || key === ' ') && focused?.kind === 'person') onViewPress();
@@ -591,11 +635,18 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     ? thing.kind === 'lift' ? '엘리베이터 타기'
     : thing.kind === 'stairs' ? '계단으로 가기'
     : thing.kind === 'clue' ? CLUE_SPOT
+    : thing.kind === 'hide' ? thing.action
     : thing.kind === 'look' ? '살펴보기'
     : thing.kind === 'person' ? `${personOf(thing.id)?.name}에게 말 걸기`
     : '병원 나가기'
     : '';
 
+  // where to stand for a floor's thing: facing what hides it, if anything does, else on it
+  const clueSpot = (floor: FloorNo): Pose => {
+    const hide = HIDDEN_CLUE[floor];
+    if (!hide || uncovered.includes(floor)) return { floor, ...CLUE_CELLS[floor], dir: 0 };
+    return floor === 1 ? { floor, x: 12, y: 2, dir: 1 } : { floor, x: hide.behind.x + 1, y: hide.behind.y, dir: 3 };
+  };
   const devJump = (next: Pose) => {
     setPanel('none');
     setPose(next);
@@ -603,6 +654,16 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     scene.current?.showFloor(next.floor, spritesFor(next.floor), next, roomShut);
     onSeeFloor(next.floor);
   };
+  // ?dev=1 only: scripts can stand you anywhere (window.__visitJump({ floor, x, y, dir })) to look at a spot
+  if (VISIT_DEV && Platform.OS === 'web' && typeof window !== 'undefined') {
+    const w = window as unknown as { __visitJump?: (p: Pose) => void; __visitRemember?: (day: number) => void };
+    w.__visitJump = devJump;
+    // and straight into a request's remembered day, by the request's day
+    w.__visitRemember = (d: number) => {
+      const r = REQUESTS.find((q) => q.day === d);
+      if (r) remember(r);
+    };
+  }
 
   const onViewPress = () => {
     if (bedside) return bedside.onPress?.();
@@ -810,7 +871,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
                   <Text style={styles.devLink}>(시험) 매점 앞</Text>
                 </TouchableOpacity>
                 {todaysClue && (
-                  <TouchableOpacity onPress={() => devJump({ floor: todaysClue.floor as FloorNo, ...CLUE_CELLS[todaysClue.floor as FloorNo], dir: 0 })}>
+                  <TouchableOpacity onPress={() => devJump(clueSpot(todaysClue.floor as FloorNo))}>
                     <Text style={styles.devLink}>(시험) 단서 앞</Text>
                   </TouchableOpacity>
                 )}

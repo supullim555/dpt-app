@@ -25,11 +25,12 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '###=#n#+#v#+###',
       '#CCC##_U_##DDD#',
       '#CCC##_U_##DDD#',
-      '#CCC##_g_##DrD#',
-      '#CCC##___##DDW#',
+      '#CCC##_g_##_rD#',
+      '#CCC##___##__W#',
       '###############',
     ],
     rooms: { A: '병실', B: '병실', C: '병실', D: '의사 선생님의 방', L: '보호자 휴게실', W: '의사 선생님의 방', U: '소녀의 병실' },
+    // v0.93: behind and left of the doctor's desk is floor you see but can't stand on (the window, right, still can be)
   },
   3: {
     map: [
@@ -38,14 +39,15 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#AA#.#.#BB#II##',
       '#=##.#.##=##=##',
       '#.............#',
-      '#%#NNNNNNNNN#.#',
-      '#t###c#######.#',
+      '#%#NNN...NNN#.#',
+      '#t###c#q#####.#',
       '#.............#',
       '###=###+###=###',
       '#DDD#RRRb#QQQ##',
       '###############',
     ],
     rooms: { A: '병실', B: '병실', I: '중환자실', D: '병실', R: '휴게실', Q: '처치실' },
+    // v0.93: the nurses' station has a way in, three cells wide, with the 3F nurse (q) behind a desk at its back
     blocked: '이동식 침대가 복도를 막고 있다.',
   },
   2: {
@@ -60,8 +62,10 @@ export const HOSPITAL: Record<FloorNo, { map: string[]; rooms: Record<string, st
       '#.............#',
       '###=###+###+###',
       '#FFF#YYYy##kJJ#',
+      '#####YYYY######',
       '###############',
     ],
+    // v0.93: the rehab room goes back a row, so finding what's in it takes a little more looking
     rooms: { A: '병실', D: '병실', V: '창가 쉼터', L: '린넨실', F: '병실', Y: '재활실', J: '병실' },
     blocked: '세탁 수레가 통로를 막고 있다.',
   },
@@ -94,7 +98,7 @@ export const ALONG_THE_WALLS: Record<FloorNo, [number, number, 'chairBox' | 'pla
   0: [],
   4: [[3, 4, 'chairBox', 0, -0.36], [10, 4, 'plant', 0, -0.36], [13, 7, 'chairBox', 0.36, 0]],
   3: [[4, 7, 'chairBox', 0, 0.36], [5, 7, 'chairBox', 0, 0.36], [6, 7, 'chairBox', 0, 0.36], [13, 7, 'plant', 0.34, 0.34], [6, 9, 'chairBox', 0, 0.36], [2, 4, 'wheelchair', 0, -0.33]],
-  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chairBox', 0, 0.36], [10, 7, 'chairBox', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chairBox', -0.34, 0.34], [6, 9, 'wheelchair', 0, 0.33]],
+  2: [[3, 4, 'wheelchair', 0, -0.33], [9, 7, 'chairBox', 0, 0.36], [10, 7, 'chairBox', 0, 0.36], [13, 4, 'plant', 0.34, -0.34], [11, 2, 'chairBox', -0.34, 0.34], [8, 10, 'wheelchair', 0, 0.33]],
   1: [[1, 1, 'chairBox', -0.34, -0.34], [2, 2, 'chairBox', 0.34, 0.34], [1, 8, 'wheelchair', -0.32, 0], [2, 9, 'chairBox', 0, 0.36], [3, 9, 'chairBox', 0, 0.36], [7, 8, 'plant', 0.34, 0]],
 };
 
@@ -110,7 +114,14 @@ export const ON_THE_WALLS: Record<FloorNo, [number, number, WallThing, Dir][]> =
   1: [[7, 4, 'noticeBoard', 0], [10, 4, 'hillsPicture', 0], [13, 4, 'wallClock', 1], [1, 6, 'sanitizer', 3]],
 };
 
-export const CLUE_CELLS: Record<FloorNo, Cell> = { 0: { x: -1, y: -1 }, 4: { x: 11, y: 1 }, 3: { x: 5, y: 9 }, 2: { x: 5, y: 9 }, 1: { x: 13, y: 1 } };
+export const CLUE_CELLS: Record<FloorNo, Cell> = { 0: { x: -1, y: -1 }, 4: { x: 11, y: 1 }, 3: { x: 6, y: 9 }, 2: { x: 5, y: 10 }, 1: { x: 12, y: 1 } };
+
+/** v0.93: some things only turn up once you look where they're hidden: face `behind` and use it, `text` shows, and the
+ * thing then lies at CLUE_CELLS (beside the vending machine; by the chair next to the tired guardian). */
+export const HIDDEN_CLUE: Partial<Record<FloorNo, { behind: Cell; action: string; text: string }>> = {
+  1: { behind: { x: 13, y: 2 }, action: '자판기 흔들어 보기', text: '자판기를 흔들어 보았다. 자판기 뒤에서 무언가가 굴러 나왔다.' },
+  3: { behind: { x: 6, y: 9 }, action: '의자 밑 살펴보기', text: '보호자 옆 의자 밑을 들여다보았다. 무언가 끼어 있다.' },
+};
 
 export const DX = [0, 1, 0, -1];
 export const DY = [-1, 0, 1, 0];
@@ -308,13 +319,17 @@ export type Thing =
   | { kind: 'stairs' }
   | { kind: 'person'; id: string }
   | { kind: 'clue' }
+  /** Where something is hidden, before it's been found there (HIDDEN_CLUE). */
+  | { kind: 'hide'; action: string; text: string }
   /** Something to look at. `wall`: it's part of the wall, so stand further off. `up`: look up at it. */
   | { kind: 'look'; text: string; wall?: boolean; up?: boolean }
   | { kind: 'leave' };
 
 /** What's in front of you (or under you, for a clue or the front door). */
-export function thingAt(p: Pose, clueHere: boolean): Thing | null {
+export function thingAt(p: Pose, clueHere: boolean, hiddenHere = false): Thing | null {
   const front = ahead(p);
+  const hide = HIDDEN_CLUE[p.floor];
+  if (hiddenHere && hide && front.x === hide.behind.x && front.y === hide.behind.y) return { kind: 'hide', action: hide.action, text: hide.text };
   const cell = CLUE_CELLS[p.floor];
   if (clueHere && ((p.x === cell.x && p.y === cell.y) || (front.x === cell.x && front.y === cell.y))) return { kind: 'clue' };
   const c = charAt(p.floor, front.x, front.y);
@@ -330,7 +345,8 @@ export function thingAt(p: Pose, clueHere: boolean): Thing | null {
   if (p.floor === 4 && c === 'r' && p.dir !== 2) return { kind: 'look', text: '책상 옆이다. 말을 걸려면 앞으로 돌아가야 한다.' };
   if (p.floor === 1 && c === 'm' && p.dir !== 0) return { kind: 'look', text: '계산대 옆이다. 말을 걸려면 앞으로 돌아가야 한다.' };
   if (isPerson(c)) return { kind: 'person', id: `${p.floor}${c}` };
-  if (c === 'N') return p.floor === 3 ? { kind: 'person', id: '3N' } : { kind: 'look', text: '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };
+  if (p.floor === 3 && c === 'q' && p.dir !== 2) return { kind: 'look', text: '데스크 옆이다. 말을 걸려면 앞으로 돌아가야 한다.' };
+  if (c === 'N') return { kind: 'look', text: p.floor === 3 ? '간호사 스테이션이다. 간호사는 가운데 데스크에 있다.' : '간호사 스테이션이다. 지금은 아무도 없다.', wall: true };
   if (c === '%') return { kind: 'look', text: HOSPITAL[p.floor].blocked ?? '' };
   if (c === '&') return { kind: 'look', text: '대기실 소파다. 가운데가 조금 꺼져 있다.' };
   if (c === '^') return { kind: 'look', text: '화분이다. 누가 물을 주고 있는지 흙이 젖어 있다.' };

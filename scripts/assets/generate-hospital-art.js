@@ -257,19 +257,99 @@ face and shoulder-length bob, in exactly the same drawing style, in a plain scho
 full body standing seen from the front, eyes shut, singing very loudly into a microphone, one fist up; a friend the same
 age with a short ponytail and round glasses, full body, laughing and clapping; another friend with short hair, full
 body, holding a tambourine up.`,
+  // v0.93: progressive relaxation, one part of the body at a time (BreatheTogether.tsx): tensing on the left, letting go
+  // on the right, the same person, so how to do it can be seen and copied. (Arms, shoulders, breath, legs and feet a
+  // second time: arms came out folded, shoulders with the hands behind the head, the breath the same twice, the legs
+  // spread apart and the toes too small to see.)
+  'relax-hands': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: both hands made into tight fists, held in front of the chest, knuckles pale with effort. Right panel: both hands open and loose, palms up, resting softly on the knees. No arrows, no text, no labels.`,
+  'relax-arms': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: both arms bent at the elbow with the fists up near the shoulders, the upper arms squeezed against the sides of the body, like flexing; the arms are not crossed. Right panel: both arms hanging straight down beside the chair, loose and heavy. No arrows, no text, no labels.`,
+  'relax-shoulders': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: a close-up of only the head and shoulders, no hands in the picture: a big shrug, both shoulders lifted up to touch the earlobes, the neck gone. Right panel: a close-up of only the head and shoulders, no hands in the picture: both shoulders dropped low and loose, far from the ears, the neck long. No arrows, no text, no labels.`,
+  'relax-face': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: a close-up of the head and shoulders: eyes squeezed tightly shut, forehead and nose scrunched up. Right panel: a close-up of the head and shoulders: eyes gently closed, the face smooth and soft, the mouth loose. No arrows, no text, no labels.`,
+  'relax-breath': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: one hand resting on the belly: breathing in deeply, the chest lifted, the belly round, the eyes open. Right panel: the same hand on the belly: a long slow sigh out through softly parted lips, the shoulders lower, the eyes half closed. No arrows, no text, no labels.`,
+  'relax-legs': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: seen from the side: the knees straight and both legs held up horizontally in the air in front of the chair, the heels high off the floor at seat height, toes pointing up. Right panel: seen from the side: both feet back down flat on the floor, the knees bent at a right angle, the legs relaxed. No arrows, no text, no labels.`,
+  'relax-feet': `${SAME_STYLE} Two square panels side by side with a wide plain gap between them, each completely filled edge
+to edge with a plain soft pale grey background, nothing else in it. In both, the same calm young adult hospital patient,
+short plain hair, in plain loose modest hospital pajamas, sitting upright on a simple chair, seen from the front. A clear,
+simple pose that is easy to copy. Left panel: a close-up of only the two bare feet resting on the floor, seen from the front and a little above, filling the panel: all the toes curled tightly downward. Right panel: a close-up of only the two bare feet resting on the floor, seen from the front and a little above, filling the panel: the toes spread wide and relaxed. No arrows, no text, no labels.`,
+  // the shoulders' shrug, edited from the calm drawing (asked for whole, it kept coming with the hands behind the head)
+  'relax-shoulders-up': `Edit the attached drawing and keep everything else exactly the same, the same person, chair, pajamas, background and
+drawing style: only lift both shoulders up high in a tense shrug, so they nearly touch the earlobes and the neck is
+hidden. The hands stay where they are, resting on the thighs. No arrows, no text.`,
+  // v0.93: the floors, five of each (six asked for, the best five kept): each swatch whole in itself, so any can lie next
+  // to any in any order, nothing running off its edge to be met by the next (build-floor-tiles.js).
+  'floor-hospital': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of plain hospital corridor vinyl floor tiles, each swatch one whole square tile with its own thin edge, some plain, some faintly speckled, one with a faint scuff, one a little worn.`,
+  'floor-courtyard': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of a hospital courtyard's packed earth path, each swatch a patch of fine earth with a few small pebbles, a stray fallen ginkgo leaf on one or two.`,
+  'floor-pebbles': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of smooth river pebbles of mixed sizes lying close together, each swatch its own little cluster that ends inside the edge.`,
+  'floor-rehab': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of a rehabilitation room's floor of square rubbery vinyl tiles, each swatch one whole tile with its own edge, plain or with a faint wear mark.`,
+  'floor-sand': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of a beach's fine dry sand, each swatch its own patch with soft small ripples, a footprint on one, a tiny shell on another.`,
+  'floor-paving': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of an old market street's paving, each swatch one whole square stone slab with its own edges and a few cracks inside it.`,
+  'floor-dirt': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of a country house yard's packed dirt, each swatch its own patch with small stones, one with a fallen persimmon leaf.`,
+  'floor-asphalt': `${SAME_STYLE} Six separate square floor swatches in a 3x2 grid with wide plain white gaps between them, each seen
+straight from above, each completely filled edge to edge with one surface, evenly lit, no perspective, no shadows cast across
+it, nothing standing on it. Each swatch is complete in itself, so any of them can lie next to any other in any order: no
+line or shape runs off one edge to carry on into the next. Variations of a night alley's worn asphalt, each swatch its own patch with fine grit, one with a small crack inside it, one with a tiny puddle.`,
+  // v0.93: the tired guardian on the third floor, more tired: the same woman as people-b's first, after nights without sleep
+  'visitor-tired': `The woman in the long light coat on the left of the attached image, the same face, hair and clothes, in exactly the
+same drawing style, drawn again alone: full body, standing, facing the viewer, feet visible, drawn tall and narrow, plainly
+exhausted after many sleepless nights: shoulders slumped, the head a little bowed, heavy dark circles under the eyes, the
+hair loose and messy, the coat rumpled, holding a paper cup in both hands at her waist. Calm, not dramatic.`,
+  // v0.93: what's on the market's two stalls, which are built in 3D now: only the goods, no table under them
+  'market-trays': `${SAME_STYLE} Two separate things side by side with a wide plain gap, each whole, seen from the front and a little
+above, with no table, stand or legs under them: a generous heap of tangerines and apples piled in two shallow wooden crates
+set side by side, wider than tall; and a wide flat wooden tray of Korean rice cakes laid out in neat rows, some round, some
+long, a few dusted, wider than tall.`,
 };
 
 const FULL_SCREEN = new Set(['op-hand', 'op-desk', 'op-desk-2', 'op-hospital']);
 const SKY = `${INK} The image fills the whole square canvas edge to edge with no margins. ${NO_MARKS}`;
 const TIRED = path.join(OUT_DIR, 'heads-tied-2-raw.png');
 const LYING_POSE = path.join(OUT_DIR, 'lying-window-raw.png');
-const REFS = { cover: path.join(OUT_DIR, 'heads-tied-raw.png'), 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
+const REFS = { 'visitor-tired': path.join(OUT_DIR, 'people-b-raw.png'), 'relax-shoulders-up': path.join(OUT_DIR, 'relax-shoulders-calm.png'), cover: path.join(OUT_DIR, 'heads-tied-raw.png'), 'heads-tied-2': path.join(OUT_DIR, 'heads-tied-raw.png'), 'lying-window': TIRED, 'lying-turned': TIRED, 'lying-hand': TIRED, 'lying-loose-window': LYING_POSE, 'lying-loose-turned': LYING_POSE };
 const FIRST = path.join(OUT_DIR, 'heads-loose-raw.png');
 
 runGenerateCli({
   outDir: OUT_DIR,
   names: Object.keys(ART),
-  promptFor: (name) => (name.startsWith('lying-') || name === 'cover' ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') || name.endsWith('-bg') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
+  promptFor: (name) => (name.startsWith('lying-') || name === 'cover' || name.startsWith('relax-') || name.startsWith('floor-') ? `Generate this image: ${ART[name]}` : `Generate this image: ${ART[name]}\n\n${name.startsWith('sky-') || name.endsWith('-bg') ? SKY : FULL_SCREEN.has(name) ? FULL : CUTOUT}`),
   // Null, not undefined: undefined would send the old room's character sheet.
   refFor: (name) => (name === 'heads-loose' ? null : REFS[name] ?? FIRST),
 });

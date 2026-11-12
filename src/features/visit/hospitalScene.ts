@@ -2,7 +2,7 @@
 // three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
 import { charAt, currentPlace, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
 import type { Place } from './places';
-import { MEMORY_SKYLINE, SKY_H, SKY_STRIP, type Sky, MEMORY2_PART, MEMORY_PART, MEMORY_TILES, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
+import { FLOOR_CELL, FLOOR_ROW, FLOOR_ROW_OF_TILE, FLOOR_VARIANTS, MEMORY_SKYLINE, SKY_H, SKY_STRIP, type Sky, MEMORY2_PART, MEMORY_PART, MEMORY_TILES, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -99,12 +99,20 @@ void main() {
   if (vSky.y > 0.0 && (vSky.z > vSky.y || (vSky.z > vSky.x && v > 0.74))) discard;
 #endif
   vec3 c = mix(uInk, uPaper, v) * vShade * uFloorLight;
+  // v0.93: on a window tile (3, 7, 8, 11 on the 1024 sheet of 200 tiles) only its glass takes the day's light, not the
+  // painted wall round it (build-hospital-sheets.js GLASS: x 23-148, y 7-127)
+  vec2 px = vUv * 1024.0;
+  vec2 local = mod(px, 200.0) / 200.0;
+  float tileIx = floor(px.y / 200.0) * 5.0 + floor(px.x / 200.0);
+  bool windowTile = abs(tileIx - 3.0) < 0.5 || abs(tileIx - 7.0) < 0.5 || abs(tileIx - 8.0) < 0.5 || abs(tileIx - 11.0) < 0.5;
+  bool glass = !windowTile || (local.x > 0.115 && local.x < 0.74 && local.y > 0.035 && local.y < 0.635);
+  bool daylit = vLit > 0.5 && vLit < 1.5 && v > 0.75 && glass;
   if (vLit > 1.5) c = vec3(0.64, 0.15, 0.25) * v;
   // the day's light through the glass: its colour, but over the paper, so a grey day still reads as daylight (v0.78)
-  else if (vLit > 0.5 && v > 0.75) c = mix(uPaper, min(uDayLight * 1.5, vec3(1.0)), 0.6) * v;
+  else if (daylit) c = mix(uPaper, min(uDayLight * 1.5, vec3(1.0)), 0.6) * v;
   float fog = smoothstep(1.2, 6.5 * uFogFar, vDist) * (uFogFar > 1.5 ? 0.35 : 1.0);
   // the window's light stays when the room dims around whoever you're looking at
-  if (vLit > 0.5 && vLit < 1.5 && v > 0.75) gl_FragColor = vec4(c, 1.0);
+  if (daylit) gl_FragColor = vec4(c, 1.0);
   else gl_FragColor = vec4(mix(c, uFog, fog) * uDim, 1.0);
 }`;
 
@@ -168,6 +176,8 @@ export type HospitalScene = {
   unfocus: (pose: Pose, done: () => void) => void;
   /** Lift a thing up from where it lay to just in front of your eyes. */
   hold: (look: SpriteLook, from: Cell) => void;
+  /** v0.93: down to the floor and slowly up again (falling on the parallel bars); `done` once you're up. */
+  fall: (done?: () => void) => void;
   dispose: () => void;
 };
 
@@ -195,8 +205,9 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   stallKeeper: { w: 0.4, h: 0.8 },
   marketKid: { w: 0.62, h: 0.62 },
   marketCrates: { w: 1.0, h: 1.0 },
-  fruitStall: { w: 1.0, h: 1.0 },
-  riceCakes: { w: 0.85, h: 0.85 },
+  // v0.93: only the goods now, set on a 3D stall
+  fruitStall: { w: 0.66, h: 0.66 },
+  riceCakes: { w: 0.6, h: 0.6 },
   maru: { w: 1.3, h: 1.3 },
   janggiTable: { w: 0.8, h: 0.8 },
   yardGate: { w: 1.2, h: 1.2 },
@@ -234,7 +245,7 @@ const SPRITE_SIZE: Partial<Record<SpriteLook, { w: number; h: number }>> = {
   wheelchair: { w: 0.4, h: 0.4 },
   plant: { w: 0.32, h: 0.64 },
   signGuide: { w: 0.6, h: 0.15 },
-  signShop: { w: 0.6, h: 0.15 },
+  signShop: { w: 0.76, h: 0.19 }, // v0.93: bigger, and further out over the corridor (Hospital.tsx)
   vegStall: { w: 1.0, h: 1.0 },
   stoneWall: { w: 1.2, h: 0.6 },
   noticeBoard: { w: 0.48, h: 0.48 },
@@ -313,6 +324,28 @@ const SOLIDS = {
       allOver([0.25, 0.35], [0.36, 0.44], [-0.05, 0.05], 'boxDark'),
     ],
   },
+  // v0.93: the market's stalls, built rather than drawn: the fruit stall a table under an awning on two posts,
+  // the rice cakes' a low table; what they sell stands on top (places.ts market, `on`)
+  stallBox: {
+    shadow: [1, 0.6],
+    boxes: [
+      { x: [-0.42, 0.42], y: [0, 0.3], z: [-0.2, 0.2], front: 'counterSide', rear: 'counterSide', side: 'counterSide', top: 'counterTop' }, // not counterFront: that one has the hospital shop's sign on it
+      allOver([-0.44, 0.44], [0.3, 0.33], [-0.22, 0.22], 'counterTop'),
+      allOver([-0.43, -0.39], [0.33, 0.92], [-0.21, -0.17], 'leg'),
+      allOver([0.39, 0.43], [0.33, 0.92], [-0.21, -0.17], 'leg'),
+      allOver([-0.5, 0.5], [0.92, 0.96], [-0.3, 0.16], 'boxPale'),
+    ],
+  },
+  tableBox: {
+    shadow: [0.9, 0.5],
+    boxes: [
+      allOver([-0.38, 0.38], [0.22, 0.26], [-0.19, 0.19], 'counterTop'),
+      leg(-0.34, -0.15, 0.22),
+      leg(0.34, -0.15, 0.22),
+      leg(-0.34, 0.15, 0.22),
+      leg(0.34, 0.15, 0.22),
+    ],
+  },
 } as const satisfies Record<string, { shadow: readonly [number, number]; boxes: readonly Box[] }>;
 export type SolidLook = keyof typeof SOLIDS;
 
@@ -349,7 +382,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     t.needsUpdate = true;
     return t;
   };
-  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), people2: texture(sheets.people2), memory: texture(sheets.memory), memoryProps: texture(sheets.memoryProps), memoryProps2: texture(sheets.memoryProps2), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture), sky: texture(sheets.sky) };
+  const textures = { structure: texture(sheets.structure), people: texture(sheets.people), people2: texture(sheets.people2), memory: texture(sheets.memory), memoryProps: texture(sheets.memoryProps), memoryProps2: texture(sheets.memoryProps2), props: texture(sheets.props), girl: texture(sheets.girl), lying: texture(sheets.lying), extra: texture(sheets.extra), furniture: texture(sheets.furniture), sky: texture(sheets.sky), floors: texture(sheets.floors) };
 
   const shared = {
     uFloorLight: { value: 1 },
@@ -363,7 +396,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const buildingDim = { value: 1 };
   const material = (map: InstanceType<typeof THREE.DataTexture>, cutout: boolean, dim: { value: number }, backdrop = false) =>
     new THREE.ShaderMaterial({ vertexShader: VERTEX, fragmentShader: FRAGMENT, defines: backdrop ? { BACKDROP: 1 } : {}, uniforms: { ...shared, uDim: dim, uMap: { value: map }, uCutout: { value: cutout ? 1 : 0 } } });
-  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), people2: material(textures.people2, true, { value: 1 }), memory: material(textures.memory, false, buildingDim, true), memoryProps: Object.assign(material(textures.memoryProps, true, { value: 1 }), { side: THREE.DoubleSide }), memoryProps2: Object.assign(material(textures.memoryProps2, true, { value: 1 }), { side: THREE.DoubleSide }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }) };
+  const materials = { structure: material(textures.structure, false, buildingDim), people: material(textures.people, true, { value: 1 }), people2: material(textures.people2, true, { value: 1 }), memory: material(textures.memory, false, buildingDim, true), memoryProps: Object.assign(material(textures.memoryProps, true, { value: 1 }), { side: THREE.DoubleSide }), memoryProps2: Object.assign(material(textures.memoryProps2, true, { value: 1 }), { side: THREE.DoubleSide }), props: material(textures.props, true, { value: 1 }), girl: material(textures.girl, true, { value: 1 }), lying: material(textures.lying, true, { value: 1 }), extra: material(textures.extra, true, { value: 1 }), furniture: material(textures.furniture, true, { value: 1 }), floors: material(textures.floors, false, buildingDim) };
   const skyMaterial = new THREE.ShaderMaterial({ vertexShader: SKY_VERTEX, fragmentShader: SKY_FRAGMENT, depthWrite: false, side: THREE.DoubleSide, uniforms: { ...shared, uDim: buildingDim, uMap: { value: textures.sky } } });
   /** The ring, its drawing going round SKY_REPEATS times; `strip` picks which sky. */
   const skyGeometry = (strip: number) => {
@@ -424,6 +457,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const camera = new THREE.PerspectiveCamera(78, 1, 0.05, FAR_INDOORS);
   camera.rotation.order = 'YXZ';
   let building: InstanceType<typeof THREE.Mesh> | null = null;
+  let groundMesh: InstanceType<typeof THREE.Mesh> | null = null;
   scene.add(sky);
   type Cutout = {
     mesh: InstanceType<typeof THREE.Mesh>;
@@ -450,6 +484,14 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const yawOf = (dir: Dir) => -dir * (Math.PI / 2);
   const standPoint = (p: Cell, yaw: number) => ({ x: p.x + 0.5 + Math.sin(yaw) * STAND_BACK, z: p.y + 0.5 + Math.cos(yaw) * STAND_BACK });
+  // v0.93: a remembered place's 3D things (the rehab room's parallel bars and its mirror), and you in the mirror
+  let bars: Place['bars'] | null = null;
+  let extras: InstanceType<typeof THREE.Group> | null = null;
+  let mirrorMesh: InstanceType<typeof THREE.Mesh> | null = null;
+  let you: InstanceType<typeof THREE.Mesh> | null = null;
+  /** Up on the bars' lane, the view is that much higher. */
+  const raiseAt = (p: Cell) => (bars && p.y === bars.row && p.x >= bars.from && p.x <= bars.to ? bars.raise : 0);
+  const eyeAt = (p: Cell) => EYE + raiseAt(p);
 
   // How far the paper is swinging behind the turn, and how much it trembles from a step.
   let swing = 0;
@@ -491,6 +533,11 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       }
     }
     buildingDim.value = cam.dim;
+    // you, just behind your own eyes and facing where you look: never in the view, only in the mirror
+    if (you) {
+      you.position.set(cam.x + Math.sin(cam.yaw) * 0.22, cam.y - EYE, cam.z + Math.cos(cam.yaw) * 0.22);
+      you.rotation.set(0, cam.yaw + Math.PI, 0);
+    }
     if (held) {
       const t = cam.holdT;
       const toX = cam.x - Math.sin(cam.yaw) * HOLD_AWAY;
@@ -512,6 +559,25 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const shades: number[] = [];
     const lits: number[] = [];
     const indices: number[] = [];
+
+    // v0.93: the ground on its own sheet (FLOOR_ROW), one of five drawings to a piece, picked at random
+    const ground = { positions: [] as number[], uvs: [] as number[], shades: [] as number[], indices: [] as number[] };
+    const groundQuad = (corners: number[][], row: number, variant: number, o: { flip: boolean; shade: number; corner?: number[] }) => {
+      const base = ground.positions.length / 3;
+      const pad = 2;
+      const u0 = (variant * FLOOR_CELL + pad) / SHEET;
+      const u1 = ((variant + 1) * FLOOR_CELL - pad) / SHEET;
+      const v0 = (row * FLOOR_CELL + pad) / SHEET;
+      const v1 = ((row + 1) * FLOOR_CELL - pad) / SHEET;
+      const [l, r] = o.flip ? [u1, u0] : [u0, u1];
+      const quadUv = [[l, v1], [r, v1], [r, v0], [l, v0]];
+      corners.forEach((p, i) => {
+        ground.positions.push(p[0], p[1], p[2]);
+        ground.uvs.push(quadUv[i][0], quadUv[i][1]);
+        ground.shades.push(o.shade * (o.corner?.[i] ?? 1));
+      });
+      ground.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    };
 
     // `part`: [k, n], the kth of n strips of the tile, for a drawing that runs on across n cells (the riverside's backdrop)
     // `corner`: a shade for each corner as well, in the order they're given (the darker floor along a wall)
@@ -568,12 +634,20 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const SIDE_SHADE = [1, 0.84, 0.94, 0.84];
 
     // the stones or footprints of some places go twice across a cell, or they come out too big
-    const groundAt = (x: number, y: number, here: string, ground: number, corner?: number[]) => {
-      const g = (place && place.groundOn?.[here] === undefined ? place.groundScale : undefined) ?? 1;
+    const groundAt = (x: number, y: number, here: string, tile: number, corner?: number[]) => {
+      // the drawings of five to choose from, if this ground has them (water and the like don't)
+      const rowName = place ? FLOOR_ROW_OF_TILE[(Object.keys(MEMORY_TILES) as (keyof typeof MEMORY_TILES)[]).find((k) => MEMORY_TILES[k] === tile) ?? ''] : tile === TILES.yardGround ? 'courtyard' : 'hospital';
+      // indoors, the hospital's floor tiles two by two to a cell: one to a cell they were slabs
+      const g = rowName === 'hospital' ? 2 : (place && place.groundOn?.[here] === undefined ? place.groundScale : undefined) ?? 1;
       for (let i = 0; i < g; i++) {
         for (let j = 0; j < g; j++) {
           const [x0, x1, y0, y1] = [x + i / g, x + (i + 1) / g, y + j / g, y + (j + 1) / g];
-          quad([[x0, 0, y1], [x1, 0, y1], [x1, 0, y0], [x0, 0, y0]], ground, { shade: 0.92, flat: true, flip: hash(x * g + i, y * g + j, 5) < 0.5, corner: g === 1 ? corner : undefined });
+          const corners = [[x0, 0, y1], [x1, 0, y1], [x1, 0, y0], [x0, 0, y0]];
+          const flip = hash(x * g + i, y * g + j, 5) < 0.5;
+          if (rowName) {
+            const variant = Math.min(FLOOR_VARIANTS - 1, Math.floor(hash(x * g + i, y * g + j, 11) * FLOOR_VARIANTS));
+            groundQuad(corners, FLOOR_ROW[rowName], variant, { shade: 0.92, flip, corner: g === 1 ? corner : undefined });
+          } else quad(corners, tile, { shade: 0.92, flat: true, flip, corner: g === 1 ? corner : undefined });
         }
       }
     };
@@ -683,6 +757,97 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     building = new THREE.Mesh(geometry, place ? materials.memory : materials.structure);
     building.frustumCulled = false;
     scene.add(building);
+
+    const groundGeometry = new THREE.BufferGeometry();
+    groundGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ground.positions, 3));
+    groundGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(ground.uvs, 2));
+    groundGeometry.setAttribute('aShade', new THREE.Float32BufferAttribute(ground.shades, 1));
+    groundGeometry.setAttribute('aLit', new THREE.Float32BufferAttribute(ground.shades.map(() => 0), 1));
+    groundGeometry.setAttribute('aSky', new THREE.Float32BufferAttribute(ground.shades.flatMap(() => [0, 0, 0]), 3));
+    groundGeometry.setIndex(ground.indices);
+    if (groundMesh) {
+      scene.remove(groundMesh);
+      groundMesh.geometry.dispose();
+    }
+    groundMesh = new THREE.Mesh(groundGeometry, materials.floors);
+    groundMesh.frustumCulled = false;
+    scene.add(groundMesh);
+  };
+
+  const clearExtras = () => {
+    if (extras) {
+      scene.remove(extras);
+      extras.traverse((o: unknown) => {
+        const m = o as { geometry?: { dispose: () => void } };
+        m.geometry?.dispose();
+      });
+      extras = null;
+    }
+    if (mirrorMesh) {
+      scene.remove(mirrorMesh);
+      (mirrorMesh as unknown as { dispose?: () => void }).dispose?.();
+      mirrorMesh = null;
+    }
+    if (you) {
+      scene.remove(you);
+      you.geometry.dispose();
+      you = null;
+    }
+    bars = null;
+  };
+
+  const buildExtras = (place: Place | null) => {
+    clearExtras();
+    if (!place) return;
+    bars = place.bars ?? null;
+    if (place.bars) {
+      const b = place.bars;
+      const group = new THREE.Group();
+      const length = b.to + 1 - b.from;
+      const steel = new THREE.MeshBasicMaterial({ color: 0xcfc9bb });
+      const dark = new THREE.MeshBasicMaterial({ color: 0x5a554c });
+      const deck = new THREE.MeshBasicMaterial({ color: 0x8f897b });
+      // the lane you step up onto, a little above the floor
+      const platform = new THREE.Mesh(new THREE.BoxGeometry(length, b.raise, 0.86), deck);
+      platform.position.set(b.from + length / 2, b.raise / 2, b.row + 0.5);
+      group.add(platform);
+      // a rail either side, at hand height, on posts at every cell
+      for (const z of [b.row + 0.1, b.row + 0.9]) {
+        const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, length, 10), steel);
+        rail.rotation.z = Math.PI / 2;
+        rail.position.set(b.from + length / 2, b.raise + 0.38, z);
+        group.add(rail);
+        for (let x = b.from; x <= b.to + 1; x++) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.38, 8), dark);
+          post.position.set(x, b.raise + 0.19, z);
+          group.add(post);
+        }
+      }
+      extras = group;
+      scene.add(group);
+    }
+    if (place.mirror) {
+      const m = place.mirror;
+      // three.js's own Reflector (three/examples/jsm/objects/Reflector.js): the room drawn again from the mirror's side
+      void import('three/examples/jsm/objects/Reflector.js').then(({ Reflector }) => {
+        if (currentPlace() !== place) return;
+        const width = m.x1 - m.x0;
+        const mirror = new Reflector(new THREE.PlaneGeometry(width, 0.95), { textureWidth: 512, textureHeight: 512, color: 0xb4b2aa });
+        mirror.position.set(m.x0 + width / 2, 0.58, m.row + 0.01);
+        mirrorMesh = mirror as unknown as InstanceType<typeof THREE.Mesh>;
+        scene.add(mirror);
+        // a dark frame round it, so it reads as a mirror and not a window into another room
+        const frame = new THREE.MeshBasicMaterial({ color: 0x3d3a34 });
+        for (const [w, h, x, y] of [[width + 0.06, 0.03, 0, 0.49], [width + 0.06, 0.03, 0, -0.49], [0.03, 0.98, -width / 2 - 0.015, 0], [0.03, 0.98, width / 2 + 0.015, 0]]) {
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), frame);
+          bar.position.set(m.x0 + width / 2 + x, 0.58 + y, m.row + 0.02);
+          extras?.add(bar) ?? scene.add(bar);
+        }
+        you = makeSpriteMesh(m.you as SpriteLook);
+        scene.add(you);
+        draw();
+      });
+    }
   };
 
   const shadowWidth = (look: SpriteLook) => (look === 'tree' ? 0.8 : (SPRITE_SIZE[look] ?? PERSON_SIZE).w);
@@ -845,7 +1010,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     dropHeld();
     heading = pose.dir;
     const yaw = yawOf(pose.dir);
-    cam = { ...standPoint(pose, yaw), y: EYE, yaw, pitch: 0, dim: 1, holdT: 0 };
+    cam = { ...standPoint(pose, yaw), y: eyeAt(pose), yaw, pitch: 0, dim: 1, holdT: 0 };
     draw();
   };
 
@@ -894,6 +1059,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       renderer.setClearColor(new THREE.Color(fog[0], fog[1], fog[2]));
       showSky(place?.sky);
       buildFloor(floor, roomShut);
+      buildExtras(place);
       buildSprites(sprites, pose);
       jump(pose);
     },
@@ -911,7 +1077,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       const quarter = turn(pose.dir, -heading);
       const yaw = cam.yaw + (quarter === 3 ? 1 : -quarter) * (Math.PI / 2);
       heading = pose.dir;
-      animate(STEP_MS, { ...cam, ...standPoint(pose, yaw), yaw }, true, done);
+      animate(STEP_MS, { ...cam, ...standPoint(pose, yaw), y: eyeAt(pose), yaw }, true, done);
     },
     focus: (target, ms = FOCUS_MS) => {
       const yaw = yawOf(heading);
@@ -942,9 +1108,20 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     },
     unfocus: (pose, done) => {
       const yaw = cam.yaw;
-      animate(FOCUS_MS, { ...standPoint(pose, yaw), y: EYE, yaw, pitch: 0, dim: 1, holdT: 0 }, false, () => {
+      animate(FOCUS_MS, { ...standPoint(pose, yaw), y: eyeAt(pose), yaw, pitch: 0, dim: 1, holdT: 0 }, false, () => {
         dropHeld();
         done();
+      });
+    },
+    fall: (done) => {
+      if (still) {
+        done?.();
+        return;
+      }
+      const up = { ...cam };
+      // the knees go: down near the floor, looking down a little; a breath there; then slowly up again
+      animate(380, { ...up, y: 0.2 + (up.y - EYE), pitch: -0.32 }, false, () => {
+        setTimeout(() => animate(1100, up, false, done), 520);
       });
     },
     hold: (look, from) => {
@@ -959,6 +1136,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       cancelAnimationFrame(paperFrame);
       observer.disconnect();
       dropHeld();
+      clearExtras();
       building?.geometry.dispose();
       for (const o of cutouts) o.mesh.geometry.dispose();
       for (const m of solids) m.geometry.dispose();

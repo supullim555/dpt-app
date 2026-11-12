@@ -9,3 +9,12 @@ give.wav     cloth2, same pack
              (pack via https://opengameart.org/content/50-rpg-sound-effects, converted to 22 kHz WAV in SoundCraft)
 
 Credit is not required by CC0; it's given here with thanks.
+
+v0.93
+river.webm   40 s of "Sea and river wave sounds" (VistulaShort) by RandomMind, CC0 —
+             https://opengameart.org/content/sea-and-river-wave-sounds — looped with a crossfade (scripts/assets/sound/build-river.js)
+In the films (public/cutscenes/mem-collar.mp4, mem-snack.mp4):
+             "Group Giggling" (CC0) — https://opengameart.org/content/group-giggling
+             "Dog barking (mono)" by Brandon Morris, submitted by HaelDB, OGA-BY 3.0 / CC0 (used under CC0) —
+             https://opengameart.org/content/dog-barking-mono
+             a snack bag's rustle, made in code for this game (scripts/assets/sound/make-rustle.js)

@@ -47,6 +47,18 @@ er.property("Start of Ramp").setValue([270, 480]); er.property("Start Color").se
 er.property("End of Ramp").setValue([270, 1150]); er.property("End Color").setValue([0.35, 0.35, 0.35]);
 edge.blendingMode = BlendingMode.MULTIPLY;
 
+// v0.93: the day's sounds, never two at once (EffectCraft played only one of two overlapping sound layers):
+// { file, at (s in the film), from (s in the file), length, gain (dB) }
+var SOUNDS = SCENE.sounds || [];
+for (var k = 0; k < SOUNDS.length; k++) {
+  var S = SOUNDS[k];
+  var snd = c.layers.add(imp(S.file));
+  snd.startTime = S.at - S.from;
+  snd.inPoint = S.at;
+  snd.outPoint = S.at + S.length;
+  snd.property("Audio").property("Audio Levels").setValue([S.gain, S.gain]);
+}
+
 var black = c.layers.addSolid([0, 0, 0], "black", W, H, 1);
 key(black.property("Transform").property("Opacity"), [0, 1.0, DUR - 1.2, DUR], [100, 0, 0, 100]);
 app.project.save(new File(SCENE.save));

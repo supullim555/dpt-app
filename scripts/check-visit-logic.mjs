@@ -223,8 +223,18 @@ assert.equal(thingAt(BEDSIDE, false).id, '4g'); // she's a person in her room li
 assert.ok(!canStand(4, 6, 7)); // the bed takes the room: you stand at its foot
 assert.equal(thingAt({ floor: 3, x: 1, y: 4, dir: 2 }, false).kind, 'look'); // the gurney
 assert.equal(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false).id, '1m');
-assert.equal(thingAt({ floor: 1, x: 13, y: 1, dir: 0 }, true).kind, 'clue');
-assert.equal(thingAt({ floor: 1, x: 13, y: 1, dir: 0 }, false), null);
+// v0.93: the collar turns up when the vending machine is shaken, then lies beside it
+assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 1 }, false, true).kind, 'hide');
+assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 0 }, true).kind, 'clue');
+assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 0 }, false), null);
+// and the snack bag by the chair next to the tired guardian
+assert.equal(thingAt({ floor: 3, x: 7, y: 9, dir: 3 }, false, true).kind, 'hide');
+assert.equal(thingAt({ floor: 3, x: 7, y: 9, dir: 3 }, true).kind, 'clue');
+// the 3F nurse is spoken to across her desk, from the way into the station
+assert.equal(thingAt({ floor: 3, x: 7, y: 5, dir: 2 }, false).id, '3q');
+assert.equal(thingAt({ floor: 3, x: 7, y: 4, dir: 2 }, false), null);
+// nobody gets behind the doctor's desk
+assert.ok(!canStand(4, 12, 9) && !canStand(4, 11, 9) && !canStand(4, 11, 8));
 assert.equal(thingAt(ENTRANCE, false).kind, 'leave');
 assert.equal(thingAt(OUTSIDE_ROOM, false), null); // the front door is on the first floor only
 assert.match(thingAt({ floor: 3, x: 1, y: 4, dir: 0 }, false).text, /병실/);

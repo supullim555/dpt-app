@@ -2,6 +2,7 @@ import { createElement, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { USE_NATIVE_DRIVER } from '@/core/anim/nativeDriver';
 import CrisisFooter from '@/ui/CrisisFooter';
+import { soundIsOn } from './sound';
 
 const FADE_MS = 600;
 
@@ -51,7 +52,7 @@ function Skip({ onSkip }: { onSkip: () => void }) {
   return <View style={styles.wrap} />;
 }
 
-// The film, filling the scene, muted (no sound in the game yet) so it may start on its own. A tap skips it.
+// The film, filling the scene. A tap skips it.
 function Film({ src, onEnd, onFail }: { src: string; onEnd: () => void; onFail: () => void }) {
   const started = useRef(false);
   const finished = useRef(false);
@@ -62,6 +63,17 @@ function Film({ src, onEnd, onFail }: { src: string; onEnd: () => void; onFail: 
   };
   const end = useRef(once(onEnd)).current;
   const fail = useRef(once(onFail)).current;
+  // v0.93: with sound on the film is heard (some have their day's sounds); if the browser won't start it with sound,
+  // it plays muted rather than not at all
+  const start = (el: HTMLVideoElement | null) => {
+    if (!el || el.dataset.started) return;
+    el.dataset.started = '1';
+    el.muted = !soundIsOn();
+    el.play().catch(() => {
+      el.muted = true;
+      el.play().catch(() => {});
+    });
+  };
   useEffect(() => {
     const t = setTimeout(() => started.current || fail(), VIDEO_START_MS);
     return () => clearTimeout(t);
@@ -71,7 +83,7 @@ function Film({ src, onEnd, onFail }: { src: string; onEnd: () => void; onFail: 
       <TouchableOpacity activeOpacity={1} style={styles.film} onPress={end} accessibilityLabel="장면 넘기기">
         {createElement('video', {
           src,
-          autoPlay: true,
+          ref: start,
           muted: true,
           playsInline: true,
           preload: 'auto',
