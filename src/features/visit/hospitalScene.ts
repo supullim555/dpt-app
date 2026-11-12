@@ -372,7 +372,17 @@ const hash = (x: number, y: number, d: number) => {
 export async function createHospitalScene(host: HTMLElement, dayLight: string): Promise<HospitalScene | null> {
   const probe = document.createElement('canvas');
   if (!probe.getContext('webgl2')) return null;
-  const [THREE, sheets] = await Promise.all([import('three'), loadSheets()]);
+  // v0.93: three.js's own examples (three/examples/jsm, from its GitHub): the bloom pass for the glow of the windows and
+  // lamps; the water and the lens flare load only for the places that have them (buildExtras)
+  const [THREE, sheets, { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }, { CopyShader }] = await Promise.all([
+    import('three'),
+    loadSheets(),
+    import('three/examples/jsm/postprocessing/EffectComposer.js'),
+    import('three/examples/jsm/postprocessing/RenderPass.js'),
+    import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
+    import('three/examples/jsm/postprocessing/ShaderPass.js'),
+    import('three/examples/jsm/shaders/CopyShader.js'),
+  ]);
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -490,6 +500,19 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
 
   let cam = { x: 0.5, y: EYE, z: 0.5, yaw: 0, pitch: 0, dim: 1, holdT: 0 };
   let heading: Dir = 0;
+  // The glow: only what's brightest (the lit glass, a lamp, the light at the end) spreads a little. The scene's colours
+  // are already what's shown, so the last pass copies them out as they are (no colour-space step).
+  let composer: InstanceType<typeof EffectComposer> | null = null;
+  let bloom: InstanceType<typeof UnrealBloomPass> | null = null;
+  try {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.38, 0.5, 0.93);
+    composer.addPass(bloom);
+    composer.addPass(new ShaderPass(CopyShader));
+  } catch {
+    composer = null;
+  }
   let frame = 0;
 
   const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -559,7 +582,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       held.mesh.scale.setScalar(1 + (HOLD_SIZE - 1) * t);
       held.mesh.rotation.y = cam.yaw;
     }
-    renderer.render(scene, camera);
+    if (composer) composer.render();
+    else renderer.render(scene, camera);
   };
 
   const buildFloor = (floor: FloorNo, roomShut: boolean) => {
@@ -805,11 +829,139 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       you = null;
     }
     bars = null;
+    for (const o of flares) scene.remove(o);
+    flares = [];
+    for (const o of moving) {
+      scene.remove(o);
+      (o as unknown as { dispose?: () => void }).dispose?.();
+    }
+    moving = [];
+    cancelAnimationFrame(waterFrame);
+  };
+
+  // v0.93: things that move on their own (the water) need drawing every frame while they're there
+  let moving: InstanceType<typeof THREE.Object3D>[] = [];
+  let flares: InstanceType<typeof THREE.Object3D>[] = [];
+  let waterFrame = 0;
+  const keepDrawing = () => {
+    let last = 0;
+    const tick = (now: number) => {
+      if (!moving.length) return;
+      // fifteen times a second is plenty for water; and not at all while the camera moves, which draws every frame
+      // itself (drawing twice a frame made steps late enough to be dropped)
+      if (now - last > 66 && !document.hidden && !cameraMoving) {
+        last = now;
+        draw();
+      }
+      waterFrame = requestAnimationFrame(tick);
+    };
+    waterFrame = requestAnimationFrame(tick);
+  };
+  /** Ripples for the water, made here (the drawings three.js's water example loads aren't in the package): a few
+   * waves that wrap at the edges, turned into a normal map. */
+  const rippleTexture = (seed: number) => {
+    const N = 256;
+    const height = new Float32Array(N * N);
+    const waves = [0, 1, 2, 3, 4].map((i) => ({ fx: ((seed * 7 + i * 3) % 5) + 1, fy: ((seed * 5 + i * 2) % 4) + 1, phase: seed + i * 1.7, amp: 1 / (i + 1) }));
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++)
+        height[y * N + x] = waves.reduce((h, w) => h + w.amp * Math.sin(((x * w.fx + y * w.fy) / N) * Math.PI * 2 + w.phase), 0);
+    const data = new Uint8Array(N * N * 4);
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++) {
+        const dx = height[y * N + ((x + 1) % N)] - height[y * N + ((x + N - 1) % N)];
+        const dy = height[((y + 1) % N) * N + x] - height[((y + N - 1) % N) * N + x];
+        const len = Math.hypot(dx, dy, 2);
+        const i = (y * N + x) * 4;
+        data[i] = Math.round((-dx / len) * 127 + 128);
+        data[i + 1] = Math.round((-dy / len) * 127 + 128);
+        data[i + 2] = Math.round((2 / len) * 127 + 128);
+        data[i + 3] = 255;
+      }
+    const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.needsUpdate = true;
+    return t;
+  };
+  /** A soft round light for the lens flare, drawn on a canvas. */
+  const flareTexture = (size: number, ring: boolean) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    if (ring) {
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(0.7, 'rgba(255,250,235,0.35)');
+      grad.addColorStop(0.85, 'rgba(255,250,235,0.08)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+    } else {
+      grad.addColorStop(0, 'rgba(255,255,250,1)');
+      grad.addColorStop(0.2, 'rgba(255,245,220,0.6)');
+      grad.addColorStop(1, 'rgba(255,240,210,0)');
+    }
+    g.fillStyle = grad;
+    g.fillRect(0, 0, size, size);
+    return new THREE.CanvasTexture(c);
   };
 
   const buildExtras = (place: Place | null) => {
     clearExtras();
+    // the glow only where the light stands out: in the hospital and in the night alley. Out of doors by day the sand and
+    // paper are as bright as any light, and it whitened everything.
+    if (bloom) bloom.enabled = !place || !!place.thickFog;
     if (!place) return;
+    // the water: one surface over all the water there is, reaching out past the edge out of doors (three.js Water2)
+    const water: Cell[] = [];
+    place.map.forEach((row, y) => [...row].forEach((ch, x) => ch === '~' && water.push({ x, y })));
+    if (water.length) {
+      void import('three/examples/jsm/objects/Water2.js').then(({ Water }) => {
+        if (currentPlace() !== place) return;
+        const beyond = place.outdoors ? OPEN_BEYOND : 0;
+        const xs = water.map((c) => c.x);
+        const ys = water.map((c) => c.y);
+        const w = place.map[0].length;
+        const h = place.map.length;
+        const x0 = Math.min(...xs) <= 1 ? 1 - beyond : Math.min(...xs);
+        const x1 = Math.max(...xs) >= w - 2 ? w - 1 + beyond : Math.max(...xs) + 1;
+        const y0 = Math.min(...ys) <= 1 ? 1 - beyond : Math.min(...ys);
+        const y1 = Math.max(...ys) >= h - 2 ? h - 1 + beyond : Math.max(...ys) + 1;
+        const sea = place.southWall === 'sea';
+        const surface = new Water(new THREE.PlaneGeometry(x1 - x0, y1 - y0), {
+          color: 0xdcd9cf,
+          scale: 2.5,
+          flowDirection: new THREE.Vector2(sea ? 0 : 1, sea ? -1 : 0.2),
+          flowSpeed: 0.02,
+          reflectivity: 0.35,
+          textureWidth: 256,
+          textureHeight: 256,
+          normalMap0: rippleTexture(1),
+          normalMap1: rippleTexture(2),
+        });
+        surface.rotation.x = -Math.PI / 2;
+        surface.position.set((x0 + x1) / 2, 0.02, (y0 + y1) / 2);
+        scene.add(surface);
+        moving.push(surface as unknown as InstanceType<typeof THREE.Object3D>);
+        keepDrawing();
+      });
+    }
+    // the low sun over the summer beach and the market at dusk, flaring as you face it (three.js Lensflare)
+    const sun = place.sky === 'dusk' ? { x: place.map[0].length / 2, y: 5, z: -14 } : place.sky === 'summer' && place.southWall === 'sea' ? { x: 22, y: 7, z: place.map.length / 2 } : null;
+    if (sun) {
+      void import('three/examples/jsm/objects/Lensflare.js').then(({ Lensflare, LensflareElement }) => {
+        if (currentPlace() !== place) return;
+        const light = new THREE.PointLight(0xffffff, 0, 0);
+        light.position.set(sun.x, sun.y, sun.z);
+        const flare = new Lensflare();
+        flare.addElement(new LensflareElement(flareTexture(256, false), 260, 0));
+        flare.addElement(new LensflareElement(flareTexture(128, true), 70, 0.5));
+        flare.addElement(new LensflareElement(flareTexture(128, true), 110, 0.75));
+        flare.addElement(new LensflareElement(flareTexture(128, true), 50, 0.95));
+        light.add(flare);
+        scene.add(light);
+        flares.push(light);
+        draw();
+      });
+    }
     bars = place.bars ?? null;
     if (place.bars) {
       const b = place.bars;
@@ -1029,6 +1181,12 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const { clientWidth: w, clientHeight: h } = host;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
+    if (composer) {
+      composer.setPixelRatio(renderer.getPixelRatio());
+      composer.setSize(w, h);
+      // at half size, so the glow costs little on a phone
+      bloom?.setSize(Math.ceil(w / 2), Math.ceil(h / 2));
+    }
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     draw();
