@@ -512,7 +512,28 @@ export const SKIN = {
   cabinetSide: lowerFace(832, 128, 96, 96),
   cabinetTop: lowerFace(928, 128, 96, 96),
 } as const;
-export type SkinFace = keyof typeof SKIN;
+/** v0.97: the decor sheet (build-hospital-sheets.js DECOR_FACES / DECOR_SVG): the faces of the boxes built in the
+ * remembered places, a whole solid from this sheet at a time (hospitalScene.ts SOLIDS `decor`). */
+export const DECOR_SKIN = {
+  houseFront: { x: 22, y: 140, w: 468, h: 326 },
+  kioskFront: { x: 520, y: 8, w: 494, h: 494 },
+  janggiTop: { x: 22, y: 534, w: 212, h: 212 },
+  wood: { x: 264, y: 520, w: 112, h: 112 },
+  plaster: { x: 392, y: 520, w: 112, h: 112 },
+  roof: { x: 264, y: 648, w: 112, h: 112 },
+  darkWood: { x: 392, y: 648, w: 112, h: 112 },
+  gateDoor: { x: 524, y: 522, w: 232, h: 232 },
+  stone: { x: 772, y: 516, w: 248, h: 248 },
+} as const;
+export type SkinFace = keyof typeof SKIN | keyof typeof DECOR_SKIN;
+/** v0.97: what stands in the widened corridors, one on each floor (hospitalMap.ts ALONG_THE_WALLS). */
+export const DECOR_PART = {
+  sculpture: { x: 0, y: 768, w: 256, h: 256 },
+  indoorTree: { x: 256, y: 768, w: 256, h: 256 },
+  aquarium: { x: 512, y: 768, w: 256, h: 256 },
+  artStand: { x: 768, y: 768, w: 256, h: 256 },
+} as const;
+export type DecorPart = keyof typeof DECOR_PART;
 
 /** The first day, with her hair down, and the lobby's furniture. */
 export const EXTRA_PART = {

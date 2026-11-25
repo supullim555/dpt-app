@@ -4,11 +4,13 @@
 var DIR = "__DIR__";  // the cut-out layers, and where the project is saved
 var SKY = "__SKY__";
 function imp(p) { return app.project.importFile(new ImportOptions(new File(p))); }
-var W = 540, H = 960, DUR = 11, FPS = 24;
-var TURN = 2.0;   // she starts to turn
-var FLASH = 5.0;  // the screen is all white
-var SWAP = 5.4;   // the world changes while nobody can see it
-var CLEAR = 7.6;  // the white is gone
+// v0.98: it opens wide, on the whole of her standing under the tree with her back to you, then comes in close for the turn
+var WIDE = 2.6;   // the wide shot, before the close one
+var W = 540, H = 960, DUR = 11 + WIDE, FPS = 24;
+var TURN = 2.0 + WIDE;   // she starts to turn
+var FLASH = 5.0 + WIDE;  // the screen is all white
+var SWAP = 5.4 + WIDE;   // the world changes while nobody can see it
+var CLEAR = 7.6 + WIDE;  // the white is gone
 var c = app.project.items.addComp("last-light", W, H, 1, DUR, FPS);
 c.bgColor = [0.6, 0.6, 0.6];
 
@@ -51,14 +53,20 @@ haze.moveAfter(tree);
 
 // her, between you and the tree: from behind, then over her shoulder, then facing you. Always grey (the drawings
 // are ink, and it hides the green the keying leaves in her hair).
-var POSES = [["turn-back", 175, -1, TURN + 0.25], ["turn-side", 230, TURN + 0.1, TURN + 0.75], ["turn-front", 165, TURN + 0.6, DUR + 1]];
+// her whole, small under the tree, then gone as the close shot comes in
+var whole = layer3d(imp(DIR + "full-back.png"), [300, 860, 400], 50);
+whole.property("Transform").property("Anchor Point").setValue([126, 806, 0]);
+whole.property("Effects").addProperty("ADBE HUE SATURATION").property("Master Saturation").setValue(-100);
+key(whole.property("Transform").property("Opacity"), [0, WIDE - 0.35, WIDE + 0.05], [100, 100, 0]);
+var POSES = [["turn-back", 175, -2, TURN + 0.25], ["turn-side", 230, TURN + 0.1, TURN + 0.75], ["turn-front", 165, TURN + 0.6, DUR + 1]];
 for (var i = 0; i < POSES.length; i++) {
   var p = POSES[i];
   var g = layer3d(imp(DIR + p[0] + ".png"), [270, 1160, 120], 80);  // her chest cut-off below the frame
   g.property("Transform").property("Anchor Point").setValue([p[1], 546, 0]);
   g.property("Effects").addProperty("ADBE HUE SATURATION").property("Master Saturation").setValue(-100);
   var o = g.property("Transform").property("Opacity");
-  if (p[2] < 0) key(o, [0, p[3] - 0.15, p[3]], [100, 100, 0]);
+  if (p[2] === -2) key(o, [0, WIDE - 0.35, WIDE + 0.05, p[3] - 0.15, p[3]], [0, 0, 100, 100, 0]);
+  else if (p[2] < 0) key(o, [0, p[3] - 0.15, p[3]], [100, 100, 0]);
   else if (p[3] > DUR) key(o, [p[2], p[2] + 0.15], [0, 100]);
   else key(o, [p[2], p[2] + 0.15, p[3] - 0.15, p[3]], [0, 100, 100, 0]);
 }

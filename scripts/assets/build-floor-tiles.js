@@ -1,4 +1,7 @@
 // The floors (v0.93): five drawings of each space's ground, laid at random so no floor is one drawing over and over.
+// v0.97: five different drawings side by side read as a patchwork. Now it's one drawing per ground, the swatch nearest
+// the middle, and the five are that one turned and mirrored, the way a block game varies one texture. Grounds without
+// joints (`seamless`) are made to run on across their edges first, so no square shows.
 // Each Gemini sheet (generate-hospital-art.js floor-*) has six swatches on a plain ground, laid out however it came;
 // they're found here, the frame round each trimmed off, brought to one shared lightness, and five kept. Written as one
 // grey sheet, generated/hospital-sheets/sheet-floors.png: a row per space, 128 px tiles, five across. No API calls.
@@ -16,18 +19,56 @@ const CELL = 128;
 const SPACES = [
   // `contrast`: how strongly its marks show, about its own lightness. Tiles keep their edges (inset 0): those are the joints
   // between tiles anyway. Sand's ripples soft, or ripples that don't meet across tiles read as a patchwork.
-  { id: 'hospital', inset: 0, contrast: 1.6 },
-  { id: 'courtyard', inset: 0.07, contrast: 0.8 },
+  // `plain`: a tiled floor keeps its joints and an even, finely speckled face; a mark of its own would repeat on every tile
+  { id: 'hospital', plain: true, inset: 0, contrast: 1.6 },
+  { id: 'courtyard', seamless: true, inset: 0.07, contrast: 0.8 },
   // light stones on a light ground can't be found on their own: these by hand (the fine gravel, much smaller, left out)
-  { id: 'pebbles', inset: 0.05, contrast: 0.9, boxes: [[76, 74, 276, 274], [375, 74, 274, 274], [672, 74, 276, 274], [76, 673, 276, 276], [672, 673, 276, 276]] },
-  { id: 'rehab', inset: 0, contrast: 1.3 },
-  { id: 'sand', inset: 0.07, contrast: 0.35 },
+  { id: 'pebbles', seamless: true, inset: 0.05, contrast: 0.9, boxes: [[76, 74, 276, 274], [375, 74, 274, 274], [672, 74, 276, 274], [76, 673, 276, 276], [672, 673, 276, 276]] },
+  { id: 'rehab', plain: true, inset: 0, contrast: 1.3 },
+  { id: 'sand', seamless: true, soften: 2.5, inset: 0.07, contrast: 0.35 },
   { id: 'paving', inset: 0, contrast: 0.8 },
-  { id: 'dirt', inset: 0.07, contrast: 0.75 },
-  { id: 'asphalt', inset: 0.07, contrast: 0.7 },
+  { id: 'dirt', seamless: true, inset: 0.07, contrast: 0.75 },
+  { id: 'asphalt', seamless: true, inset: 0.07, contrast: 0.7 },
 ];
 const KEEP = 5;
 const SCAN = 256;
+
+/** A tiled floor's face without its marks: the joints (the outer few pixels) as drawn, inside them the tile blurred to
+ * its shading only, with a fine seeded speckle so it isn't flat. */
+async function plain(grey) {
+  const soft = await sharp(grey, { raw: { width: CELL, height: CELL, channels: 1 } }).blur(14).extractChannel(0).raw().toBuffer();
+  const out = Buffer.from(grey);
+  let r = 12345;
+  const rand = () => ((r = (r * 16807) % 2147483647) / 2147483647);
+  const JOINT = 5;
+  for (let y = 0; y < CELL; y++) {
+    for (let x = 0; x < CELL; x++) {
+      const d = Math.min(x, y, CELL - 1 - x, CELL - 1 - y);
+      if (d < JOINT) continue;
+      const t = Math.min(1, (d - JOINT) / 3);
+      const inner = soft[y * CELL + x] + (rand() - 0.5) * 6;
+      out[y * CELL + x] = Math.round(grey[y * CELL + x] * (1 - t) + inner * t);
+    }
+  }
+  return out;
+}
+
+/** A tile that runs on across its own edges: blended with itself moved half a tile, weighted toward whichever copy is
+ * further from its own edge there, so the seams of each fall in the other's middle. */
+function seamless(grey) {
+  const out = Buffer.alloc(CELL * CELL);
+  const edge = (v) => Math.min(v, CELL - 1 - v) / (CELL / 2);
+  for (let y = 0; y < CELL; y++) {
+    for (let x = 0; x < CELL; x++) {
+      const a = grey[y * CELL + x];
+      const b = grey[((y + CELL / 2) % CELL) * CELL + ((x + CELL / 2) % CELL)];
+      const wa = Math.min(edge(x), edge(y)) ** 1.5;
+      const wb = Math.min(edge((x + CELL / 2) % CELL), edge((y + CELL / 2) % CELL)) ** 1.5;
+      out[y * CELL + x] = Math.round((a * wa + b * wb) / (wa + wb + 1e-6));
+    }
+  }
+  return out;
+}
 
 /** The swatches on a sheet: everything that isn't its plain ground, in boxes of about a swatch's size. */
 async function swatches(file) {
@@ -88,20 +129,24 @@ async function main() {
       const mean = grey.reduce((a, v) => a + v, 0) / grey.length;
       tiles.push({ grey, mean });
     }
-    // keep the five closest to the middle lightness, then bring each to it: the same floor, five ways
+    // the one nearest the middle lightness, turned and mirrored five ways
     const sorted = [...tiles].sort((a, b) => a.mean - b.mean);
-    const middle = sorted[Math.floor(sorted.length / 2)].mean;
-    const kept = [...tiles].sort((a, b) => Math.abs(a.mean - middle) - Math.abs(b.mean - middle)).slice(0, KEEP);
-    const target = kept.reduce((a, t) => a + t.mean, 0) / KEEP;
-    kept.forEach((t, col) => {
+    const one = sorted[Math.floor(sorted.length / 2)];
+    const target = one.mean;
+    let base = space.seamless ? seamless(one.grey) : one.grey;
+    if (space.soften) base = await sharp(base, { raw: { width: CELL, height: CELL, channels: 1 } }).blur(space.soften).extractChannel(0).raw().toBuffer();
+    if (space.plain) base = await plain(one.grey);
+    const ways = [(x, y) => [x, y], (x, y) => [y, CELL - 1 - x], (x, y) => [CELL - 1 - x, CELL - 1 - y], (x, y) => [CELL - 1 - y, x], (x, y) => [CELL - 1 - x, y]];
+    ways.forEach((way, col) => {
       for (let y = 0; y < CELL; y++) {
         for (let x = 0; x < CELL; x++) {
-          const v = Math.max(0, Math.min(255, Math.round(target + (t.grey[y * CELL + x] - t.mean) * space.contrast)));
+          const [sx, sy] = way(x, y);
+          const v = Math.max(0, Math.min(255, Math.round(target + (base[sy * CELL + sx] - one.mean) * space.contrast)));
           sheet[(row * CELL + y) * SHEET + col * CELL + x] = v;
         }
       }
     });
-    console.log(space.id, `${found.length} found, kept ${KEEP}, lightness ${Math.round(target)}`);
+    console.log(space.id, `${found.length} found, one kept, lightness ${Math.round(target)}`);
   }
   fs.mkdirSync(SINGLES, { recursive: true });
   await sharp(sheet, { raw: { width: SHEET, height: SHEET, channels: 1 } }).png().toFile(path.join(SINGLES, 'sheet-floors.png'));

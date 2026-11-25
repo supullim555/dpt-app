@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAsyncEffect } from '@/core/hooks/useAsyncEffect';
 import { makeSubmitOnEnterHandler } from '@/core/hooks/useSubmitOnEnter';
@@ -10,7 +10,7 @@ import { loadEntryOr, saveEntry } from '@/core/storage';
 import EmotionPicker from './EmotionPicker';
 import CrisisFooter from '@/ui/CrisisFooter';
 import RoomColumn from '@/ui/RoomColumn';
-import { VISIT_CARDS, VISIT_OPENING, VISIT_PANEL } from '@/assets/visitUi';
+import { VISIT_CARDS, VISIT_END_COMICS, VISIT_MEMORY_COMICS, VISIT_OPENING, VISIT_PANEL, VISIT_TITLE_AFTER } from '@/assets/visitUi';
 import CardScene, { type Beat } from './CardScene';
 import Dictionary from './Dictionary';
 import { MEMORY_FILM } from './cutscenes';
@@ -61,10 +61,14 @@ const STORAGE_KEY = 'visit.state';
 
 // Her memory as she tells it, with the remembered day filmed after she's said what it was (v0.92). The film stands in
 // for no card (covers 0): if it can't play, she just goes on talking.
+// v0.98: what she says after the film, each line with a comic panel of it (VISIT_MEMORY_COMICS)
 const memoryBeats = (clue: ClueId): Beat[] => {
   const lines = CLUE_TEXT[clue].lines.map((text) => ({ text }));
-  return [...lines.slice(0, 2), { video: MEMORY_FILM[clue], covers: 0 }, ...lines.slice(2)];
+  const panels: readonly ImageSourcePropType[] = VISIT_MEMORY_COMICS[clue];
+  return [...lines.slice(0, 2), { video: MEMORY_FILM[clue], covers: 0 }, ...lines.slice(2).map((line, i) => (panels[i] ? { ...line, image: panels[i] } : line))];
 };
+// v0.98: the happy ending's colour panels, put to the cards that name them
+const HAPPY_WITH_PANELS: Beat[] = HAPPY_BEATS.map((b) => ('comic' in b && b.comic ? { ...b, image: VISIT_END_COMICS[b.comic] } : b));
 
 // The one colour in the game (docs/병문안_모티브와_아트_구상.md): the light in the window, grey at
 // first and full amber by the last day. Without the girl it stays grey.
@@ -100,6 +104,8 @@ type VisitState = {
   fontScale: number;
   /** v0.92: music and the small sounds (settings). */
   sound: boolean;
+  /** v0.98: the happy ending has been seen: the title has its colour back. */
+  afterHappy: boolean;
   /** v0.96: how much the 3D view draws (hospitalScene.ts Quality). */
   graphics: 'high' | 'normal' | 'low';
   /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
@@ -112,7 +118,7 @@ type VisitState = {
   requestsTold: number[];
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, sound: true, graphics: 'normal', skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, sound: true, graphics: 'normal', afterHappy: false, skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
@@ -267,7 +273,7 @@ export default function VisitScreen() {
   };
 
   const startOver = () => {
-    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, floorsSeen: state.floorsSeen, tutorial: 'done', fontScale: state.fontScale, run: state.run + 1 });
+    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, floorsSeen: state.floorsSeen, tutorial: 'done', fontScale: state.fontScale, run: state.run + 1, afterHappy: state.afterHappy });
     setPhase('door');
   };
 
@@ -420,8 +426,8 @@ export default function VisitScreen() {
     return (
       <View style={styles.screen}>
         <RoomColumn>
-          <Image source={VISIT_OPENING[2]} resizeMode="cover" style={styles.sceneImage} />
-          <View style={styles.titleShade} />
+          <Image source={state.afterHappy ? VISIT_TITLE_AFTER : VISIT_OPENING[2]} resizeMode="cover" style={styles.sceneImage} />
+          <View style={[styles.titleShade, state.afterHappy && styles.titleShadeLight]} />
           <View style={styles.titleTop}>
             <Text style={styles.gameTitle}>{GAME_TITLE}</Text>
           </View>
@@ -531,10 +537,11 @@ export default function VisitScreen() {
       <View style={styles.screen}>
         <RoomColumn>
           <CardScene
-            beats={HAPPY_BEATS}
+            beats={HAPPY_WITH_PANELS}
             fontScale={scale}
             onDone={() => {
-              setState({ ...INITIAL, noticeSeen: true, openingSeen: true, tutorial: 'done', fontScale: state.fontScale });
+              // v0.98: and from now on the title is her room in colour, empty, the window open on the tree
+              setState({ ...INITIAL, noticeSeen: true, openingSeen: true, tutorial: 'done', fontScale: state.fontScale, afterHappy: true });
               setPhase('title');
             }}
           />
@@ -718,6 +725,7 @@ const styles = StyleSheet.create({
   fillImage: { width: '100%', height: '100%' },
   titleCard: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
   titleShade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
+  titleShadeLight: { backgroundColor: 'rgba(0,0,0,0.18)' },
   // In the dark sky above the hospital, clear of its one lit window.
   titleTop: { flex: 1, alignItems: 'center', paddingTop: 34 },
   gameTitle: { color: '#fff', fontSize: 44, fontFamily: 'serif', letterSpacing: 8 },

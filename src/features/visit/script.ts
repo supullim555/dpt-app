@@ -392,6 +392,7 @@ export const FAIRY_LINES = [
 // The way down, floor by floor, and the light. The turn: the grey we've watched all week was her sight.
 // A fairy tale, and it says so.
 const AMBER_WORLD = '#e3b64f';
+const PALE_WORLD = '#f6ecd4';
 export const HAPPY_BEATS: Beat[] = [
   { text: '소녀는 침대에서 내려와 바닥에 발을 댔다. 한참이 걸렸다.' },
   // filmed (v0.93): the way down, floor by floor in the seventh day's corridors; the four cards are its fallback
@@ -406,6 +407,10 @@ export const HAPPY_BEATS: Beat[] = [
   { text: '그때, 알 수 없는 빛이 눈앞을 가렸다.', bg: '#ffffff', ink: '#111111' },
   { text: '빛이 걷히자 소녀의 세상에 색이 돌아왔다.', bg: AMBER_WORLD, ink: '#1a1200' },
   { text: '내가 보던 회색 병실은, 그 아이의 눈에 비친 세상이었다.', bg: AMBER_WORLD, ink: '#1a1200' },
-  { text: '소녀는 두 발로 서 있다. 아무도 이유를 설명하지 못했다.', bg: AMBER_WORLD, ink: '#1a1200' },
+  // v0.98: what came after, in colour, a panel to a card (VisitScreen adds the pictures), then the credits on a blue sky
+  { text: '소녀가 울었다. 웃으면서, 한참을.', comic: 'cry', bg: PALE_WORLD, ink: '#1a1200' },
+  { text: '며칠 뒤, 검사지를 든 의사 선생님이 한참 말이 없었다. 아무도 이유를 설명하지 못했다.', comic: 'doctor', bg: PALE_WORLD, ink: '#1a1200' },
+  { text: '그리고 맑은 날, 소녀는 두 발로 병원 문을 걸어 나갔다.', comic: 'discharge', bg: PALE_WORLD, ink: '#1a1200' },
   { text: '이건 그런 동화다.', bg: AMBER_WORLD, ink: '#1a1200' },
+  { credits: true },
 ];

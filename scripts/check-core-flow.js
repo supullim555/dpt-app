@@ -207,7 +207,8 @@ async function main() {
       await press('오른쪽');
       t.note('병문안: 문이 열려 있다고 나옴', !(await t.hasText('문은 닫혀')));
       await t.shot('walk_door.png');
-      await press('앞으로');
+      // v0.97: the corridor is two cells deep now, so her door is one more step on
+      await press('앞으로', 2);
       t.note('병문안: 문을 지나면 자동으로 그날의 컷씬', await t.waitText('누운 채로 창밖을 보고 있다', 3000));
       t.note('병문안: 컷씬 중엔 움직이지 않음', !(await t.hasText('앞으로')));
       await sleep(2600);
@@ -257,6 +258,8 @@ async function main() {
       await press('뒤돌기');
       await press('앞으로', 2);
       await press('왼쪽');
+      // v0.97: across the second corridor row to her door
+      await press('앞으로');
       t.note('병문안: 사람 앞에 서면 말을 걸 수 있음', await t.clickText('담당 간호사에게 말 걸기'));
       t.note('병문안: 사람에게 말풍선', await t.waitText('그래도 오늘 웃었어요', 2000));
       t.note('병문안: 대화 중엔 움직이지 않음', !(await t.hasText('앞으로')));
@@ -477,6 +480,11 @@ async function main() {
         if (film) {
           await sleep(1800);
           await t.shot(`memory_film_${name}.png`);
+          // v0.98: after the film each of her lines comes with a comic panel of it
+          await t.click(195, 170);
+          t.note(`병문안: ${name} 회상 뒤 만화 컷`, await waitFor(() => t.evalJs(`document.body.innerHTML.includes('comics/mono-')`), 4000));
+          await sleep(600);
+          await t.shot(`memory_comic_${name}.png`);
         }
         await tapUntil(thenText);
         return ok;
@@ -851,9 +859,25 @@ async function main() {
       await sleep(700);
       await t.shot('visit_color.png');
       t.note('병문안: 회색은 소녀의 시선이었음을 알려 줌', await tapUntil('그 아이의 눈에 비친 세상이었다.'));
+      // v0.98: then what came after, in colour panels
+      t.note('병문안: 컬러 만화 (우는 소녀)', (await tapUntil('웃으면서, 한참을')) && (await waitFor(() => t.evalJs(`document.body.innerHTML.includes('comics/end-cry')`), 4000)));
+      await sleep(700);
+      await t.shot('visit_end_cry.png');
+      t.note('병문안: 컬러 만화 (의사 앞, 퇴원)', (await tapUntil('검사지를 든 의사 선생님')) && (await tapUntil('병원 문을 걸어 나갔다')));
       t.note('병문안: 동화임을 밝힘', await tapUntil('이건 그런 동화다.'));
+      // the credits roll up a blue sky; a tap hurries them to the thanks
       await t.click(195, 170);
+      t.note('병문안: 크레딧이 올라감', await t.waitText('끝까지 와 준 당신', 3000));
+      await sleep(1200);
+      await t.shot('visit_credits.png');
+      await t.click(195, 300);
+      t.note('병문안: 크레딧 뒤 감사 인사', (await t.waitText('플레이 해주셔서 감사합니다.', 3000)) && (await t.hasText('마법 같은 일이 찾아오는 날')));
+      await sleep(1500);
+      await t.click(195, 300);
       t.note('병문안: 해피엔딩 뒤 타이틀', await t.waitText('이야기 시작', 3000));
+      t.note('병문안: 해피엔딩 뒤 타이틀에 색이 돌아옴', await t.evalJs(`document.body.innerHTML.includes('title-after')`));
+      await sleep(500);
+      await t.shot('visit_title_after.png');
     },
     { shotDir: SHOT_DIR }
   );

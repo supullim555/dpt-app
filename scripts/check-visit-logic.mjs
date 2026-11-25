@@ -82,8 +82,8 @@ const afterRoom = { moved: true, facing: null, talkingTo: null, floor: 4, bought
 assert.equal(tutorialAfter('day', { ...afterRoom, metDoctor: false }), 'day');
 assert.equal(tutorialAfter('day', { ...afterRoom, metDoctor: true, talkingTo: '4r' }), 'day');
 assert.equal(tutorialAfter('day', { ...afterRoom, metDoctor: true }), 'nextDay');
-assert.equal(thingAt({ floor: 4, x: 12, y: 7, dir: 2 }, false).kind, 'person');
-assert.equal(thingAt({ floor: 4, x: 11, y: 8, dir: 1 }, false).kind, 'look');
+assert.equal(thingAt({ floor: 4, x: 12, y: 8, dir: 2 }, false).kind, 'person');
+assert.equal(thingAt({ floor: 4, x: 11, y: 9, dir: 1 }, false).kind, 'look');
 
 assert.equal(endingFor([]), 'bad');
 assert.equal(endingFor([1, 2, 3]), 'bad'); // away 4 days, missed the last
@@ -221,23 +221,23 @@ assert.equal(thingAt({ floor: 1, x: 4, y: 2, dir: 0 }, false).kind, 'lift');
 assert.equal(thingAt({ floor: 1, x: 6, y: 2, dir: 0 }, false).kind, 'stairs');
 assert.equal(thingAt(BEDSIDE, false).id, '4g'); // she's a person in her room like anyone else
 assert.ok(!canStand(4, 6, 7)); // the bed takes the room: you stand at its foot
-assert.equal(thingAt({ floor: 3, x: 1, y: 4, dir: 2 }, false).kind, 'look'); // the gurney
+assert.equal(thingAt({ floor: 3, x: 1, y: 5, dir: 2 }, false).kind, 'look'); // the gurney
 assert.equal(thingAt({ floor: 1, x: 10, y: 2, dir: 0 }, false).id, '1m');
 // v0.93: the collar turns up when the vending machine is shaken, then lies beside it
 assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 1 }, false, true).kind, 'hide');
 assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 0 }, true).kind, 'clue');
 assert.equal(thingAt({ floor: 1, x: 12, y: 2, dir: 0 }, false), null);
 // and the snack bag by the chair next to the tired guardian
-assert.equal(thingAt({ floor: 3, x: 7, y: 9, dir: 3 }, false, true).kind, 'hide');
-assert.equal(thingAt({ floor: 3, x: 7, y: 9, dir: 3 }, true).kind, 'clue');
+assert.equal(thingAt({ floor: 3, x: 7, y: 11, dir: 3 }, false, true).kind, 'hide');
+assert.equal(thingAt({ floor: 3, x: 7, y: 11, dir: 3 }, true).kind, 'clue');
 // and the coupon in the books on the 4F lounge's sofa
 assert.equal(thingAt({ floor: 4, x: 12, y: 2, dir: 3 }, false, true).kind, 'hide');
 assert.equal(thingAt({ floor: 4, x: 12, y: 1, dir: 3 }, true).kind, 'clue');
 // the 3F nurse is spoken to across her desk, from the way into the station
-assert.equal(thingAt({ floor: 3, x: 7, y: 5, dir: 2 }, false).id, '3q');
+assert.equal(thingAt({ floor: 3, x: 7, y: 6, dir: 2 }, false).id, '3q');
 assert.equal(thingAt({ floor: 3, x: 7, y: 4, dir: 2 }, false), null);
 // nobody gets behind the doctor's desk
-assert.ok(!canStand(4, 12, 9) && !canStand(4, 11, 9) && !canStand(4, 11, 8));
+assert.ok(!canStand(4, 12, 10) && !canStand(4, 11, 10) && !canStand(4, 11, 9));
 assert.equal(thingAt(ENTRANCE, false).kind, 'leave');
 assert.equal(thingAt(OUTSIDE_ROOM, false), null); // the front door is on the first floor only
 assert.match(thingAt({ floor: 3, x: 1, y: 4, dir: 0 }, false).text, /병실/);
@@ -251,7 +251,7 @@ assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 2 }, toRoom), 2); // at the l
 assert.equal(arrowFor({ floor: 1, x: 4, y: 2, dir: 0 }, toRoom), null); // facing it: nothing more to point at
 assert.equal(arrowFor(arrival(4, LIFT_FRONT), toRoom), 0);
 assert.equal(arrowFor({ floor: 4, x: 7, y: 4, dir: 2 }, toRoom), 0); // the door, straight ahead
-assert.equal(arrowFor({ floor: 4, x: 7, y: 5, dir: 2 }, toRoom), null); // through it
+assert.equal(arrowFor({ floor: 4, x: 7, y: 6, dir: 2 }, toRoom), null); // through it
 // She turns toward you and sinks lower, every day closer, never the other way.
 for (let d = 2; d <= 7; d++) {
   if (d > 2) assert.ok(GIRL_DAYS[d].away < GIRL_DAYS[d - 1].away, `${d}일째 거리`); // sitting up she's further off than lying down
@@ -259,7 +259,7 @@ for (let d = 2; d <= 7; d++) {
 }
 assert.equal(girlOn(8), GIRL_DAYS[7]); // an ending after the week
 assert.ok(!PIN_ON[GIRL_DAYS[2].headTo] && PIN_ON[GIRL_DAYS[3].headTo]); // the pin comes with the third day's hair
-assert.equal(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 7 }), 1); // the gurney: the long way round
+assert.ok([1, 2].includes(firstStep(3, { x: 1, y: 4 }, { x: 1, y: 9 }))); // the gurney: the long way round (v0.97: the corridor is two deep)
 assert.equal(goalFor({ doneToday: true, boughtToday: false, clueToFind: null }).text, '1층 매점에서 선물 고르기');
 assert.equal(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }).text, '1층 정문으로 나가기');
 assert.deepEqual(goalFor({ doneToday: true, boughtToday: true, clueToFind: null }).cell, ENTRANCE && { x: ENTRANCE.x, y: ENTRANCE.y });

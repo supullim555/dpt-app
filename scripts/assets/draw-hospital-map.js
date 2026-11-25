@@ -201,7 +201,7 @@ const ROOM_LABEL_AT = { 4: { L: [12.5, 1.25], U: [7.5, 6.5], D: [12, 6.5] }, 3: 
 // Anything the map calls a room but leaves open to the corridor is marked, and printed.
 function detail(f, ox, oy, s, { HOSPITAL, ALONG_THE_WALLS, walkable, CLUE_CELLS, DX, DY, charAt, GIRL_FRONT, WHO }) {
   const { map, rooms } = HOSPITAL[f];
-  const NAME = { chairBox: '의자', plant: '화분', wheelchair: '휠체어' };
+  const NAME = { chairBox: '의자', plant: '화분', wheelchair: '휠체어', sculpture: '조각', indoorTree: '나무', aquarium: '수조', artStand: '액자' };
   const PROP = { 3: '이동식 침대', 2: '세탁 수레', 1: '자판기' };
   const walk = walkable(f);
   const furnished = (c) => '%T_&^'.includes(c) || /[a-z]/.test(c);
@@ -278,9 +278,9 @@ function detail(f, ox, oy, s, { HOSPITAL, ALONG_THE_WALLS, walkable, CLUE_CELLS,
     out += thing(0.5, 4.5, '정문', '#a3263f', 0.72, 0.34);
   }
   if (f === 4) {
-    out += thing(7.5, 9.4, '침대', '#7d8fa3', 0.8, 1);
-    out += thing(8.5, 9.0, '협탁', '#3f7d6e');
-    out += thing(6.5, 8.4, '의자', '#3f7d6e');
+    out += thing(7.5, 10.4, '침대', '#7d8fa3', 0.8, 1);
+    out += thing(8.5, 10.0, '협탁', '#3f7d6e');
+    out += thing(6.5, 9.4, '의자', '#3f7d6e');
   }
 
   const cue = CLUE_CELLS[f];

@@ -1,13 +1,15 @@
 import { createElement, useEffect, useRef, useState } from 'react';
-import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View, type ImageSourcePropType } from 'react-native';
 import { USE_NATIVE_DRIVER } from '@/core/anim/nativeDriver';
 import CrisisFooter from '@/ui/CrisisFooter';
+import Credits from './Credits';
 import { soundIsOn } from './sound';
 
 const FADE_MS = 600;
 
-/** A card of words, or a filmed scene (web only) standing in for the next `covers` cards. */
-export type Beat = { text: string; bg?: string; ink?: string } | { video: string; covers: number };
+/** A card of words, or a filmed scene (web only) standing in for the next `covers` cards. v0.98: a card can have a
+ * comic panel above its words (`image`), and the happy ending closes on the credits. */
+export type Beat = { text: string; bg?: string; ink?: string; image?: ImageSourcePropType; comic?: 'cry' | 'doctor' | 'discharge' } | { video: string; covers: number } | { credits: true };
 
 // If the film hasn't started by then, the cards it stands in for are shown instead.
 const VIDEO_START_MS = 5000;
@@ -28,6 +30,7 @@ export default function CardScene({ title, beats, fontScale, onDone }: { title?:
   }, [index, fade]);
 
   const beat = beats[index];
+  if ('credits' in beat) return <Credits fontScale={fontScale} onDone={() => next()} />;
   if ('video' in beat) {
     return Platform.OS === 'web' ? <Film key={index} src={beat.video} onEnd={() => next(1 + beat.covers)} onFail={() => next()} /> : <Skip onSkip={() => next()} />;
   }
@@ -37,6 +40,9 @@ export default function CardScene({ title, beats, fontScale, onDone }: { title?:
     <View style={styles.wrap}>
       <TouchableOpacity activeOpacity={1} style={[styles.scene, { backgroundColor: beat.bg ?? '#000' }]} onPress={() => next()}>
         {title ? <Text style={[styles.title, { color: ink }]}>{title}</Text> : null}
+        {beat.image ? (
+          <Animated.Image source={beat.image} resizeMode="contain" style={[styles.panel, { opacity: fade, transform: [{ scale: fade.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }] }]} />
+        ) : null}
         <Animated.Text style={[styles.line, { color: ink, opacity: fade, fontSize: 18 * fontScale, lineHeight: 30 * fontScale }]}>{beat.text}</Animated.Text>
         <Text style={[styles.more, { color: ink }]}>▼</Text>
       </TouchableOpacity>
@@ -104,5 +110,7 @@ const styles = StyleSheet.create({
   scene: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   title: { position: 'absolute', top: 60, fontSize: 14, opacity: 0.7, fontFamily: 'serif' },
   line: { textAlign: 'center', fontFamily: 'serif' },
+  // a fixed size: given only a width, the web build laid the picture out at its own full height and pushed the words off
+  panel: { width: 280, height: 280, marginBottom: 20, borderRadius: 2 },
   more: { position: 'absolute', bottom: 24, fontSize: 11, opacity: 0.6 },
 });

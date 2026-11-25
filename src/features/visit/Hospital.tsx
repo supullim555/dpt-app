@@ -199,7 +199,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         const thing = place?.things[c];
         if (thing?.solid) {
           // v0.93: a stall built in 3D, and what it sells on top of it
-          out.push({ cell: { x, y }, look: thing.solid as SpriteLook, face: thing.face ?? 2 });
+          out.push({ cell: { x, y }, look: thing.solid as SpriteLook, face: thing.face ?? 2, ...(thing.shift ? { shift: thing.shift } : {}) });
           if (thing.look) out.push({ cell: { x, y }, look: thing.look as SpriteLook, shift: [0, 0.02, thing.on ?? 0.3] });
         } else if (thing?.look) out.push({ cell: { x, y }, look: thing.look as SpriteLook, ...(thing.face !== undefined ? { fixed: true, face: thing.face } : {}) });
         if (c === '%' && floor > 0) out.push({ cell: { x, y }, look: PROP_ON_FLOOR[floor] });
@@ -227,7 +227,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       out.push({ cell: SHOP_DOOR, look: 'signShop', shift: [0, 0.85, 0.98], fixed: true });
     }
     // v0.93: the 3F nurse behind her desk at the back of the station's way in, spoken to from in front of it
-    if (floor === 3) out.push({ cell: { x: 7, y: 6 }, look: 'deskBox', shift: [0, -0.2, 0], face: 0 });
+    if (floor === 3) out.push({ cell: { x: 7, y: 7 }, look: 'deskBox', shift: [0, -0.2, 0], face: 0 });
     if (floor === 4) {
       // The doctor sits behind his desk, drawn from the waist up: you only ever see him from in front of it.
       out.push({ cell: { x: DOCTOR_FRONT.x, y: DOCTOR_FRONT.y + 1 }, look: 'doctor', shift: [0, 0.06, 0.31] });

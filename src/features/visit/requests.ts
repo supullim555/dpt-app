@@ -68,7 +68,7 @@ export const REQUESTS: Request[] = [
     who: '3b',
     name: '3층 지친 보호자',
     distortion: '파국화',
-    goal: { text: '3층 지친 보호자와 이야기하기', floor: 3, cell: { x: 7, y: 9 }, face: 1 },
+    goal: { text: '3층 지친 보호자와 이야기하기', floor: 3, cell: { x: 7, y: 11 }, face: 1 },
     doctor: {
       start: {
         lines: [
@@ -583,7 +583,7 @@ export const REQUESTS: Request[] = [
     who: '4v',
     name: '4층 자원봉사자',
     distortion: '당위적 사고',
-    goal: { text: '4층 자원봉사자와 이야기하기', floor: 4, cell: { x: 9, y: 4 }, face: 2 },
+    goal: { text: '4층 자원봉사자와 이야기하기', floor: 4, cell: { x: 9, y: 5 }, face: 2 },
     doctor: {
       start: {
         lines: [

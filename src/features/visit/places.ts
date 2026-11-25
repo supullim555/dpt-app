@@ -26,7 +26,8 @@ export type Place = {
   /** What stands on a letter, and what looking at it says. A thing with no `look` is only ground to look at. */
   /** `face`: stood facing that way (0 north … 3 west) instead of turning to you, like the parallel bars along a lane. */
   /** v0.93 `solid`: built in 3D (hospitalScene.ts SOLIDS), facing `face`, with `look` standing on it at height `on`. */
-  things: Record<string, { look?: string; text: string; face?: 0 | 1 | 2 | 3; solid?: string; on?: number }>;
+  /** v0.97 `shift`: a built thing nudged from the middle of its cell (across, along, up), like the gate against the wall. */
+  things: Record<string, { look?: string; text: string; face?: 0 | 1 | 2 | 3; solid?: string; on?: number; shift?: [number, number, number] }>;
   ground: MemoryTile;
   /** Ground by letter where it isn't `ground`. */
   groundOn?: Record<string, MemoryTile>;
@@ -171,7 +172,8 @@ export const PLACES: Record<PlaceId, Place> = {
     things: {
       U: { look: 'beachUmbrella', text: '파라솔이다. 그늘이 아직 따뜻하다.' },
       B: { look: 'beachBench', text: '나무 벤치다. 모래가 잔뜩 묻어 있다.' },
-      K: { look: 'beachKiosk', text: '문 닫은 매점이다. 그 뒤가 보이지 않는다.' },
+      // v0.97: built, its shutter-down front toward where you come from
+      K: { solid: 'kioskBox', face: 3, text: '문 닫은 매점이다. 그 뒤가 보이지 않는다.' },
       O: { look: 'beachBoat', text: '모래에 끌어올린 나룻배다.' },
       '~': { text: '파도가 발치까지 왔다가 돌아간다.' },
     },
@@ -252,8 +254,9 @@ export const PLACES: Record<PlaceId, Place> = {
     things: {
       M: { solid: 'maruBox', face: 2, text: '마루다. 볕이 들어 따뜻하다.' }, // v0.93: built, not drawn
       P: { look: 'persimmonTree', text: '감나무다. 감이 몇 개 남아 있다.' },
-      B: { look: 'janggiTable', text: '장기판이다. 판이 두다 만 그대로다.' },
-      G: { look: 'yardGate', text: '나무 대문이다. 조금 열려 있다.' },
+      // v0.97: built, the board on a low table and the gate in its own stretch of wall against the yard's
+      B: { solid: 'janggiBox', face: 2, text: '장기판이다. 판이 두다 만 그대로다.' },
+      G: { solid: 'gateBox', face: 0, shift: [0, 0.42, 0], text: '나무 대문이다. 조금 열려 있다.' },
     },
     ground: 'yardDirt',
     wall: 'yardWall',
@@ -273,7 +276,7 @@ export const PLACES: Record<PlaceId, Place> = {
   night: {
     map: [
       '###########',
-      '#.....L.W.#',
+      '#H....L.W.#',
       '#k........#',
       '#.........#',
       '#..L....j.#',
@@ -286,12 +289,15 @@ export const PLACES: Record<PlaceId, Place> = {
     meet: { x: 2, y: 2, dir: 3 },
     found: { x: 9, y: 4, dir: 3 },
     lostAt: { x: 2, y: 2, dir: 1 },
-    stops: 'LPW',
+    stops: 'LPWH',
     spread: '',
     things: {
       L: { look: 'streetLamp', text: '가로등이다. 불빛 아래만 환하다.' },
       P: { look: 'postbox', text: '우체통이다. 편지 넣는 구멍이 생각보다 좁다.' },
       W: { look: 'stoneWall', text: '화분을 얹은 돌담이다. 누가 매일 물을 주나 보다.' },
+      // v0.97: the house he came out of, built: its front faces down the alley, the way you come, its door behind
+      // him, the house itself back in the dark past the alley's edge
+      H: { solid: 'houseBox', face: 1, shift: [-0.95, 0, 0], text: '집 앞이다. 현관 안쪽에 불이 켜져 있다.' },
     },
     ground: 'asphalt',
     wall: 'nightAlley',

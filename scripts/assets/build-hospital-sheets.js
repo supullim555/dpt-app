@@ -82,6 +82,14 @@ const ITEMS = {
     { src: 'market-props-keyed-retouched', box: [256, 448, 472, 678], cell: { x: 0, y: 0, w: 256, h: 256 } },
     { src: 'night-props-keyed-retouched', box: [438, 468, 764, 748], cell: { x: 256, y: 0, w: 512, h: 256 } },
   ],
+  // v0.97: the widened corridors' things (hospitalArt.ts DECOR_PART), along the bottom row; the rest of the sheet is
+  // DECOR_FACES and DECOR_SVG below, the faces of the 3D kiosk, house, gate and janggi table
+  decor: [
+    { src: 'hospital-art', box: [37, 514, 162, 730], cell: { x: 0, y: 768, w: 256, h: 256 }, height: 200 },
+    { src: 'hospital-art', box: [192, 268, 437, 733], cell: { x: 256, y: 768, w: 256, h: 256 } },
+    { src: 'hospital-art', box: [475, 458, 708, 729], cell: { x: 512, y: 768, w: 256, h: 256 } },
+    { src: 'hospital-art', box: [782, 375, 983, 731], cell: { x: 768, y: 768, w: 256, h: 256 } },
+  ],
   // v0.79: the remembered places' things (hospitalArt.ts MEMORY_PART)
   memoryprops: [
     { src: 'rehab-props', box: [18, 476, 324, 690], cell: { x: 0, y: 0, w: 256, h: 256 } },
@@ -91,7 +99,7 @@ const ITEMS = {
     // v0.80: the beach
     { src: 'beach-props', box: [12, 438, 270, 750], cell: { x: 0, y: 256, w: 256, h: 256 } },
     { src: 'beach-props', box: [278, 498, 528, 748], cell: { x: 256, y: 256, w: 256, h: 256 } },
-    { src: 'beach-props', box: [488, 636, 702, 732], cell: { x: 512, y: 256, w: 256, h: 256 } },
+    { src: 'beach-props', box: [480, 630, 712, 752], cell: { x: 512, y: 256, w: 256, h: 256 } }, // v0.97: the whole boat, bow and keel
     { src: 'beach-props', box: [698, 664, 850, 750], cell: { x: 768, y: 256, w: 256, h: 256 } },
     { src: 'beach-props', box: [858, 362, 988, 766], cell: { x: 0, y: 512, w: 256, h: 512 }, height: 470 },
     // v0.81: the market (the vegetable stall left out: its green leaves go with the green ground when cut)
@@ -340,6 +348,44 @@ const SOFA_SKIN_ART = {
   ].join('')}</svg>`,
 };
 
+// v0.97: whole drawings laid on the decor sheet as they are, for the faces of boxes (hospitalArt.ts DECOR_SKIN)
+const DECOR_FACES = [
+  { src: 'house-front', box: [0, 0, 1024, 1024], cell: { x: 0, y: 0, w: 512, h: 512 } },
+  { src: 'kiosk-front', box: [220, 175, 805, 840], cell: { x: 512, y: 0, w: 512, h: 512 } },
+  // the yard wall's stones, for the stretches of wall either side of its gate
+  { src: 'yard-wall-tall', box: [0, 440, 512, 952], cell: { x: 768, y: 512, w: 256, h: 256 } },
+];
+const PLANKS = (x, y, w, h, tone) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="rgb(${tone},${tone},${tone})"/>${Array.from({ length: 5 }, (_, i) => `<path d="M${x + ((i + 1) * w) / 6} ${y} V${y + h}" stroke="rgb(60,60,60)" stroke-width="2"/>`).join('')}<path d="M${x + 10} ${y + h * 0.3} q14 -5 26 0 M${x + w * 0.6} ${y + h * 0.7} q12 -4 22 0" fill="none" stroke="rgb(95,95,95)" stroke-width="1.5"/>`;
+// the plain faces: wood, plaster, roof tiles, a gate's door and the janggi board seen from above (a 9 by 10 grid)
+const JANGGI = (() => {
+  const [x0, y0, w, h] = [20, 20, 216, 216];
+  const col = (i) => x0 + 14 + (i * (w - 28)) / 8;
+  const row = (j) => y0 + 12 + (j * (h - 24)) / 9;
+  let g = `<rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="rgb(205,190,160)" stroke="rgb(40,40,40)" stroke-width="4"/>`;
+  for (let i = 0; i < 9; i++) g += `<path d="M${col(i)} ${row(0)} V${row(9)}" stroke="rgb(50,50,50)" stroke-width="1.6"/>`;
+  for (let j = 0; j < 10; j++) g += `<path d="M${col(0)} ${row(j)} H${col(8)}" stroke="rgb(50,50,50)" stroke-width="1.6"/>`;
+  for (const [a, b] of [[0, 2], [7, 9]]) g += `<path d="M${col(3)} ${row(a)} L${col(5)} ${row(b)} M${col(5)} ${row(a)} L${col(3)} ${row(b)}" stroke="rgb(50,50,50)" stroke-width="1.4"/>`;
+  // pieces mid-game: octagons, light for one side and dark for the other
+  const pieces = [[4, 1, 0], [0, 0, 0], [8, 0, 0], [1, 2, 0], [3, 3, 0], [6, 3, 0], [4, 4, 0], [4, 8, 1], [0, 9, 1], [7, 9, 1], [2, 6, 1], [5, 6, 1], [6, 5, 1], [1, 7, 1]];
+  for (const [i, j, dark] of pieces) {
+    const r = j === 1 || j === 8 ? 11 : 8;
+    const pts = Array.from({ length: 8 }, (_, k) => `${col(i) + r * Math.cos((k * Math.PI) / 4 + Math.PI / 8)},${row(j) + r * Math.sin((k * Math.PI) / 4 + Math.PI / 8)}`).join(' ');
+    g += `<polygon points="${pts}" fill="${dark ? 'rgb(70,70,70)' : 'rgb(240,240,240)'}" stroke="rgb(25,25,25)" stroke-width="2"/><circle cx="${col(i)}" cy="${row(j)}" r="${r * 0.45}" fill="none" stroke="${dark ? 'rgb(200,200,200)' : 'rgb(60,60,60)'}" stroke-width="1.4"/>`;
+  }
+  return g;
+})();
+const DECOR_SVG = {
+  cell: { x: 0, y: 512, w: 1024, h: 256 },
+  svg: `<svg width="1024" height="256">
+    <g transform="translate(0,0)">${JANGGI}</g>
+    ${PLANKS(260, 4, 120, 120, 150)}
+    <rect x="388" y="4" width="120" height="120" fill="rgb(222,220,214)"/><path d="M400 30 q6 3 10 0 M450 80 q8 -3 14 1 M420 100 l4 2" fill="none" stroke="rgb(170,170,170)" stroke-width="2"/>
+    <rect x="260" y="132" width="120" height="120" fill="rgb(70,70,70)"/>${Array.from({ length: 6 }, (_, i) => `<path d="M${260 + i * 20} 252 V140 q10 -10 20 0 V252" fill="rgb(85,85,85)" stroke="rgb(30,30,30)" stroke-width="2"/>`).join('')}
+    <rect x="388" y="132" width="120" height="120" fill="rgb(110,110,110)"/>
+    ${PLANKS(516, 4, 248, 248, 135)}<rect x="516" y="4" width="248" height="248" fill="none" stroke="rgb(40,40,40)" stroke-width="10"/><path d="M516 128 H764" stroke="rgb(40,40,40)" stroke-width="8"/>${[560, 640, 720].map((x) => `<circle cx="${x}" cy="128" r="5" fill="rgb(40,40,40)"/>`).join('')}
+  </svg>`,
+};
+
 async function buildSheet(name) {
   const sheet = new Uint8Array(SHEET * SHEET);
   for (const item of ITEMS[name]) {
@@ -377,6 +423,17 @@ async function buildSheet(name) {
       }
       cutEdge(sheet, f.cell, EDGE);
     }
+  }
+  if (name === 'decor') {
+    for (const f of DECOR_FACES) {
+      const [x0, y0, x1, y1] = f.box;
+      const px = await sharp(rawFile(f.src)).extract({ left: x0, top: y0, width: x1 - x0, height: y1 - y0 }).resize(f.cell.w, f.cell.h, { fit: 'fill', kernel: 'lanczos3' }).grayscale().extractChannel(0).raw().toBuffer();
+      for (let y = 0; y < f.cell.h; y++) for (let x = 0; x < f.cell.w; x++) sheet[(f.cell.y + y) * SHEET + f.cell.x + x] = Math.max(INK_FLOOR, px[y * f.cell.w + x]);
+    }
+    const f = DECOR_SVG;
+    const data = await sharp(Buffer.from(f.svg)).extractChannel('red').raw().toBuffer();
+    const a = await sharp(Buffer.from(f.svg)).extractChannel('alpha').raw().toBuffer();
+    for (let y = 0; y < f.cell.h; y++) for (let x = 0; x < f.cell.w; x++) if (a[y * f.cell.w + x] >= 128) sheet[(f.cell.y + y) * SHEET + f.cell.x + x] = Math.max(INK_FLOOR, data[y * f.cell.w + x]);
   }
   if (name === 'girl') {
     // the mattress, plain enough to draw: it lies flat between the two ends of the bed, seen along its length
@@ -456,9 +513,11 @@ const MEMORY = [
   { tile: 11, src: 'market-scene', box: [62, 264, 560, 776], seam: 'x' },
   // v0.82: the yard's dirt and its wall under an autumn sky; the night alley's asphalt and its houses
   { tile: 12, src: 'yard-scene', box: [557, 308, 973, 706], seam: 'xy' },
-  { tile: 13, src: 'yard-scene', box: [50, 308, 474, 706], seam: 'x' },
+  // v0.97: the yard's wall built up, stone to the tiles on top with no trees across it to break at the joins
+  { tile: 13, src: 'yard-wall-tall', box: [0, 255, 1024, 1000], seam: 'x' },
   { tile: 14, src: 'night-scene', box: [600, 330, 880, 700], seam: 'xy' },
-  { tile: 15, src: 'night-scene', box: [88, 314, 476, 712], seam: 'x' },
+  // v0.97: the night alley's wall one long run of blocks, so it carries on from drawing to drawing
+  { tile: 15, src: 'night-wall', box: [0, 330, 1024, 1024], seam: 'x' },
 ];
 // The glass of the window tile, and what each floor sees through it: the horizon of the courtyard, and the ginkgo
 // (the same drawing as the courtyard's own) at its middle, its foot and its height. From the fourth floor it's small

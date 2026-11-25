@@ -45,6 +45,8 @@ const LAST_LIGHT = {
     ['turn-back', 'girl-turn', [12, 222, 350, 546], true],
     ['turn-side', 'girl-turn', [368, 222, 334, 546], true],
     ['turn-front', 'girl-turn', [704, 222, 318, 546], true],
+    // v0.98: her whole, from behind, under the tree, before the close turn (generate-hospital-art.js girl-fullbody-back)
+    ['full-back', 'girl-fullbody-back', [384, 117, 252, 806], true],
   ],
 };
 
@@ -119,7 +121,7 @@ const DESCENT = {
   floors: [
     { plate: 'plate-4', lines: ['4층. 복도 불빛을 하나씩 지나간다.'], at: [270, 785], to: [258, 735], scale: 50 },
     // on the chair nearest, held still so she stays on it (the plate from (7, 7) looking west); turned to face as it does
-    { plate: 'plate-3', lines: ['3층. 의자에 앉아 오래 쉰다.', '"괜찮아. 가."'], rest: true, still: true, at: [112, 776], scale: 54, mirror: true },
+    { plate: 'plate-3', lines: ['3층. 의자에 앉아 오래 쉰다.', '"괜찮아. 가."'], rest: true, still: true, at: [128, 792], scale: 46, mirror: true }, // v0.98: her size to the chair's, hips on its seat (she floated over it)
     { plate: 'plate-2', lines: ['2층. "숨차다." 소녀가 웃는다.'], at: [282, 785], to: [270, 740], scale: 50 },
     { plate: 'plate-1', lines: ['1층. 사람들 사이를 지나 안뜰로 나간다.'], at: [270, 790], to: [270, 725], scale: 48 },
   ],
@@ -171,7 +173,7 @@ async function buildLastLight() {
   const script = path.join(work, 'last-light.jsx');
   fs.writeFileSync(script, jsx);
   execFileSync(EFFECTCRAFT, ['script', script], { stdio: ['ignore', 'inherit', 'inherit'] });
-  return { project: path.join(work, 'last-light.ecproj'), comp: 'last-light', times: [1, 2.75, 5, 9] };
+  return { project: path.join(work, 'last-light.ecproj'), comp: 'last-light', times: [1.2, 3.4, 5.2, 7.4, 11.4] };
 }
 
 async function buildMemory(m) {

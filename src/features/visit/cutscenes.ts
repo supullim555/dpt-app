@@ -2,10 +2,10 @@
 import type { ClueId } from './progress';
 
 /** The last light: she turns under the ginkgo, the light, the world in colour, ending on amber. 540x960. */
-export const LAST_LIGHT_URL = '/cutscenes/last-light.mp4?v=b6dc46a1f2';
+export const LAST_LIGHT_URL = '/cutscenes/last-light.mp4?v=c9455bbe92';
 
 /** The way down to the ginkgo, floor by floor in the seventh day's corridors, from black to black. 540x960. */
-export const DESCENT_URL = '/cutscenes/descent.mp4?v=bd4edff388';
+export const DESCENT_URL = '/cutscenes/descent.mp4?v=cb913fbe49';
 
 /** Her memories, one for each thing found: from black to black, 8 seconds, 540x960. */
 export const MEMORY_FILM: Record<ClueId, string> = {
