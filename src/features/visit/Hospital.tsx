@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
 import { VISIT_DEV } from './flag';
 import { girlOn, PIN_ON } from './girlDays';
-import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type SpriteLook } from './hospitalScene';
+import { createHospitalScene, type FocusTarget, type HospitalScene, type HospitalSprite, type Quality, type SpriteLook } from './hospitalScene';
+import Dictionary from './Dictionary';
 import { ahead, ALONG_THE_WALLS, ON_THE_WALLS, arrival, arrowFor, BEDSIDE, CLUE_CELLS, HIDDEN_CLUE, DOCTOR_FRONT, ENTRANCE, enterPlace, FLOOR_ORDER, GIRL_FRONT, goalFor, HOSPITAL, LIFT_FRONT, OUTSIDE_ROOM, placeName, ROOM_ENTRY, SHOP_FRONT, STAIRS_FRONT, stepped, thingAt, turn, tutorialAfter, tutorialGoal, type Dir, type FloorNo, type Pose, type Thing, type TutorialStep } from './hospitalMap';
 import PaperButton from './PaperButton';
 import { clueOn, CLUES, type ClueId } from './progress';
-import { boughtLine, CLUE_SPOT, linesOn, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
+import { GUIDE_AFTER, GUIDE_AFTER_DEFAULT, SHOP_LAST_DAY, TAKE_A_BREAK, boughtLine, CLUE_SPOT, linesOn, CLUE_TEXT, FLOORS, FOLLOW_LIGHT, GIFTS, GUIDE_FIRST_LINES, HINT_TITLE, hintLines, PEOPLE, ROOM_SHUT, SOLD_TODAY, TUTORIAL_OK, TUTORIAL_SKIP, TUTORIAL_TIPS, TUTORIAL_TITLE, nextDayQuestion, untilTomorrow, WRITE_CRISIS, WRITE_FAILED, WRITE_OWN, WRITE_WAITING } from './script';
 import { doctorTalk, personTalk, requestGoal, REQUESTS, type Request, type Talk } from './requests';
 import BreatheTogether from './BreatheTogether';
 import { PLACES, type Place } from './places';
@@ -33,7 +34,7 @@ const TOUCH = Platform.OS !== 'web' || (typeof window !== 'undefined' && !!windo
 const KEY_AT: Record<string, string> = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 const PROP_ON_FLOOR: Record<number, SpriteLook> = { 3: 'gurney', 2: 'cart', 1: 'vending' };
 const MEMORY_MS = 2600;
-const PLACE_SOUND: Partial<Record<string, 'river' | 'birds' | 'crickets'>> = { river: 'river', beach: 'river', yard: 'birds', night: 'crickets' };
+const PLACE_SOUND: Partial<Record<string, 'river' | 'waves' | 'birds' | 'crickets'>> = { river: 'river', beach: 'waves', yard: 'birds', night: 'crickets' };
 
 /** Someone's remembered day, walked through: whose, how far in, and where you were in the hospital before it. */
 type Memory = { request: Request; place: Place; stage: 'meet' | 'lost'; back: Pose; step: number };
@@ -94,11 +95,14 @@ type Props = {
   onTutorial: (step: TutorialStep) => void;
   /** Something written to someone sounded like a crisis, and their fixed answer is showing: the hotlines stand out meanwhile. */
   onCrisis?: (showing: boolean) => void;
+  /** v0.96: graphics quality, and the settings rows to show in the game's own settings (the map's 설정) */
+  quality: Quality;
+  settings: ReactNode;
   /** Set while the story has you at her bedside: no walking, and the panel below takes the controls' place. */
   bedside?: { below: ReactNode; bubble?: string; more?: boolean; onPress?: () => void; girlHere: boolean; staffIn: boolean; arriving?: string };
 };
 
-type Panel = 'none' | 'map' | 'lift' | 'stairs' | 'leave' | 'tomorrow';
+type Panel = 'none' | 'map' | 'lift' | 'stairs' | 'leave' | 'tomorrow' | 'settings' | 'dictionary';
 /** Who or what the view has come in close on, until you go back. */
 type Focused =
   // `talk`: a conversation with choices (requests.ts), at stretch `node`; `lines` are that stretch's.
@@ -120,7 +124,7 @@ const Bubble = ({ text, more, fontScale, name }: { text: string; more?: boolean;
 // something and you can press it: the view comes in close, they speak or it's described, and 뒤로가기 lets
 // you move again. There's no time limit and nothing to fail. The view itself is hospitalScene.ts; if it
 // can't run, the floor plan takes its place and walking still works.
-export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, onCrisis, bedside }: Props) {
+export default function Hospital({ day, run, fontScale, light, doneToday, boughtToday, found, floorsSeen, onSeeFloor, onEnterRoom, onBuy, onFind, onNextDay, metDoctor, onMeetDoctor, asked, solved, onAccept, onSolve, aiOn, onTitle, tutorial, onTutorial, onCrisis, quality, settings, bedside }: Props) {
   const [pose, setPose] = useState<Pose>(bedside ? BEDSIDE : doneToday ? OUTSIDE_ROOM : ENTRANCE);
   const [note, setNote] = useState(doneToday ? FLOORS[4].line : '');
   const [focused, setFocused] = useState<Focused | null>(null);
@@ -131,6 +135,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const [noView, setNoView] = useState(false);
   const [breathing, setBreathing] = useState(false);
   const [relaxMode, setRelaxMode] = useState<'breath' | 'muscle' | 'ground'>('breath');
+  const [relaxParts, setRelaxParts] = useState<string[] | undefined>(undefined);
   const [memory, setMemory] = useState<Memory | null>(null);
   // In someone's remembered day, what goes through their head: the newest, and the one before it, fainter.
   const [thoughts, setThoughts] = useState<string[]>([]);
@@ -163,6 +168,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   const latest = useRef({ pose, bedside, doneToday, found, day, talking, memory, uncovered });
   latest.current = { pose, bedside, doneToday, found, day, talking, memory, uncovered };
   const bars = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    scene.current?.setQuality(quality);
+  }, [quality]);
   // v0.93: a remembered place's own sound under it, in place of the music: water by the river and the sea, birds in the
   // autumn yard, crickets in the night alley (the rehab room and the market keep the music)
   const memoryPlace = memory?.request.memory.place;
@@ -421,6 +429,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (at.effect === 'solve' && request !== undefined) onSolve(request);
     if (at.effect === 'breathe') {
       setRelaxMode(at.relax ?? 'breath');
+      setRelaxParts(at.parts);
       setBreathing(true);
     }
     setAside(null);
@@ -549,13 +558,20 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
       const firstVisit = thing.id === '1i' && (tutorial === 'goal' || tutorial === 'talk');
       const doctor = thing.id === '4r' && doneToday;
       if (doctor) onMeetDoctor();
+      // v0.96: on the last day the shop is no place to stop: you only say so to yourself
+      if (thing.id === '1m' && day >= 7 && !memory) {
+        setNote(SHOP_LAST_DAY);
+        return;
+      }
       const talk = memory ? (thing.id === '0k' ? memory.request.memory.meet : memory.request.memory.found) : doctor ? doctorTalk(day, asked, solved) : personTalk(thing.id, asked, solved);
       const base = { kind: 'person' as const, id: thing.id, name: person.name, index: 0, shop: thing.id === '1m' };
       if (talk) enterNode({ ...base, lines: [], talk }, 'start');
       else {
         // in the hospital, everyone has lines of their own (a remembered place always has a talk)
         const own = PEOPLE[thing.id];
-        setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : own?.clue?.day === day ? [own.clue.line] : own ? linesOn(own, day) : [] });
+        // the reception desk asks how it went, once you've been up to her
+        const afterVisit = thing.id === '1i' && doneToday ? GUIDE_AFTER[day] ?? GUIDE_AFTER_DEFAULT : null;
+        setFocused({ ...base, lines: firstVisit ? GUIDE_FIRST_LINES : afterVisit ?? (own?.clue?.day === day ? [own.clue.line] : own ? linesOn(own, day) : []) });
       }
       scene.current?.focus({ cell: ahead(pose), ...PERSON_FOCUS });
     }
@@ -803,7 +819,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
 
         {panel === 'tomorrow' && (
           <View style={styles.panel}>
-            <Text style={[styles.text, textSize]}>{untilTomorrow(...timeToMidnight())}</Text>
+            <Text style={[styles.text, textSize]}>{TAKE_A_BREAK.join('\n')}</Text>
             <PaperButton label="타이틀로" onPress={onTitle} />
             <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
               <Text style={[styles.linkText, textSize]}>병원에 더 있기</Text>
@@ -880,14 +896,32 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               </View>
             )}
 
-            <TouchableOpacity style={styles.link} onPress={onTitle}>
-              <Text style={[styles.linkText, textSize]}>타이틀로</Text>
+            {/* v0.96: the way to the title is in the settings now, with the rest */}
+            <TouchableOpacity style={styles.link} onPress={() => setPanel('settings')}>
+              <Text style={[styles.linkText, textSize]}>설정</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
               <Text style={[styles.linkText, textSize]}>닫기</Text>
             </TouchableOpacity>
           </View>
         )}
+
+        {panel === 'settings' && (
+          <ScrollView style={styles.settingsPanel} contentContainerStyle={styles.settingsInner}>
+            <Text style={[styles.title, { fontSize: 20 * fontScale }]}>설정</Text>
+            {settings}
+            <TouchableOpacity style={styles.link} onPress={() => setPanel('dictionary')}>
+              <Text style={[styles.linkText, textSize]}>사전</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.link} onPress={onTitle}>
+              <Text style={[styles.linkText, textSize]}>타이틀로</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.link} onPress={() => setPanel('map')}>
+              <Text style={[styles.linkText, textSize]}>돌아가기</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+        {panel === 'dictionary' && <Dictionary fontScale={fontScale} onClose={() => setPanel('settings')} />}
       </View>
 
       {bedside ? (
@@ -965,6 +999,7 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         <BreatheTogether
           fontScale={fontScale}
           mode={relaxMode}
+          parts={relaxParts}
           onDone={() => {
             setBreathing(false);
             const then = atNode?.then;
@@ -1025,6 +1060,8 @@ function FloorPlan({ pose }: { pose: Pose }) {
 }
 
 const styles = StyleSheet.create({
+  settingsPanel: { position: 'absolute', left: 16, right: 16, top: 40, bottom: 40, backgroundColor: 'rgba(0,0,0,0.92)', borderWidth: 1.5, borderColor: '#f2f2f2', zIndex: 15 },
+  settingsInner: { padding: 18, gap: 10, alignItems: 'center' },
   wrap: { flex: 1, backgroundColor: '#000' },
   view: { flex: 1, minHeight: 200, overflow: 'hidden', backgroundColor: '#0a0a09' },
   fill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },

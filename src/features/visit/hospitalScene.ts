@@ -176,6 +176,8 @@ export type HospitalScene = {
   unfocus: (pose: Pose, done: () => void) => void;
   /** Lift a thing up from where it lay to just in front of your eyes. */
   hold: (look: SpriteLook, from: Cell) => void;
+  /** v0.96: how much the view draws (settings): sharpness, the glow, the water's reflections. */
+  setQuality: (q: Quality) => void;
   /** v0.93: down to the floor and slowly up again (falling on the parallel bars); `done` once you're up. */
   fall: (done?: () => void) => void;
   dispose: () => void;
@@ -359,6 +361,8 @@ const SOLIDS = {
   },
 } as const satisfies Record<string, { shadow: readonly [number, number]; boxes: readonly Box[] }>;
 export type SolidLook = keyof typeof SOLIDS;
+/** v0.96: 'high' sharpest, the glow wherever it's dark enough; 'low' for a weak phone: no glow, flat water, fewer pixels. */
+export type Quality = 'high' | 'normal' | 'low';
 
 // Light from above, so its sides read as sides.
 const FACE_SHADE = { front: 0.96, rear: 0.74, left: 0.84, right: 0.84, top: 1 };
@@ -385,7 +389,10 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
   ]);
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  let quality: Quality = 'normal';
+  let floorShown: FloorNo = 1;
+  const PIXEL_RATIO: Record<Quality, number> = { high: 2, normal: 1.5, low: 1 };
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PIXEL_RATIO[quality]));
   const canvas = renderer.domElement;
   canvas.style.position = 'absolute';
   canvas.style.left = '0';
@@ -908,12 +915,14 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     clearExtras();
     // the glow only where the light stands out: in the hospital and in the night alley. Out of doors by day the sand and
     // paper are as bright as any light, and it whitened everything.
-    if (bloom) bloom.enabled = !place || !!place.thickFog;
+    // v0.96: only in the night alley, round the lamps. In the hospital the white paper of the people and the vending machine
+    // glowed as brightly as any light, and was hard to look at.
+    if (bloom) bloom.enabled = quality === 'low' ? false : quality === 'high' ? !place || !!place.thickFog || !place.outdoors : !!place?.thickFog;
     if (!place) return;
     // the water: one surface over all the water there is, reaching out past the edge out of doors (three.js Water2)
     const water: Cell[] = [];
     place.map.forEach((row, y) => [...row].forEach((ch, x) => ch === '~' && water.push({ x, y })));
-    if (water.length) {
+    if (water.length && quality !== 'low') {
       void import('three/examples/jsm/objects/Water2.js').then(({ Water }) => {
         if (currentPlace() !== place) return;
         const beyond = place.outdoors ? OPEN_BEYOND : 0;
@@ -1220,6 +1229,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
 
   return {
     showFloor: (floor, sprites, pose, roomShut) => {
+      floorShown = floor;
       const place = floor === 0 ? (currentPlace() as Place | null) : null;
       const fog = place?.fog ?? FOG_COLOR[floor];
       shared.uFloorLight.value = place?.light ?? FLOOR_LIGHT[floor];
@@ -1282,6 +1292,17 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
         done();
       });
     },
+    setQuality: (q) => {
+      if (q === quality) return;
+      quality = q;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PIXEL_RATIO[q]));
+      resize();
+      // the glow and the water are chosen per place: build it again
+      const place = currentPlace() as Place | null;
+      if (place && floorShown === 0) buildExtras(place);
+      else if (bloom) bloom.enabled = q === 'high';
+      draw();
+    },
     fall: (done) => {
       if (still) {
         done?.();
@@ -1290,7 +1311,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       const up = { ...cam };
       // the knees go: down near the floor, looking down a little; a breath there; then slowly up again
       animate(380, { ...up, y: 0.2 + (up.y - EYE), pitch: -0.32 }, false, () => {
-        setTimeout(() => animate(1100, up, false, done), 520);
+        // v0.96: getting up slower than going down
+        setTimeout(() => animate(1900, up, false, done), 620);
       });
     },
     hold: (look, from) => {

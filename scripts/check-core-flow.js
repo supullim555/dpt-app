@@ -43,7 +43,7 @@ async function main() {
     async (t) => {
       // v0.91: one notice, 병문안's own, with what the earlier app's first screen said (corrected for the AI)
       t.note('병문안: 시작 전에 어떤 이야기인지 안내', await t.waitText('아픔과 이별을 다뤄요', 12000));
-      t.note('병문안: 치료가 아님과 글이 어디로 가는지 안내', (await t.hasText('이 게임은 치료가 아니에요')) && (await t.hasText('설정에서 AI 대화를 켤 때만')));
+      t.note('병문안: 치료가 아님과 글이 어디로 가는지 안내', (await t.hasText('이 게임은 치료가 아니에요')) && (await t.hasText('여기에 쓰는 글은 이 기기에만 저장돼요.')));
       await t.clickText('들어가 볼게요');
       // v0.92: the tap that starts it unlocks sound; the music and the small sounds are there to load
       t.note('병문안: 소리 파일이 있음', await t.evalJs(`Promise.all(['/sound/music.webm', '/sound/step0.wav', '/sound/door.wav', '/sound/page.wav', '/sound/give.wav'].map((u) => fetch(u).then((r) => r.ok))).then((a) => a.every(Boolean))`));
@@ -56,9 +56,8 @@ async function main() {
       t.note('병문안: 타이틀에 설정 버튼', await t.clickText('설정'));
       t.note('병문안: 설정 화면에 글자 크기', await t.waitText('글자 크기', 3000));
       t.note('병문안: 설정에 처음부터 다시 시작', await t.hasText('처음부터 다시 시작'));
-      t.note('병문안: 설정에 AI와 직접 대화, 전송된다는 안내', (await t.hasText('AI와 직접 대화')) && (await t.hasText('켜면 병원 사람에게 직접 쓴 말을 Google Gemini가 그 사람으로서 받아요. 쓴 말은 이 기기가 아니라 Gemini 서버로 전송돼요. 꺼도 선택지로 끝까지 할 수 있어요.')));
-      await t.clickText('켜기');
-      await sleep(200);
+      // v0.96: no AI talk with the hospital's people, so no setting for it
+      t.note('병문안: 설정에 AI 대화 없음', !(await t.hasText('AI와 직접 대화')));
       await t.shot('visit_settings.png');
       await t.clickText('크게');
       await sleep(200);
@@ -178,6 +177,20 @@ async function main() {
         return t.hasText('닫기');
       })());
       await t.shot('walk_map.png');
+      // v0.96: the map's 설정: text, sound, graphics, the dictionary, the way to the title
+      t.note('병문안: 지도에 설정', await t.clickText('설정'));
+      t.note('병문안: 게임 속 설정에 화질과 사전', (await t.waitText('화질', 2000)) && (await t.hasText('사전')) && (await t.hasText('타이틀로')));
+      await t.clickText('사전');
+      t.note('병문안: 사전에 인지치료 개념', (await t.waitText('인지치료란', 2000)) && (await t.hasText('파국화')));
+      await t.clickText('파국화');
+      t.note('병문안: 사전 항목에 그림과 예', (await t.waitText('3층 지친 보호자', 2000)) && (await t.evalJs(`document.body.innerHTML.includes('dictionary/catastrophe')`)));
+      await t.shot('dictionary.png');
+      await t.clickText('목록으로');
+      await sleep(200);
+      await t.clickText('닫기');
+      await sleep(200);
+      await t.clickText('돌아가기');
+      await sleep(200);
       await t.clickText('닫기');
       await sleep(200);
       await t.clickText('엘리베이터 타기');
@@ -287,7 +300,7 @@ async function main() {
       t.note('병문안: 다음 날을 진행할지 물음', (await t.waitText('2일차를 진행하시겠습니까?', 2000)) && (await t.hasText('아니오')));
       await t.shot('leave_question.png');
       await t.clickText('아니오');
-      t.note('병문안: 아니오면 다음 날까지 남은 시간', await t.waitText('자정에 열려요', 2000));
+      t.note('병문안: 아니오면 쉬었다 와도 된다고', await t.waitText('오늘은 잠시 쉬고, 내일 마저 진행해도 괜찮아요.', 2000));
       await t.clickText('병원에 더 있기');
       await sleep(300);
 
@@ -363,6 +376,8 @@ async function main() {
       await t.clickText('"못 온 날은 네 하루가 있었던 날이겠지. 그 얘기도 궁금했어."');
       await sleep(300);
       await t.clickText('"너도 네 하루를 잘 지내 줘."');
+      await sleep(300);
+      await t.clickText('편지 옆에 수첩 한 권이 놓여 있다.');
 
       // her notebook: the player's own words on top, getting messier, "살고싶어" last
       t.note('병문안: 엔딩 뒤 수첩', await t.waitText('그 아이의 수첩', 3000));
@@ -489,27 +504,8 @@ async function main() {
       await t.clickText('지친 보호자에게 말 걸기');
       t.note('병문안: 보호자가 최악을 말함', await tapUntil('괜찮을 거예요. 너무 걱정하지 마세요.'));
       await t.shot('request_choices.png');
-      // AI on: write to them yourself. A crisis is never sent; with no relay here, the choices still carry it
-      t.note('병문안: AI를 켜면 직접 말하기', await t.clickText('직접 말하기'));
-      await sleep(300);
-      await t.fillTextarea('요즘 죽고 싶어');
-      await sleep(150);
-      await t.clickText('말하기');
-      t.note('병문안: 직접 쓴 위기 표현은 보내지 않고 안내', await t.waitText('그 말은 그냥 넘기고 싶지 않아요. 혼자 견디지 말고, 아래 번호로 전화해 보세요. 24시간 받아 줘요.', 2000));
-      t.note('병문안: 인물의 안내 동안 상담 번호가 크게', await t.hasText('지금 바로 이야기할 수 있어요'));
-      await t.click(195, 170);
-      await sleep(200);
-      t.note('병문안: 안내가 지나가면 상담 번호는 원래대로', !(await t.hasText('지금 바로 이야기할 수 있어요')));
-      await t.clickText('직접 말하기');
-      await sleep(300);
-      await t.fillTextarea('아이 열은 언제부터 났어요?');
-      await sleep(150);
-      await t.clickText('말하기');
-      // locally there's no relay, so the notice; on the live site Gemini answers as them (one billed text call)
-      t.note('병문안: 직접 쓴 말에 답이 오거나, 못 받으면 선택지로 안내', await waitFor(async () => (await t.hasText('(지금은 답을 받을 수 없어요. 아래에서 골라 주세요.)')) || !(await t.centerOfText('…')), 50000));
-      await t.shot('request_written.png');
-      await t.click(195, 170);
-      await sleep(200);
+      // v0.96: writing to them yourself is gone (only to her)
+      t.note('병문안: 병원 사람에게는 직접 말하기 없음', !(await t.hasText('직접 말하기')));
       await t.clickText('괜찮을 거예요. 너무 걱정하지 마세요.');
       t.note('병문안: 무조건 안심시키면 닫히고 다시 고름', (await t.waitText('그 말이 제일 안 들려요', 2000)) && (await t.hasText('의료진은 뭐라고 하던가요?')));
       await t.clickText('열이 난다는 게 꼭 잘못됐다는 뜻일까요? 의료진은 뭐라고 하던가요?');
@@ -636,7 +632,8 @@ async function main() {
       await sleep(250);
       await t.shot('rehab_fall.png');
       t.note('병문안: 평행봉 중간에서 넘어짐', await t.waitText('중간쯤에서 무릎이 꺾였다. 넘어졌다.', 2000));
-      await sleep(2200);
+      // v0.96: getting up is slower now, about two and a half seconds
+      await sleep(3200);
       await press('앞으로', 3);
       t.note('병문안: 걷는 동안의 생각', await t.hasText('저기, 끝이 보인다.'));
       t.note('병문안: 끝에서 기다리는 물리치료사', await t.clickText('물리치료사에게 말 걸기'));
@@ -646,13 +643,13 @@ async function main() {
       await t.clickText('…네. 봤어요.');
       t.note('병문안: 청년이 그날을 돌아봄', await tapUntil('잠깐 같이 몸에 힘 좀 빼고 갈까요?', 30));
       await t.clickText('잠깐 같이 몸에 힘 좀 빼고 갈까요?');
-      // v0.93: the body part by part, each with a picture of how: the hands first
-      t.note('병문안: 같이 힘 빼기', await t.waitText('두 손을 꽉 주먹 쥐어요', 2000));
+      // v0.96: only the parts the day is about: on day 2 the legs, then the feet
+      t.note('병문안: 같이 힘 빼기', await t.waitText('다리를 앞으로 쭉 들어 힘을 줘요', 2000));
       // over the network the picture takes a moment to arrive
-      t.note('병문안: 힘 빼기에 그림', await waitFor(() => t.evalJs(`[...document.querySelectorAll('img')].some((i) => /hands-tense/.test(i.src) && i.complete && i.naturalWidth > 0)`), 4000));
-      t.note('병문안: 부위마다 한 번씩 (1 / 7)', await t.hasText('1 / 7'));
+      t.note('병문안: 힘 빼기에 그림', await waitFor(() => t.evalJs(`[...document.querySelectorAll('img')].some((i) => /legs-tense/.test(i.src) && i.complete && i.naturalWidth > 0)`), 4000));
+      t.note('병문안: 부위마다 한 번씩 (1 / 2)', await t.hasText('1 / 2'));
       await sleep(5600);
-      t.note('병문안: 힘을 준 뒤 풀기', await t.hasText('손을 펴고, 무릎 위에 툭 내려놓아요'));
+      t.note('병문안: 힘을 준 뒤 풀기', await t.hasText('발을 바닥에 내려놓고 다리를 풀어요'));
       await t.shot('relax_muscle.png');
       await t.clickText('충분해요');
       t.note('병문안: 2일차 부탁이 풀림', await t.waitText('다리가 좀 제 거 같네요', 2000));
@@ -728,8 +725,8 @@ async function main() {
       await press('앞으로');
       await press('오른쪽');
       t.note('병문안: 옆 가게 아주머니', await t.clickText('옆 가게 아주머니에게 말 걸기'));
-      await tapUntil('오늘도 공쳤어요. 저는 원래 안 돼요.');
-      await t.clickText('오늘도 공쳤어요. 저는 원래 안 돼요.');
+      await tapUntil('항상 그렇지 뭐. 오늘도 공쳤어.');
+      await t.clickText('항상 그렇지 뭐. 오늘도 공쳤어.');
       t.note('병문안: 시장 한 바퀴', await tapUntil('시장 한 바퀴 돌기'));
       await sleep(500);
       await t.shot('market_lost.png');
@@ -815,7 +812,7 @@ async function main() {
       await t.clickText('…같이 부치고 들어가요.');
       t.note('병문안: 자원봉사자가 그날을 돌아봄', await tapUntil('잠깐 같이 어깨 힘 좀 빼고 가요.', 30));
       await t.clickText('잠깐 같이 어깨 힘 좀 빼고 가요.');
-      await t.waitText('두 손을 꽉 주먹 쥐어요', 2000);
+      await t.waitText('어깨를 귀 쪽으로 끌어올려요', 2000);
       await t.clickText('충분해요');
       t.note('병문안: 6일차 부탁이 풀림', await t.waitText('손이 가벼워요', 2000));
       await stepBack();

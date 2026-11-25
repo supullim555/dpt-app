@@ -9,8 +9,8 @@ export const DESCENT_URL = '/cutscenes/descent.mp4?v=bd4edff388';
 
 /** Her memories, one for each thing found: from black to black, 8 seconds, 540x960. */
 export const MEMORY_FILM: Record<ClueId, string> = {
-  collar: '/cutscenes/mem-collar.mp4?v=1dd0789eee',
+  collar: '/cutscenes/mem-collar.mp4?v=9c58ec8038',
   snack: '/cutscenes/mem-snack.mp4?v=e2b540cb82',
   laces: '/cutscenes/mem-laces.mp4?v=71426f3f17',
-  coupon: '/cutscenes/mem-coupon.mp4?v=3a19e53a25',
+  coupon: '/cutscenes/mem-coupon.mp4?v=6d46c368e5',
 };

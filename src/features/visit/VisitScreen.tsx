@@ -12,6 +12,7 @@ import CrisisFooter from '@/ui/CrisisFooter';
 import RoomColumn from '@/ui/RoomColumn';
 import { VISIT_CARDS, VISIT_OPENING, VISIT_PANEL } from '@/assets/visitUi';
 import CardScene, { type Beat } from './CardScene';
+import Dictionary from './Dictionary';
 import { MEMORY_FILM } from './cutscenes';
 import { play, setSoundOn, unlockSound } from './sound';
 import { VISIT_DEV } from './flag';
@@ -99,6 +100,8 @@ type VisitState = {
   fontScale: number;
   /** v0.92: music and the small sounds (settings). */
   sound: boolean;
+  /** v0.96: how much the 3D view draws (hospitalScene.ts Quality). */
+  graphics: 'high' | 'normal' | 'low';
   /** Days moved on without waiting: the fairy's light on later runs, the &dev=1 buttons. */
   skippedDays: number;
   /** Days on which you went to the doctor's room after seeing her. */
@@ -109,7 +112,7 @@ type VisitState = {
   requestsTold: number[];
 };
 
-const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, sound: true, skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
+const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, startDate: '', visited: [], done: [], told: [], ending: '', boughtDay: 0, gifts: [], clues: [], shown: [], floorsSeen: [1], tutorial: 'walk', fontScale: 1, sound: true, graphics: 'normal', skippedDays: 0, doctorDays: [], requestsAsked: [], requestsSolved: [], requestsTold: [] };
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
@@ -137,6 +140,7 @@ export default function VisitScreen() {
   const [replyLines, setReplyLines] = useState<string[]>([]);
   const [askEmotion, setAskEmotion] = useState(false);
   const [ackLines, setAckLines] = useState<string[]>([]);
+  const [dictionaryOpen, setDictionaryOpen] = useState(false);
   // Something's been given this visit: everything you carry can be given, one after another (gifts and the things you found)
   const [gaveSome, setGaveSome] = useState(false);
   // Someone in the hospital is giving their fixed answer to words that sounded like a crisis (Hospital's onCrisis)
@@ -203,7 +207,7 @@ export default function VisitScreen() {
   const tell = (text: string, typed: boolean) => {
     const story = typed ? undefined : toTell.find((r) => r.girl.choice === text);
     if (story) {
-      setState({ ...state, requestsTold: [...state.requestsTold, story.day], told: [...state.told.filter((t) => t.day !== day), { day, label: null, text: '' }] });
+      setState({ ...state, requestsTold: [...state.requestsTold, story.day], told: [...state.told.filter((t) => t.day !== day), { day, label: null, text: '', story: story.girl.note }] });
       setReplyLines([...story.girl.lines, ...(DAY_LINES[day] ?? [])]);
       setAskEmotion(day > 1);
       setPhase('reply');
@@ -328,6 +332,60 @@ export default function VisitScreen() {
     </View>
   );
 
+  // v0.96: text size, sound and graphics, the same on the title's settings and in the game's own (the map's 설정)
+  const settingsRows = state && (
+    <>
+            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>글자 크기</Text>
+            <View style={styles.settingsRow}>
+              {[
+                { label: '보통', value: 1 },
+                { label: '크게', value: LARGE_TEXT },
+              ].map((o) => (
+                <TouchableOpacity
+                  key={o.label}
+                  style={[styles.option, state.fontScale === o.value && styles.optionOn]}
+                  onPress={() => setState({ ...state, fontScale: o.value })}
+                >
+                  <Text style={[styles.optionText, state.fontScale === o.value && styles.optionTextOn]}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>소리</Text>
+            <View style={styles.settingsRow}>
+              {[
+                { label: '끄기', value: false },
+                { label: '켜기', value: true },
+              ].map((o) => (
+                <TouchableOpacity
+                  key={o.label}
+                  style={[styles.option, state.sound === o.value && styles.optionOn]}
+                  onPress={() => {
+                    setState({ ...state, sound: o.value });
+                    setSoundOn(o.value);
+                    if (o.value) unlockSound();
+                  }}
+                >
+                  <Text style={[styles.optionText, state.sound === o.value && styles.optionTextOn]}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>화질</Text>
+            <View style={styles.settingsRow}>
+              {[
+                { label: '낮음', value: 'low' as const },
+                { label: '보통', value: 'normal' as const },
+                { label: '높음', value: 'high' as const },
+              ].map((o) => (
+                <TouchableOpacity key={o.label} style={[styles.option, state.graphics === o.value && styles.optionOn]} onPress={() => setState({ ...state, graphics: o.value })}>
+                  <Text style={[styles.optionText, state.graphics === o.value && styles.optionTextOn]}>{o.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+    </>
+  );
+
   if (phase === 'notice') {
     return (
       <View style={styles.screen}>
@@ -338,11 +396,10 @@ export default function VisitScreen() {
               오래 아픈 아이를 찾아가는 이야기예요. 아픔과 이별을 다뤄요. 가까운 사람을 잃은 지 얼마 안 됐거나 지금 많이
               힘들다면, 나중에 시작해도 괜찮아요.
             </Text>
-            {/* From the earlier app's first screen (v0.91), corrected: with AI on, what's written to the hospital's people does leave the device */}
+            {/* From the earlier app's first screen (v0.91). v0.96: nothing written leaves the device any more (no AI talk) */}
             <Text style={[styles.noticeSmall, { fontSize: 13 * scale, lineHeight: 20 * scale }]}>
               이 게임은 치료가 아니에요. 전문가의 도움을 대신하지 않아요.{'\n'}
-              여기에 쓰는 글은 이 기기에만 저장돼요. 설정에서 AI 대화를 켤 때만, 병원 사람에게 쓴 글이 Google Gemini로
-              보내져요.
+              여기에 쓰는 글은 이 기기에만 저장돼요.
             </Text>
             <PaperButton
               label="들어가 볼게요"
@@ -391,66 +448,10 @@ export default function VisitScreen() {
           <View style={styles.titleCard}>
             <Text style={[styles.settingsHeading, { fontSize: 22 * scale }]}>설정</Text>
 
-            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>글자 크기</Text>
-            <View style={styles.settingsRow}>
-              {[
-                { label: '보통', value: 1 },
-                { label: '크게', value: LARGE_TEXT },
-              ].map((o) => (
-                <TouchableOpacity
-                  key={o.label}
-                  style={[styles.option, state.fontScale === o.value && styles.optionOn]}
-                  onPress={() => setState({ ...state, fontScale: o.value })}
-                >
-                  <Text style={[styles.optionText, state.fontScale === o.value && styles.optionTextOn]}>{o.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>소리</Text>
-            <View style={styles.settingsRow}>
-              {[
-                { label: '끄기', value: false },
-                { label: '켜기', value: true },
-              ].map((o) => (
-                <TouchableOpacity
-                  key={o.label}
-                  style={[styles.option, state.sound === o.value && styles.optionOn]}
-                  onPress={() => {
-                    setState({ ...state, sound: o.value });
-                    setSoundOn(o.value);
-                    if (o.value) unlockSound();
-                  }}
-                >
-                  <Text style={[styles.optionText, state.sound === o.value && styles.optionTextOn]}>{o.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>AI와 직접 대화</Text>
-            <Text style={[styles.settingsNote, { fontSize: 12 * scale, lineHeight: 18 * scale }]}>
-              켜면 병원 사람에게 직접 쓴 말을 Google Gemini가 그 사람으로서 받아요. 쓴 말은 이 기기가 아니라 Gemini 서버로 전송돼요. 꺼도 선택지로 끝까지 할 수 있어요.
-            </Text>
-            <View style={styles.settingsRow}>
-              {[
-                { label: '끄기', value: 'off' as const },
-                { label: '켜기', value: 'on' as const },
-              ].map((o) => {
-                const on = (ai === 'on') === (o.value === 'on');
-                return (
-                  <TouchableOpacity
-                    key={o.label}
-                    style={[styles.option, on && styles.optionOn]}
-                    onPress={() => {
-                      setAi(o.value);
-                      void setAiOptIn(o.value);
-                    }}
-                  >
-                    <Text style={[styles.optionText, on && styles.optionTextOn]}>{o.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            {settingsRows}
+            <TouchableOpacity style={styles.settingsLink} onPress={() => setDictionaryOpen(true)}>
+              <Text style={[styles.settingsLinkText, { fontSize: 14 * scale }]}>사전</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.settingsLink} onPress={() => setPhase('opening')}>
               <Text style={[styles.settingsLinkText, { fontSize: 14 * scale }]}>오프닝 다시 보기</Text>
@@ -469,6 +470,7 @@ export default function VisitScreen() {
 
             <PaperButton label="돌아가기" onPress={() => setPhase('title')} />
           </View>
+          {dictionaryOpen && <Dictionary fontScale={scale} onClose={() => setDictionaryOpen(false)} />}
           <CrisisFooter tone="dark" />
         </RoomColumn>
       </View>
@@ -672,7 +674,9 @@ export default function VisitScreen() {
           metDoctor={state.doctorDays.includes(day)}
           asked={state.requestsAsked}
           solved={state.requestsSolved.map((r) => r.request)}
-          aiOn={ai === 'on'}
+          aiOn={false}
+          quality={state.graphics}
+          settings={settingsRows}
           onAccept={(request) => setState((s) => (s && !s.requestsAsked.includes(request) ? { ...s, requestsAsked: [...s.requestsAsked, request] } : s))}
           onSolve={(request) => setState((s) => (s && !s.requestsSolved.some((r) => r.request === request) ? { ...s, requestsSolved: [...s.requestsSolved, { request, on: day }] } : s))}
           onMeetDoctor={() => setState((s) => (s && !s.doctorDays.includes(day) ? { ...s, doctorDays: [...s.doctorDays, day] } : s))}
@@ -704,7 +708,7 @@ const styles = StyleSheet.create({
   input: { alignSelf: 'stretch', minHeight: 84, color: '#fff', borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000', padding: 12, lineHeight: 22, textAlignVertical: 'top', fontFamily: 'serif' },
   prompt: { color: '#fff', textAlign: 'center', fontFamily: 'serif' },
   fairyAction: { alignItems: 'center', paddingTop: 10 },
-  fairyBox: { flexShrink: 1, maxHeight: '86%', borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000' },
+  fairyBox: { flexShrink: 1, maxHeight: '70%', borderWidth: 2, borderColor: '#f2f2f2', backgroundColor: '#000' },
   fairyInner: { padding: 14, gap: 7, alignItems: 'center' },
   fairyNarration: { color: 'rgba(255,255,255,0.65)', fontFamily: 'serif', fontStyle: 'italic', textAlign: 'center' },
   fairyNote: { alignSelf: 'stretch', paddingVertical: 10, paddingHorizontal: 18, marginTop: 6, alignItems: 'center', gap: 4 },

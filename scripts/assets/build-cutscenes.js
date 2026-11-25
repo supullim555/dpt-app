@@ -56,10 +56,11 @@ const MEMORIES = [
     duration: 8,
     // children laughing and the dog barking, twice each (generated/sound: CREDITS.txt)
     sounds: [
-      { file: 'giggle.wav', at: 1.3, from: 2.6, length: 1.5, gain: -9 },
-      { file: 'dog.wav', at: 3.1, from: 0.0, length: 0.42, gain: -4 },
-      { file: 'giggle.wav', at: 4.4, from: 3.3, length: 1.2, gain: -11 },
-      { file: 'dog.wav', at: 6.0, from: 0.5, length: 0.45, gain: -6 },
+      // v0.96: each laugh trails off, then a moment's quiet (0.2 s), then the dog
+      { file: 'giggle.wav', at: 1.3, from: 2.6, length: 1.7, gain: -9, fade: 0.6 },
+      { file: 'dog.wav', at: 3.2, from: 0.0, length: 0.42, gain: -4 },
+      { file: 'giggle.wav', at: 4.2, from: 3.3, length: 1.4, gain: -11, fade: 0.5 },
+      { file: 'dog.wav', at: 5.8, from: 0.5, length: 0.45, gain: -6 },
     ],
     camera: { from: [250, 470], to: [300, 500], push: 140, focus: 0, aperture: 10 },
     layers: [
@@ -97,8 +98,8 @@ const MEMORIES = [
     id: 'mem-coupon', // shouting more than singing, after the exams
     duration: 8,
     sounds: [
-      { file: 'giggle.wav', at: 1.6, from: 0.4, length: 2.2, gain: -5 },
-      { file: 'giggle.wav', at: 4.8, from: 2.8, length: 1.8, gain: -7 },
+      { file: 'giggle.wav', at: 1.6, from: 0.4, length: 2.4, gain: -5, fade: 0.7 },
+      { file: 'giggle.wav', at: 4.8, from: 2.8, length: 2.0, gain: -7, fade: 0.7 },
     ],
     camera: { from: [230, 500], to: [300, 520], push: 150, focus: 0, aperture: 10 },
     layers: [

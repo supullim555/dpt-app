@@ -56,7 +56,10 @@ for (var k = 0; k < SOUNDS.length; k++) {
   snd.startTime = S.at - S.from;
   snd.inPoint = S.at;
   snd.outPoint = S.at + S.length;
-  snd.property("Audio").property("Audio Levels").setValue([S.gain, S.gain]);
+  // v0.96: `fade` s to nothing at its end, so a laugh trails off instead of being cut
+  var lv = snd.property("Audio").property("Audio Levels");
+  if (S.fade) key(lv, [S.at, S.at + S.length - S.fade, S.at + S.length], [[S.gain, S.gain], [S.gain, S.gain], [-48, -48]]);
+  else lv.setValue([S.gain, S.gain]);
 }
 
 var black = c.layers.addSolid([0, 0, 0], "black", W, H, 1);

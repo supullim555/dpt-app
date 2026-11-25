@@ -22,3 +22,7 @@ birds.webm   "Ambient Bird Sounds" by isaiah658, CC0 — https://opengameart.org
 crickets.webm "Crickets Ambient Noise - loopable" by Wolfgang_, CC0 — https://opengameart.org/content/crickets-ambient-noise-loopable
              (the night alley's memory). Both looped by scripts/assets/sound/build-ambience.js.
 In the films mem-laces.mp4 and descent.mp4: the Kenney footsteps above; in mem-coupon.mp4: "Group Giggling" above.
+
+v0.96
+waves.webm   four single waves from "Beach Ocean Waves" by jasinski (submitted by qubodup), CC0 —
+             https://opengameart.org/content/beach-ocean-waves — laid round a 24 s loop (build-ambience.js)

@@ -15,6 +15,8 @@ export type TalkNode = {
   effect?: 'accept' | 'breathe' | 'solve' | 'memory' | 'lose' | 'return';
   /** With 'breathe': which way of unwinding together (BreatheTogether): slow breaths, or tensing and letting go. */
   relax?: 'breath' | 'muscle' | 'ground';
+  /** v0.96: for 'muscle', only these parts of the body, the ones this person carries it in (BreatheTogether BODY). */
+  parts?: string[];
 };
 export type Talk = Record<string, TalkNode>;
 
@@ -33,7 +35,8 @@ export type Request = {
   /** What they say once it's settled. */
   after: string[];
   /** On a later visit, something to tell her about it, and what she says. */
-  girl: { choice: string; lines: string[] };
+  /** v0.96 `note`: what her notebook keeps of it, the day you tell her (Notebook.tsx). */
+  girl: { choice: string; note: string; lines: string[] };
   /**
    * The day they remember, walked through as them: where it is, the talk before (`meet`) and after (`found`), and
    * what goes through their head at each step in between. Then back to the hospital, at `person`'s `again`.
@@ -141,6 +144,7 @@ export const REQUESTS: Request[] = [
     after: ['열이 조금 내렸어요. 아직 지켜봐야 하지만요.', '네 번 튄 물수제비 얘기, 애한테 다시 해 달라고 했어요.'],
     girl: {
       choice: '3층 보호자분 이야기',
+      note: '3층 보호자. 아이 열에 최악만 떠올리다, 강가에서 물수제비 뜨던 아이를 기억해 냈다.',
       lines: ['최악부터 생각하는 거, 나도 잘해.', '근데 그 집 애는 물수제비를 네 번 튀겼다며. 나는 세 번이 최고였어.', '…머릿속이 먼저 달려간다는 말, 기억해 둘게.'],
     },
   },
@@ -217,7 +221,8 @@ export const REQUESTS: Request[] = [
         lines: ['넘어지고 나서 네 걸음 더 갔었네요. 그건 잊고 있었어요.', '넘어질 수는 있겠죠. 근데 넘어지면 거기서 끝나는 건 아니었어요.', '…나가서도, 아마.'],
         choices: [{ label: '잠깐 같이 몸에 힘 좀 빼고 갈까요?', to: 'relax' }],
       },
-      relax: { effect: 'breathe', relax: 'muscle', lines: ['어깨에 힘 들어간 거, 저도 느껴져요.'], then: 'done' },
+      // his legs, the ones he's afraid will fail him
+      relax: { effect: 'breathe', relax: 'muscle', parts: ['legs', 'feet'], lines: ['다리에 힘 들어간 거, 저도 느껴져요.'], then: 'done' },
       done: { effect: 'solve', lines: ['…다리가 좀 제 거 같네요.', '퇴원하는 날, 물리치료사 선생님한테 인사하고 갈게요.'] },
     },
     memory: {
@@ -241,12 +246,14 @@ export const REQUESTS: Request[] = [
         },
         back: { effect: 'return', lines: [] },
       },
-      thoughts: ['역시 안 돼. 이럴 줄 알았어.', '또 넘어질 거야. 뻔해.', '다들 보고 있겠지.', '…아직 서 있네.', '저기, 끝이 보인다.'],
+      // v0.96: first not 'I knew it' but 'can I?': the doubt comes after the fall
+      thoughts: ['내가 할 수 있을까.', '한 걸음. 또 한 걸음.', '다리가 떨린다. 그래도…', '역시 안 되는 걸까. 또 넘어질 거야.', '…그래도 아직 서 있네.', '저기, 끝이 보인다.'],
     },
     persona: `2층 일반 병동의 곧 퇴원하는 청년. 이십 대 초반. 다리를 다쳐 오래 재활했고 이제 혼자 걸을 수 있지만, 퇴원해도 또 넘어질 거라고 단정한다(점쟁이 오류). 무심한 척하지만 불안하다. 재활 첫날 평행봉 중간에서 넘어졌지만 그 뒤로 네 걸음 더 걸었던 일은, 플레이어가 지난 경험을 묻기 전에는 먼저 꺼내지 않는다.`,
     after: ['퇴원 날짜 받았어요. 넘어지면, 일어나면 되죠 뭐.'],
     girl: {
       choice: '2층 청년 이야기',
+      note: '2층 청년. 또 넘어질 거라더니, 넘어지고도 네 걸음 더 걸었던 날을 떠올렸다.',
       lines: ['넘어지는 거랑 못 걷는 거는 다르다… 그 말 좋다.', '나는 요즘 넘어질 일도 없어. 누워만 있으니까.', '…그래도 그 말은 가지고 있을게.'],
     },
   },
@@ -352,7 +359,8 @@ export const REQUESTS: Request[] = [
     persona: `4층 호스피스 병동 옆 병실의 보호자. 사십 대 여성. 말기의 어머니를 돌보며, 어머니가 아픈 게 자기가 자주 오지 않았기 때문이라고 믿는다(개인화). 조용하고 지쳐 있다. 작년 여름 어머니와 둘이 바다에 갔을 때 어머니가 "엄마 몸은 엄마가 챙기는 거야. 너는 와 주는 걸로 충분해"라고 했던 일은, 플레이어가 함께한 기억을 묻기 전에는 먼저 꺼내지 않는다.`,
     after: ['어제 엄마랑 바다 얘기 했어요. 엄마가 웃었어요.'],
     girl: {
-      choice: '4층 보호자분 이야기', // v0.93: shorter, it ran onto two lines on its button
+      choice: '4층 보호자분 이야기',
+      note: '4층 옆 병실 보호자. 다 자기 탓이라던 사람이, 엄마가 한 말을 다시 들었다.', // v0.93: shorter, it ran onto two lines on its button
       lines: ['너 탓 아니야. 그 말, 하기는 쉬운데 듣기는 어렵지.', '우리 엄마도 그런 얼굴 해. 나 볼 때.', '…나중에 엄마한테 그 말 해 줘야겠다. 내가.'],
     },
   },
@@ -441,7 +449,7 @@ export const REQUESTS: Request[] = [
       meet: {
         start: {
           lines: ['오늘 개시는 했어?', '…얼굴 보니 또 공쳤구먼.'],
-          choices: [{ label: '오늘도 공쳤어요. 저는 원래 안 돼요.', to: 'go' }],
+          choices: [{ label: '항상 그렇지 뭐. 오늘도 공쳤어.', to: 'go' }], // v0.96: in an old stallholder's own words
         },
         go: { lines: ['원래 안 되는 사람이 어딨어. 한 바퀴 돌고 와. 바람이라도 쐬게.'], then: 'gone' },
         gone: { effect: 'lose', lines: [] },
@@ -459,6 +467,7 @@ export const REQUESTS: Request[] = [
     after: ['어제 번호가 금방 불렸어요. 허허, 별일이지.'],
     girl: {
       choice: '1층 어르신 이야기',
+      note: '1층 어르신. 안 온 날만 세다가, 매일 와 주던 꼬마를 셌다.',
       lines: ['안 오는 날만 세고, 온 날은 안 센다… 나도 그래.', '편지 답장 안 온 날만 세고 있었어. 근데 너는 왔잖아.', '…오늘도 셀게. 온 날로.'],
     },
   },
@@ -565,6 +574,7 @@ export const REQUESTS: Request[] = [
     after: ['아들 녀석이 주말에 손주 데리고 온대. 장기판 닦아 놨어.'],
     girl: {
       choice: '2층 할아버지 이야기',
+      note: '2층 할아버지. 묻지도 않고 다 안다고 했는데, 손주는 박하사탕을 사러 뛰어갔던 거였다.',
       lines: ['물어보지도 않고 다 안다고 생각하는 거, 그거 나야.', '편지 받은 사람들이 다 귀찮아할 줄 알았거든.', '…너는 안 귀찮았어? 아, 대답 안 해도 돼. 물어본 걸로 충분해.'],
     },
   },
@@ -641,7 +651,8 @@ export const REQUESTS: Request[] = [
         lines: ['…그이가 그랬어요. 해 줘야 할 일 말고, 하고 싶어서 해 준 것들이 고마웠다고.', '"해야 했다"만 세고 있었네요. 해 준 건 안 세고.', '여기 꽃병 물도… 해야 해서가 아니라, 하고 싶어서 하는 거였어요.'],
         choices: [{ label: '잠깐 같이 어깨 힘 좀 빼고 가요.', to: 'relax' }],
       },
-      relax: { effect: 'breathe', relax: 'muscle', lines: ['…네.'], then: 'done' },
+      // "어깨 힘 좀 빼고 가요": her shoulders, and the hands that keep doing what should be done
+      relax: { effect: 'breathe', relax: 'muscle', parts: ['shoulders', 'hands'], lines: ['…네.'], then: 'done' },
       done: { effect: 'solve', lines: ['…손이 가벼워요.', '그 아이 편지도 제가 부쳐 줬어요. 그건 하고 싶어서 한 거예요.'] },
     },
     memory: {
@@ -671,6 +682,7 @@ export const REQUESTS: Request[] = [
     after: ['오늘은 꽃을 하나 더 꽂았어요. 그냥 예뻐서요.'],
     girl: {
       choice: '4층 봉사자 이야기',
+      note: '4층 봉사자. 해야 했던 일만 세다가, 하고 싶어서 해 준 것들을 떠올렸다.',
       lines: ['해야 하는 일 말고 하고 싶은 일… 내 편지도 그분이 부쳐 줬대.', '나도 "해야 한다"가 많았어. 괜찮은 척해야 한다, 같은 거.', '…오늘은 안 해도 되는 날로 할래.'],
     },
   },

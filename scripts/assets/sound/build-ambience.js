@@ -20,6 +20,17 @@ const LOOPS = {
   river: { raw: 'river-raw.mp3', from: 60, length: 40, fade: 3 },
   birds: { raw: 'birds-raw.ogg', from: 2.5, length: 26, fade: 2.5 },
   crickets: { raw: 'crickets-raw.mp3', from: 0.6, length: 10.2, fade: 0.6 },
+  // v0.96: the sea at the beach, made of four single waves (CC0) laid out round a loop; whatever runs past its end comes
+  // in again at its start, so there's no seam
+  waves: {
+    length: 24,
+    events: [
+      ['wave01', 0, 0], ['wave03', 3.2, -2], ['wave02', 5.6, -1], ['wave04', 8.4, 0], ['wave01', 11.8, -3],
+      ['wave02', 14.9, 0], ['wave04', 17.3, -2], ['wave03', 20.6, -1], ['wave02', 22.8, -4],
+      // smaller ones in the lulls, so the sea is never silent
+      ['wave03', 4.6, -9], ['wave02', 10.2, -9], ['wave03', 13.4, -10], ['wave02', 19.2, -9], ['wave03', 0.9, -11],
+    ],
+  },
 };
 
 function readWav(file) {
@@ -48,8 +59,25 @@ function writeWav(file, { ch, rate }, samples) {
   fs.writeFileSync(file, b);
 }
 
+// a loop made of sounds laid out round it (gain in dB); what runs past the end wraps round to the start
+function composed(cfg) {
+  const parts = Object.fromEntries([...new Set(cfg.events.map((e) => e[0]))].map((n) => [n, readWav(path.join(DIR, `${n}.wav`))]));
+  const fmt = Object.values(parts)[0];
+  const len = Math.round(cfg.length * fmt.rate) * fmt.ch;
+  const out = new Float32Array(len);
+  for (const [n, at, gain] of cfg.events) {
+    const w = parts[n];
+    const k = 10 ** (gain / 20);
+    const start = Math.round(at * fmt.rate) * fmt.ch;
+    const count = w.data.length / 2;
+    for (let i = 0; i < count; i++) out[(start + i) % len] += w.data.readInt16LE(i * 2) * k;
+  }
+  return { fmt, out };
+}
+
 function build(name) {
   const cfg = LOOPS[name];
+  if (cfg.events) return encode(name, cfg, ...Object.values(composed(cfg)));
   const raw = path.join(DIR, cfg.raw);
   if (!fs.existsSync(raw)) throw new Error(`${raw} is missing (see public/sound/CREDITS.txt)`);
   const decoded = path.join(DIR, `${name}-raw.wav`);
@@ -70,6 +98,10 @@ function build(name) {
       out[i] = a * Math.cos((k * Math.PI) / 2) + b * Math.sin((k * Math.PI) / 2);
     }
   }
+  encode(name, cfg, w, out);
+}
+
+function encode(name, cfg, w, out) {
   const loop = path.join(DIR, `${name}-loop.wav`);
   writeWav(loop, w, out);
   const project = path.join(DIR, `${name}.ecproj`);

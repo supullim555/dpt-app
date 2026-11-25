@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { play } from './sound';
-import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { VISIT_CARDS, VISIT_SCRIBBLES } from '@/assets/visitUi';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { VISIT_SCRIBBLES } from '@/assets/visitUi';
 import { NOTEBOOK_PAGES, NOTEBOOK_TITLE } from './script';
 
-export type Told = { day: number; label: string | null; text: string };
+/** `story`: v0.96, when what you told her was someone in the hospital's story, what her notebook keeps of it. */
+export type Told = { day: number; label: string | null; text: string; story?: string };
 
 // Her notebook, opened at the end. Each page starts with what the player told her that day, in their
 // own words, and under it what she wrote for herself: tidy at first, then crossed out and scribbled
@@ -18,16 +19,22 @@ export default function Notebook({ told, fontScale, doneLabel = '병원을 나�
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{NOTEBOOK_TITLE}</Text>
-      <ImageBackground
-        source={VISIT_CARDS[1]}
-        resizeMode="stretch"
-        imageStyle={styles.fill}
-        style={[styles.page, { transform: [{ rotate: `${page.tilt}deg` }] }]}
-      >
-        {page.day < 7 && heard && (heard.label || heard.text) ? (
+      {/* v0.96: a notebook's page, not a sheet of paper: ruled lines, a red margin, the holes of its binding */}
+      <View style={[styles.page, { transform: [{ rotate: `${page.tilt}deg` }] }]}>
+        <View style={styles.rules} pointerEvents="none">
+          {Array.from({ length: 18 }, (_, i) => (
+            <View key={i} style={[styles.rule, { top: 30 + i * 26 }]} />
+          ))}
+          <View style={styles.margin} />
+          {Array.from({ length: 9 }, (_, i) => (
+            <View key={i} style={[styles.hole, { top: 22 + i * 48 }]} />
+          ))}
+        </View>
+        {page.day < 7 && heard && (heard.label || heard.text || heard.story) ? (
           <Text style={[styles.heard, { fontSize: 13 * fontScale, lineHeight: 20 * fontScale }]}>
             그 사람의 {page.day}일째{heard.label ? ` · ${heard.label}` : ''}
             {heard.text ? `\n${heard.text}` : ''}
+            {heard.story ? `\n${heard.story}` : ''}
           </Text>
         ) : null}
         {page.lines.map((l, i) => (
@@ -44,7 +51,7 @@ export default function Notebook({ told, fontScale, doneLabel = '병원을 나�
           </Text>
         ))}
         {page.scribble !== null && <Image source={VISIT_SCRIBBLES[page.scribble]} resizeMode="stretch" style={styles.scribble} />}
-      </ImageBackground>
+      </View>
       <TouchableOpacity style={styles.turn} onPress={() => {
           if (last) onDone();
           else {
@@ -61,8 +68,11 @@ export default function Notebook({ told, fontScale, doneLabel = '병원을 나�
 const styles = StyleSheet.create({
   wrap: { flex: 1, justifyContent: 'center', padding: 20, gap: 18 },
   title: { color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', fontFamily: 'serif' },
-  page: { minHeight: 400, paddingHorizontal: 26, paddingVertical: 30, justifyContent: 'center', overflow: 'hidden' },
-  fill: { width: '100%', height: '100%' },
+  page: { minHeight: 440, paddingLeft: 52, paddingRight: 22, paddingVertical: 30, justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f4f1e8', borderRadius: 3, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8 },
+  rules: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  rule: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: 'rgba(110,140,170,0.28)' },
+  margin: { position: 'absolute', left: 40, top: 0, bottom: 0, width: 1.5, backgroundColor: 'rgba(190,90,90,0.35)' },
+  hole: { position: 'absolute', left: 12, width: 12, height: 12, borderRadius: 6, backgroundColor: '#1b1b1b' },
   heard: { color: '#555', fontFamily: 'serif', marginBottom: 18 },
   line: { color: '#1a1a1a', fontFamily: 'serif', marginBottom: 6 },
   struck: { textDecorationLine: 'line-through' },

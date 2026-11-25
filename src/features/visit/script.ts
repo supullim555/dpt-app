@@ -143,6 +143,15 @@ export const WRITE_CRISIS = '그 말은 그냥 넘기고 싶지 않아요. 혼�
 // Leaving by the front door once she's been seen.
 export const nextDayQuestion = (day: number) => `${day}일차를 진행하시겠습니까?`;
 export const untilTomorrow = (hours: number, minutes: number) => `다음 날은 자정에 열려요. ${hours}시간 ${minutes}분 남았어요.`;
+// v0.96: saying no to the next day is fine: nothing is lost, and it goes on from here whenever you come back
+export const TAKE_A_BREAK = ['오늘은 잠시 쉬고, 내일 마저 진행해도 괜찮아요.', '다시 하고 싶을 때 언제든지 다시 들어와서 마저 진행해요.'];
+// the reception desk, once you've been up to her: how it went, and a nudge toward that day's thing, if it's on the first floor
+export const GUIDE_AFTER: Record<number, string[]> = {
+  1: ['잘 다녀오셨어요? 그 아이, 오늘 좀 웃던가요?', '참, 경비 아저씨가 자판기 뒤에 뭐가 떨어졌다던데요. 손이 안 닿는대요.'],
+};
+export const GUIDE_AFTER_DEFAULT = ['잘 다녀오셨어요? 조심히 들어가세요.'];
+// the seventh day: the shop has nothing to sell, and you don't need anything
+export const SHOP_LAST_DAY = '오늘은 그날이야. 필요 없을 거야. 어서 가 보자.';
 export const TUTORIAL_TITLE = '도움말';
 // What the guide at the front desk says the first time, so the shop comes up on its own.
 export const GUIDE_FIRST_LINES = ['병문안 오셨어요? 호스피스 병동은 4층이에요.', '빈손이 쑥스러우시면 매점에 먼저 들러 보세요. 이 층에 있어요.'];
@@ -161,7 +170,8 @@ export const PEOPLE: Record<string, { name: string; look: PersonLook | LyingPart
   '4n': { name: '담당 간호사', look: 'nurse', lines: ['보호자분은 아니시죠? 그래도 오늘 웃었어요, 그 아이.'], day2: '오늘도 또 오셨네요. 아이는 병실에서 기다리고 있어요.', later: ['다녀가신 뒤로 그 아이가 창보다 문을 더 봐요.', '요즘 잠이 많아요. 오실 시간엔 꼭 깨어 있어요.'] },
   '4p': { name: '옆 병실 보호자', look: 'reader', lines: ['여기 앉아 있는 게 일이에요. 책은 거의 다 읽었고요.'], clue: { day: 6, line: '여기 책은 다 읽었어요. 휴게실 소파 위 책 사이에 별게 다 끼어 있더라고요.' }, later: ['어머니가 오늘 제 이름을 불렀어요.', '옆방에서 웃음소리가 나요. 손님 오시는 날만요.'] },
   '4v': { name: '자원봉사자', look: 'volunteer', lines: ['우표값이 꽤 들었어요. 그 아이가 몇 통을 썼는지 아세요?'], later: ['그 아이 편지, 제가 부쳤어요. 주소는 아무렇게나였고요.', '답장 온 건 당신 하나예요. 오래 와 주세요.'] },
-  '3q': { name: '3층 간호사', look: 'nurse', lines: ['지금은 안 돼요. 저기 의자에 앉아 계세요.'], later: ['지금은 안 돼요. 조용한 날이 좋은 날이에요.', '아직이에요. 자판기 커피라도 드세요. 따뜻해요.'] , clue: { day: 3, line: '보호자분 계신 휴게실 의자 쪽에 뭐가 떨어져 있는 것 같던데요. 한번 보세요.' } },
+  // v0.96: what she says makes sense on its own: whose floor this is, and why the guardian sits waiting
+  '3q': { name: '3층 간호사', look: 'nurse', lines: ['3층은 수술 받은 분들 병동이에요. 면회는 정해진 시간에만 돼요.', '보호자분들은 휴게실에서 기다리세요. 무슨 일 있으면 저한테 말씀하세요.'], later: ['휴게실 보호자분이 통 못 주무세요. 말이라도 걸어 주시면 좋겠어요.', '수술한 아이, 열이 내렸대요. 보호자분 얼굴이 좀 펴졌어요.'], clue: { day: 3, line: '보호자분 계신 휴게실 의자 쪽에 뭐가 떨어져 있는 것 같던데요. 한번 보세요.' } },
   '3t': { name: '이송 요원', look: 'porter', lines: ['이거 오늘 못 치워요. 반대로 돌아가세요.'], later: ['이 수레, 오늘도 못 치워요. 내일은 꼭이요. 아마도요.', '또 막혀 있죠. 반대로 도시면 창이 하나 더 보여요.'] },
   '3c': { name: '미화원', look: 'worker', lines: ['층마다 냄새가 달라요. 오래 일하면 알게 돼요.'], clue: { day: 3, line: '휴게실 의자 밑 봉지요, 치우려다 말았어요. 일부러 둔 것 같아서.' }, later: ['은행잎이 신발에 붙어 올라와요. 4층까지 따라가더라고요.', '바닥은 매일 닦는데 매일 누가 걸어요. 그게 좋아요.'] },
   '3b': { name: '지친 보호자', look: 'visitor', lines: ['미안한데, 화가 나요. 누구한테인지는 모르겠어요.'], later: ['어제는 두 시간 잤어요. 많이 잔 거예요.', '아이가 오늘 밥을 반 그릇 먹었어요. …반이요. 반이나요.'] },
@@ -326,6 +336,7 @@ export const ENDINGS: Record<EndingId, EndingScript> = {
       '"그렇게 많이 보냈는데 와 준 사람이 있었어. 그걸로 충분히 좋은 기록이야."',
       '"못 온 날은 네 하루가 있었던 날이겠지. 그 얘기도 궁금했어."',
       '"너도 네 하루를 잘 지내 줘."',
+      '편지 옆에 수첩 한 권이 놓여 있다.',
     ],
   },
   letter: {
@@ -334,20 +345,22 @@ export const ENDINGS: Record<EndingId, EndingScript> = {
       '병실에 소녀는 없고, 머리맡에 편지 한 장이 놓여 있다.',
       '"네가 들려준 얘기들, 하나씩 다시 생각해 봤어. 내가 모르는 세상이 꽤 넓어졌어."',
       '"인사를 못 해서 아쉽다. 그래서 적어 둬. 고마웠어."',
+      '편지 옆에 수첩 한 권이 놓여 있다.',
     ],
   },
   withGirl: {
     title: '오늘은 왔구나',
-    lines: ['왔구나. 마침 네 얘기가 듣고 싶었어.', '오늘 네가 들려준 얘기, 잘 가지고 있을게.', '와 줘서 고마워. 잘 가.'],
+    lines: ['왔구나. 마침 네 얘기가 듣고 싶었어.', '오늘 네가 들려준 얘기, 잘 가지고 있을게.', '이거, 내 수첩. 네가 와 준 날들이 적혀 있어.', '와 줘서 고마워. 잘 가.'],
   },
   // She decides to go down herself; nothing here says wanting it is what heals her (docs/계획서.md).
   happy: {
     title: '나무 아래',
-    lines: ['네가 들려준 병원 사람들 얘기, 계속 생각났어.', '다들 최악부터 생각하더라. 나도 그랬어.', '다 받아들인 줄 알았는데, 먼저 포기한 거였나 봐.', '나무까지 가 볼래. 같이 내려가 줘.'],
+    // v0.96: the notebook comes next; she says what it is before it opens
+    lines: ['네가 들려준 병원 사람들 얘기, 계속 생각났어.', '다들 최악부터 생각하더라. 나도 그랬어.', '다 받아들인 줄 알았는데, 먼저 포기한 거였나 봐.', '나무까지 가 볼래. 같이 내려가 줘.', '…아, 가기 전에. 이거 내 수첩이야. 네가 와 준 날들이 적혀 있어. 아무한테도 안 보여 준 거야.'],
   },
   normal: {
     title: '인사',
-    lines: ['일주일 동안 네 얘기 많이 들었어.', '덕분에 내가 모르는 세상이 꽤 넓어졌어.', '사실 좀 더 듣고 싶었어. 이건 농담 아니야.', '고마워. 잘 가.'],
+    lines: ['일주일 동안 네 얘기 많이 들었어.', '덕분에 내가 모르는 세상이 꽤 넓어졌어.', '사실 좀 더 듣고 싶었어. 이건 농담 아니야.', '이거, 내 수첩. 네가 와 준 날들이 적혀 있어. 가져가.', '고마워. 잘 가.'],
   },
 };
 

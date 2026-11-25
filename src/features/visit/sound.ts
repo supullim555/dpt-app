@@ -15,10 +15,15 @@ let on = true;
 let ctx: AudioContext | null = null;
 let music: HTMLAudioElement | null = null;
 // v0.93: a remembered place's own sound in place of the music (Hospital.tsx PLACE_SOUND)
-type Ambience = 'river' | 'birds' | 'crickets';
+type Ambience = 'river' | 'waves' | 'birds' | 'crickets';
 let ambience: Ambience | null = null;
-let ambienceEl: HTMLAudioElement | null = null;
-const AMBIENCE_VOLUME: Record<Ambience, number> = { river: 0.5, birds: 0.45, crickets: 0.4 };
+// v0.96: through Web Audio, looped over exactly its own length: an <audio> loop paused for a moment each time round, and
+// the encoded file has a little silence padded on its end (the crickets' gap)
+let ambienceVoice: { stop: () => void } | null = null;
+let ambienceTurn = 0;
+const AMBIENCE_LENGTH: Record<Ambience, number> = { river: 40, waves: 24, birds: 26, crickets: 10.2 };
+// v0.96: about as loud as the music (the river came in at twice it)
+const AMBIENCE_VOLUME: Record<Ambience, number> = { river: 0.16, waves: 0.2, birds: 0.3, crickets: 0.32 };
 const buffers = new Map<string, AudioBuffer>();
 let stepTurn = 0;
 
@@ -42,10 +47,9 @@ export function unlockSound() {
       ctx = new Ctor();
       for (const names of Object.values(EFFECTS)) for (const n of names) void load(n);
       document.addEventListener('visibilitychange', () => {
-        if (!music && !ambienceEl) return;
         if (document.hidden) {
           music?.pause();
-          ambienceEl?.pause();
+          stopAmbience();
         } else if (on) playBed();
       });
     }
@@ -63,15 +67,57 @@ function loop(src: string, volume: number) {
   return el;
 }
 
+function stopAmbience() {
+  ambienceTurn++;
+  ambienceVoice?.stop();
+  ambienceVoice = null;
+}
+
+async function startAmbience(a: Ambience) {
+  const turn = ++ambienceTurn;
+  try {
+    if (!ctx) return;
+    let buffer = buffers.get(`ambience:${a}`);
+    if (!buffer) {
+      buffer = await ctx.decodeAudioData(await (await fetch(`/sound/${a}.webm`)).arrayBuffer());
+      buffers.set(`ambience:${a}`, buffer);
+    }
+    if (turn !== ambienceTurn || !ctx) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.loopStart = 0;
+    source.loopEnd = Math.min(buffer.duration, AMBIENCE_LENGTH[a]);
+    const gain = ctx.createGain();
+    gain.gain.value = AMBIENCE_VOLUME[a];
+    source.connect(gain).connect(ctx.destination);
+    source.start();
+    ambienceVoice = {
+      stop: () => {
+        try {
+          source.stop();
+        } catch {
+          // already stopped
+        }
+      },
+    };
+  } catch {
+    // a browser that can't decode it here plays it the plain way, gap and all
+    if (turn !== ambienceTurn) return;
+    const el = loop(`/sound/${a}.webm`, AMBIENCE_VOLUME[a]);
+    void el.play().catch(() => {});
+    ambienceVoice = { stop: () => el.pause() };
+  }
+}
+
 // Whatever lies under everything right now: the place's own sound if it has one, else the music.
 function playBed() {
   if (!WEB || !ctx) return;
   if (ambience) {
     music?.pause();
-    if (!ambienceEl) ambienceEl = loop(`/sound/${ambience}.webm`, AMBIENCE_VOLUME[ambience]);
-    void ambienceEl.play().catch(() => {});
+    if (!ambienceVoice) void startAmbience(ambience);
   } else {
-    ambienceEl?.pause();
+    stopAmbience();
     if (!music) music = loop('/sound/music.webm', MUSIC_VOLUME);
     void music.play().catch(() => {});
   }
@@ -80,8 +126,7 @@ function playBed() {
 /** A place's own sound instead of the music, or null to have the music back. */
 export function setAmbience(next: Ambience | null) {
   if (next === ambience) return;
-  ambienceEl?.pause();
-  ambienceEl = null;
+  stopAmbience();
   ambience = next;
   if (on) playBed();
 }
@@ -93,7 +138,7 @@ export function setSoundOn(value: boolean) {
   if (!WEB) return;
   if (!value) {
     music?.pause();
-    ambienceEl?.pause();
+    stopAmbience();
   } else playBed();
 }
 
