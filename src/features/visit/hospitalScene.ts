@@ -1064,18 +1064,23 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       void import('three/examples/jsm/objects/Reflector.js').then(({ Reflector }) => {
         if (currentPlace() !== place) return;
         const width = m.x1 - m.x0;
-        const mirror = new Reflector(new THREE.PlaneGeometry(width, 0.95), { textureWidth: 512, textureHeight: 512, color: 0xb4b2aa });
+        const mirror = new Reflector(new THREE.PlaneGeometry(width, 0.95), { textureWidth: 512, textureHeight: 512, color: 0xd2d0ca });
         mirror.position.set(m.x0 + width / 2, 0.58, m.row + 0.01);
         mirrorMesh = mirror as unknown as InstanceType<typeof THREE.Mesh>;
         // v0.97: the paper people turn to face whoever looks, and the mirror looks from the other side of its glass:
         // while it draws, each loose one is turned to its view (the yaw mirrored across the wall), then back, or in the
         // mirror they're seen edge-on and look skewed
+        // The room in the mirror is as far as there and back again, so the dark fog all but filled it and the glass
+        // read as a switched-off screen: while it draws, the fog is the thin haze of out of doors instead.
         const drawMirror = mirror.onBeforeRender.bind(mirror);
         mirror.onBeforeRender = (...args: Parameters<typeof mirror.onBeforeRender>) => {
           const loose = cutouts.filter((o) => o.facing === undefined);
           const before = loose.map((o) => o.mesh.rotation.y);
           for (const o of loose) o.mesh.rotation.y = Math.PI - cam.yaw;
+          const fogFar = shared.uFogFar.value;
+          shared.uFogFar.value = 2;
           drawMirror(...args);
+          shared.uFogFar.value = fogFar;
           loose.forEach((o, i) => (o.mesh.rotation.y = before[i]));
         };
         scene.add(mirror);
