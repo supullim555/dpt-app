@@ -71,6 +71,11 @@ for (var i = 0; i < POSES.length; i++) {
   else key(o, [p[2], p[2] + 0.15, p[3] - 0.15, p[3]], [0, 100, 100, 0]);
 }
 
+// v0.99: when the world's colour comes back, hers does too: the colour drawing takes the grey one's place under the white
+var col = layer3d(imp(DIR + "turn-colour.png"), [270, 1160, 119], 80);
+col.property("Transform").property("Anchor Point").setValue([165, 546, 0]);
+key(col.property("Transform").property("Opacity"), [SWAP - 0.05, SWAP], [0, 100]);
+
 var cam = c.layers.addCamera("cam", [270, 480]);
 var co = cam.property("Camera Options");
 var zoom = co.property("Zoom").value;

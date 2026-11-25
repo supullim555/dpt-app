@@ -183,7 +183,7 @@ async function main() {
       await t.clickText('사전');
       t.note('병문안: 사전에 인지치료 개념', (await t.waitText('인지치료란', 2000)) && (await t.hasText('파국화')));
       await t.clickText('파국화');
-      t.note('병문안: 사전 항목에 그림과 예', (await t.waitText('3층 지친 보호자', 2000)) && (await t.evalJs(`document.body.innerHTML.includes('dictionary/catastrophe')`)));
+      t.note('병문안: 사전 항목에 그림과 예', (await t.waitText('3층 지친 보호자', 2000)) && (await waitFor(() => t.evalJs(`document.body.innerHTML.includes('dictionary/catastrophe')`), 4000)));
       await t.shot('dictionary.png');
       await t.clickText('목록으로');
       await sleep(200);
@@ -875,6 +875,8 @@ async function main() {
       await sleep(1500);
       await t.click(195, 300);
       t.note('병문안: 해피엔딩 뒤 타이틀', await t.waitText('이야기 시작', 3000));
+      // v0.99: the story is over: no going back into it
+      t.note('병문안: 해피엔딩 뒤엔 이어하기 없음', !(await t.hasText('이어하기')));
       t.note('병문안: 해피엔딩 뒤 타이틀에 색이 돌아옴', await t.evalJs(`document.body.innerHTML.includes('title-after')`));
       await sleep(500);
       await t.shot('visit_title_after.png');

@@ -2,7 +2,7 @@
 import type { ClueId } from './progress';
 
 /** The last light: she turns under the ginkgo, the light, the world in colour, ending on amber. 540x960. */
-export const LAST_LIGHT_URL = '/cutscenes/last-light.mp4?v=c9455bbe92';
+export const LAST_LIGHT_URL = '/cutscenes/last-light.mp4?v=3a8e207bad';
 
 /** The way down to the ginkgo, floor by floor in the seventh day's corridors, from black to black. 540x960. */
 export const DESCENT_URL = '/cutscenes/descent.mp4?v=cb913fbe49';

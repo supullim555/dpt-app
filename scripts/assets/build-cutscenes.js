@@ -47,6 +47,8 @@ const LAST_LIGHT = {
     ['turn-front', 'girl-turn', [704, 222, 318, 546], true],
     // v0.98: her whole, from behind, under the tree, before the close turn (generate-hospital-art.js girl-fullbody-back)
     ['full-back', 'girl-fullbody-back', [384, 117, 252, 806], true],
+    // v0.99: her facing you in colour, for when the colour comes back; moved onto the grey one's place first (fitColour)
+    ['turn-colour', 'girl-turn-colour-fit', [704, 222, 318, 546], true],
   ],
 };
 
@@ -156,9 +158,29 @@ function render(project, comp, out, audio = false) {
   execFileSync(EFFECTCRAFT, ['render', '--project', project, '--comp', comp, '--format', 'h264', '--bitrate', '900', '--audio', audio ? 'on' : 'off', '--out', out], { stdio: ['ignore', 'ignore', 'inherit'] });
 }
 
+/** v0.99: the colour drawing of her facing you, scaled and moved so her figure sits exactly where the grey one does on
+ * girl-turn (figure boxes measured: grey [723, 230, 994, 759], colour [394, 231, 667, 768]). */
+async function fitColour() {
+  const [g, c] = [[723, 230, 994, 759], [394, 231, 667, 768]];
+  const k = (g[3] - g[1]) / (c[3] - c[1]);
+  const size = Math.round(1024 * k);
+  const scaled = await sharp(path.join(ART, 'girl-turn-colour-raw.png')).resize(size, size).png().toBuffer();
+  const left = Math.round(g[0] - c[0] * k);
+  const top = Math.round(g[1] - c[1] * k);
+  // on the drawing's own green, so the keying takes it the same way
+  const { data } = await sharp(path.join(ART, 'girl-turn-colour-raw.png')).extract({ left: 4, top: 4, width: 1, height: 1 }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const crop = { left: Math.max(0, -left), top: Math.max(0, -top) };
+  const piece = await sharp(scaled).extract({ left: crop.left, top: crop.top, width: Math.min(size - crop.left, 1024 - Math.max(0, left)), height: Math.min(size - crop.top, 1024 - Math.max(0, top)) }).toBuffer();
+  await sharp({ create: { width: 1024, height: 1024, channels: 3, background: { r: data[0], g: data[1], b: data[2] } } })
+    .composite([{ input: piece, left: Math.max(0, left), top: Math.max(0, top) }])
+    .png()
+    .toFile(path.join(ART, 'girl-turn-colour-fit-raw.png'));
+}
+
 async function buildLastLight() {
   const work = path.join(WORK_ROOT, 'light');
   fs.mkdirSync(work, { recursive: true });
+  await fitColour();
   for (const [name, src, box, keyed] of LAST_LIGHT.layers) {
     // the last light's layers keep their crops as they are (its script anchors them by those sizes)
     const [left, top, width, height] = box;

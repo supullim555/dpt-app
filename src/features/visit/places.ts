@@ -134,8 +134,8 @@ export const PLACES: Record<PlaceId, Place> = {
       M: { look: 'rehabMat', text: '매트가 개켜져 있다. 넘어지면 저기 눕는 걸까.' },
     },
     ground: 'rehabFloor',
+    // v0.99: the wall across from the mirror plain like the rest (it had windows, which the mirror doubled)
     wall: 'plainWall',
-    southWall: 'rehabWall',
     wallHeight: 1.25,
     span: 1,
     fog: [0.26, 0.25, 0.23],

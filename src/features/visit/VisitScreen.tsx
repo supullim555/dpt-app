@@ -199,7 +199,9 @@ export default function VisitScreen() {
   const finishDay = () => {
     const done = state.done.includes(day) ? state.done : [...state.done, day];
     if (day >= TOTAL_DAYS) {
-      setState({ ...state, done, ending: happyUnlocked(state.requestsSolved.map((r) => r.request)) ? 'happy' : endingFor(state.visited) });
+      const ending = happyUnlocked(state.requestsSolved.map((r) => r.request)) ? 'happy' : endingFor(state.visited);
+      // v0.99: reaching the happy ending is the end of the story, even if the game is closed before the credits
+      setState({ ...state, done, ending, afterHappy: state.afterHappy || ending === 'happy' });
       setPhase('ending');
     } else {
       setState({ ...state, done });
@@ -432,11 +434,12 @@ export default function VisitScreen() {
             <Text style={styles.gameTitle}>{GAME_TITLE}</Text>
           </View>
           <View style={styles.titleMenu}>
+            {/* v0.99: once the happy ending is reached there's nothing to go back to: only a new story */}
             <PaperButton
-              label={state.startDate ? '이어하기' : '이야기 시작'}
+              label={state.startDate && state.ending !== 'happy' ? '이어하기' : '이야기 시작'}
               onPress={() => {
                 unlockSound();
-                go(state);
+                go(state.ending === 'happy' ? { ...INITIAL, noticeSeen: true, openingSeen: true, tutorial: 'done', fontScale: state.fontScale, sound: state.sound, graphics: state.graphics, afterHappy: true } : state);
               }}
             />
             <PaperButton label="설정" onPress={() => setPhase('settings')} />
