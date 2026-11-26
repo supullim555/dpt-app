@@ -63,6 +63,8 @@ const SHOP_DOOR = { x: 9, y: 3 };
 // Further back, so whoever came in to send you out is in the picture too.
 const STAFF_FOCUS: FocusTarget = { cell: GIRL_CELL, height: 0.62, away: 1.3 };
 const PERSON_FOCUS = { height: 0.64, away: 0.86 };
+// The tutorial's steps that happen in a conversation (hospitalMap.ts tutorialAfter).
+const TALK_STEPS: readonly TutorialStep[] = ['back', 'buy', 'shopBack'];
 
 type Props = {
   day: number;
@@ -95,7 +97,7 @@ type Props = {
   onTutorial: (step: TutorialStep) => void;
   /** Something written to someone sounded like a crisis, and their fixed answer is showing: the hotlines stand out meanwhile. */
   onCrisis?: (showing: boolean) => void;
-  /** v0.96: graphics quality, and the settings rows to show in the game's own settings (the map's 설정) */
+  /** v0.96: graphics quality, and the settings rows to show in the game's own settings (v1.00: the 설정 button at the top right) */
   quality: Quality;
   settings: ReactNode;
   /** Set while the story has you at her bedside: no walking, and the panel below takes the controls' place. */
@@ -366,6 +368,10 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   };
 
   const blocked = () => busy.current || atBedside || focused !== null || panel !== 'none' || transit !== '';
+  // v1.00: the buttons at the top right (사전, 설정, 지도); not while another panel or a black card is up
+  const openPanel = (p: Panel) => {
+    if (panel === 'none' && !transit && !breathing) setPanel(p);
+  };
   const facingShutDoor = roomShut && pose.floor === 4 && pose.x === ROOM_ENTRY.x && pose.y === ROOM_ENTRY.y && pose.dir === 2;
   const nextStep = facingShutDoor ? null : stepped(pose);
   const forward = () => {
@@ -580,6 +586,11 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
   // Web keyboards: the arrow keys or WASD, Enter or Space for what's in front of you, Escape to go back.
   const keys = useRef((_key: string) => {});
   keys.current = (key: string) => {
+    // v1.00: with a panel up (now also over her bedside), the keys don't reach the game behind; Escape closes it
+    if (panel !== 'none') {
+      if (key === 'escape') setPanel('none');
+      return;
+    }
     if (lessonOpen) {
       if (key === 'enter' || key === ' ' || key === 'escape') readLesson();
       return;
@@ -643,7 +654,9 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
     if (nextLesson !== tutorial) onTutorial(nextLesson);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextLesson, tutorial]);
-  const tip = !bedside && focused?.kind !== 'thing' ? TUTORIAL_TIPS[tutorial] : undefined;
+  // v1.00: while you're talking to someone, only the steps that are about the talk (it sat over the doctor and the nurses
+  // with the day's other advice before)
+  const tip = !bedside && focused?.kind !== 'thing' && (focused?.kind !== 'person' || TALK_STEPS.includes(tutorial)) ? TUTORIAL_TIPS[tutorial] : undefined;
   const lesson = typeof tip === 'string' ? tip : tip?.[TOUCH ? 0 : 1];
   // Each new step is explained once in the middle of a darkened screen, like any game's tutorial.
   const lessonOpen = lesson !== undefined && lessonRead !== tutorial && !transit && panel === 'none';
@@ -729,9 +742,6 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
                   <Text style={[styles.goalText, { fontSize: 14 * fontScale }]}>{goal?.text ?? '병원 둘러보기'}</Text>
                 </View>
               </View>
-              <TouchableOpacity style={[styles.mapButton, VISIT_DEV && styles.belowDev, memory && styles.hidden]} disabled={!!memory} onPress={() => panel === 'none' && !transit && setPanel('map')}>
-                <Text style={styles.mapButtonText}>지도</Text>
-              </TouchableOpacity>
               {!memory && (
                 <View style={[styles.minimap, VISIT_DEV && styles.belowDev]} pointerEvents="none">
                   <Minimap pose={pose} goal={goalCell} />
@@ -739,6 +749,16 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
               )}
             </>
           )
+        )}
+
+        {/* v1.00: the dictionary and the settings straight from the game, wherever you are in it (they were only through the
+            map before); the map only while you walk the hospital. Not while the black bars are in. */}
+        {!inScene && (
+          <View style={[styles.menu, VISIT_DEV && styles.belowDev]}>
+            <MenuButton label="사전" onPress={() => openPanel('dictionary')} />
+            <MenuButton label="설정" onPress={() => openPanel('settings')} />
+            {!bedside && !focused && !memory && <MenuButton label="지도" onPress={() => openPanel('map')} />}
+          </View>
         )}
 
         {memory && !focused && thoughts.length > 0 && (
@@ -776,7 +796,8 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
         )}
 
         {bedside?.bubble ? <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none"><Bubble text={bedside.bubble} more={bedside.more} fontScale={fontScale} /></View> : null}
-        {focused?.kind === 'person' && (
+        {/* v1.00: not under the breathing together: its words ran into the exercise's title */}
+        {focused?.kind === 'person' && !breathing && (
           <View style={[styles.fill, VISIT_DEV && styles.belowDev]} pointerEvents="none">
             <Bubble name={focused.name} text={aside ?? (shopLine || focused.lines[focused.index])} more={aside === null && moreLines} fontScale={fontScale} />
           </View>
@@ -792,136 +813,6 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
             <Text style={styles.transitText}>{transit}</Text>
           </View>
         )}
-
-        {panel === 'lift' && (
-          <View style={styles.panel}>
-            <Text style={[styles.title, { fontSize: 22 * fontScale }]}>몇 층으로 갈까</Text>
-            <View style={styles.floors}>
-              {FLOOR_ORDER.map((f) => (
-                <TouchableOpacity key={f} disabled={f === pose.floor} style={[styles.floor, f === pose.floor && styles.floorHere]} onPress={() => arrive(arrival(f, LIFT_FRONT), `${f}층`, LIFT_MS)}>
-                  <Text style={[styles.floorText, f === pose.floor && styles.floorTextHere]}>{f}층</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
-              <Text style={[styles.linkText, textSize]}>그만두기</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {panel === 'leave' && (
-          <View style={styles.panel}>
-            <Text style={[styles.title, { fontSize: 20 * fontScale }]}>{nextDayQuestion(day + 1)}</Text>
-            <PaperButton label="예" onPress={() => { setPanel('none'); onNextDay(); }} />
-            <PaperButton label="아니오" onPress={() => setPanel('tomorrow')} />
-          </View>
-        )}
-
-        {panel === 'tomorrow' && (
-          <View style={styles.panel}>
-            <Text style={[styles.text, textSize]}>{TAKE_A_BREAK.join('\n')}</Text>
-            <PaperButton label="타이틀로" onPress={onTitle} />
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
-              <Text style={[styles.linkText, textSize]}>병원에 더 있기</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {panel === 'stairs' && (
-          <View style={styles.panel}>
-            {pose.floor < 4 && <PaperButton label="위층으로" onPress={() => arrive(arrival((pose.floor + 1) as FloorNo, STAIRS_FRONT), '계단을 올라간다', STAIRS_MS)} />}
-            {pose.floor > 1 && <PaperButton label="아래층으로" onPress={() => arrive(arrival((pose.floor - 1) as FloorNo, STAIRS_FRONT), '계단을 내려간다', STAIRS_MS)} />}
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
-              <Text style={[styles.linkText, textSize]}>그만두기</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {panel === 'map' && (
-          <View style={styles.panel}>
-            <FloorPlan pose={pose} />
-            <View style={styles.floors}>
-              {FLOOR_ORDER.map((f) => {
-                const here = f === pose.floor;
-                const seen = floorsSeen.includes(f);
-                return (
-                  <TouchableOpacity
-                    key={f}
-                    disabled={here || !seen}
-                    style={[styles.floor, here && styles.floorHere, !seen && styles.floorUnseen]}
-                    onPress={() => arrive(arrival(f, LIFT_FRONT), `${f}층`, LIFT_MS)}
-                  >
-                    <Text style={[styles.floorText, here && styles.floorTextHere]}>{f}층</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <Text style={[styles.text, { fontSize: 12 * fontScale }]}>한 번 걸어서 가 본 층으로 바로 갈 수 있다.</Text>
-
-            {run >= 2 && (
-              <TouchableOpacity style={styles.link} onPress={() => setHintOpen(!hintOpen)}>
-                <Text style={[styles.linkText, textSize]}>{HINT_TITLE}</Text>
-              </TouchableOpacity>
-            )}
-            {run >= 2 && hintOpen && hintLines().map((l) => (
-              <Text key={l} style={[styles.text, textSize]}>
-                {l}
-              </Text>
-            ))}
-            {run >= 2 && doneToday && <PaperButton label={FOLLOW_LIGHT} onPress={onNextDay} />}
-
-            {VISIT_DEV && (
-              <View style={styles.floors}>
-                {!doneToday && (
-                  <TouchableOpacity onPress={() => devJump({ floor: 4, x: ROOM_ENTRY.x, y: ROOM_ENTRY.y - 1, dir: 2 })}>
-                    <Text style={styles.devLink}>(시험) 병실 문 앞</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => devJump({ floor: 4, ...DOCTOR_FRONT, dir: 2 })}>
-                  <Text style={styles.devLink}>(시험) 의사 앞</Text>
-                </TouchableOpacity>
-                {requestGoal(asked, solved) && (
-                  <TouchableOpacity onPress={() => { const g = requestGoal(asked, solved)!; devJump({ floor: g.floor, ...g.cell, dir: g.face }); }}>
-                    <Text style={styles.devLink}>(시험) 부탁 상대 앞</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => devJump({ floor: 1, ...SHOP_FRONT, dir: 0 })}>
-                  <Text style={styles.devLink}>(시험) 매점 앞</Text>
-                </TouchableOpacity>
-                {todaysClue && (
-                  <TouchableOpacity onPress={() => devJump(clueSpot(todaysClue.floor as FloorNo))}>
-                    <Text style={styles.devLink}>(시험) 단서 앞</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* v0.96: the way to the title is in the settings now, with the rest */}
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('settings')}>
-              <Text style={[styles.linkText, textSize]}>설정</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
-              <Text style={[styles.linkText, textSize]}>닫기</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {panel === 'settings' && (
-          <ScrollView style={styles.settingsPanel} contentContainerStyle={styles.settingsInner}>
-            <Text style={[styles.title, { fontSize: 20 * fontScale }]}>설정</Text>
-            {settings}
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('dictionary')}>
-              <Text style={[styles.linkText, textSize]}>사전</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.link} onPress={onTitle}>
-              <Text style={[styles.linkText, textSize]}>타이틀로</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.link} onPress={() => setPanel('map')}>
-              <Text style={[styles.linkText, textSize]}>돌아가기</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-        {panel === 'dictionary' && <Dictionary fontScale={fontScale} onClose={() => setPanel('settings')} />}
       </View>
 
       {bedside ? (
@@ -1024,7 +915,141 @@ export default function Hospital({ day, run, fontScale, light, doneToday, bought
           </View>
         </View>
       )}
+
+      {/* v1.00: every panel over the whole of the game, the buttons below included, not just the view: with the controls
+          still showing they looked as if they'd work */}
+      {panel === 'lift' && (
+        <View style={styles.panel}>
+          <Text style={[styles.title, { fontSize: 22 * fontScale }]}>몇 층으로 갈까</Text>
+          <View style={styles.floors}>
+            {FLOOR_ORDER.map((f) => (
+              <TouchableOpacity key={f} disabled={f === pose.floor} style={[styles.floor, f === pose.floor && styles.floorHere]} onPress={() => arrive(arrival(f, LIFT_FRONT), `${f}층`, LIFT_MS)}>
+                <Text style={[styles.floorText, f === pose.floor && styles.floorTextHere]}>{f}층</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
+            <Text style={[styles.linkText, textSize]}>그만두기</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {panel === 'leave' && (
+        <View style={styles.panel}>
+          <Text style={[styles.title, { fontSize: 20 * fontScale }]}>{nextDayQuestion(day + 1)}</Text>
+          <PaperButton label="예" onPress={() => { setPanel('none'); onNextDay(); }} />
+          <PaperButton label="아니오" onPress={() => setPanel('tomorrow')} />
+        </View>
+      )}
+
+      {panel === 'tomorrow' && (
+        <View style={styles.panel}>
+          <Text style={[styles.text, textSize]}>{TAKE_A_BREAK.join('\n')}</Text>
+          <PaperButton label="타이틀로" onPress={onTitle} />
+          <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
+            <Text style={[styles.linkText, textSize]}>병원에 더 있기</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {panel === 'stairs' && (
+        <View style={styles.panel}>
+          {pose.floor < 4 && <PaperButton label="위층으로" onPress={() => arrive(arrival((pose.floor + 1) as FloorNo, STAIRS_FRONT), '계단을 올라간다', STAIRS_MS)} />}
+          {pose.floor > 1 && <PaperButton label="아래층으로" onPress={() => arrive(arrival((pose.floor - 1) as FloorNo, STAIRS_FRONT), '계단을 내려간다', STAIRS_MS)} />}
+          <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
+            <Text style={[styles.linkText, textSize]}>그만두기</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {panel === 'map' && (
+        <View style={styles.panel}>
+          <FloorPlan pose={pose} />
+          <View style={styles.floors}>
+            {FLOOR_ORDER.map((f) => {
+              const here = f === pose.floor;
+              const seen = floorsSeen.includes(f);
+              return (
+                <TouchableOpacity
+                  key={f}
+                  disabled={here || !seen}
+                  style={[styles.floor, here && styles.floorHere, !seen && styles.floorUnseen]}
+                  onPress={() => arrive(arrival(f, LIFT_FRONT), `${f}층`, LIFT_MS)}
+                >
+                  <Text style={[styles.floorText, here && styles.floorTextHere]}>{f}층</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={[styles.text, { fontSize: 12 * fontScale }]}>한 번 걸어서 가 본 층으로 바로 갈 수 있다.</Text>
+
+          {run >= 2 && (
+            <TouchableOpacity style={styles.link} onPress={() => setHintOpen(!hintOpen)}>
+              <Text style={[styles.linkText, textSize]}>{HINT_TITLE}</Text>
+            </TouchableOpacity>
+          )}
+          {run >= 2 && hintOpen && hintLines().map((l) => (
+            <Text key={l} style={[styles.text, textSize]}>
+              {l}
+            </Text>
+          ))}
+          {run >= 2 && doneToday && <PaperButton label={FOLLOW_LIGHT} onPress={onNextDay} />}
+
+          {VISIT_DEV && (
+            <View style={styles.floors}>
+              {!doneToday && (
+                <TouchableOpacity onPress={() => devJump({ floor: 4, x: ROOM_ENTRY.x, y: ROOM_ENTRY.y - 1, dir: 2 })}>
+                  <Text style={styles.devLink}>(시험) 병실 문 앞</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => devJump({ floor: 4, ...DOCTOR_FRONT, dir: 2 })}>
+                <Text style={styles.devLink}>(시험) 의사 앞</Text>
+              </TouchableOpacity>
+              {requestGoal(asked, solved) && (
+                <TouchableOpacity onPress={() => { const g = requestGoal(asked, solved)!; devJump({ floor: g.floor, ...g.cell, dir: g.face }); }}>
+                  <Text style={styles.devLink}>(시험) 부탁 상대 앞</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => devJump({ floor: 1, ...SHOP_FRONT, dir: 0 })}>
+                <Text style={styles.devLink}>(시험) 매점 앞</Text>
+              </TouchableOpacity>
+              {todaysClue && (
+                <TouchableOpacity onPress={() => devJump(clueSpot(todaysClue.floor as FloorNo))}>
+                  <Text style={styles.devLink}>(시험) 단서 앞</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity style={styles.link} onPress={() => setPanel('none')}>
+            <Text style={[styles.linkText, textSize]}>닫기</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* v1.00: its own button now (MenuButton), so it closes back to the game; the way to the title is here */}
+      {panel === 'settings' && (
+        <View style={styles.panel} accessibilityViewIsModal>
+          <ScrollView style={styles.panelScroll} contentContainerStyle={styles.settingsInner}>
+            <Text style={[styles.title, { fontSize: 20 * fontScale }]}>설정</Text>
+            {settings}
+            <TouchableOpacity style={styles.link} onPress={onTitle}>
+              <Text style={[styles.linkText, textSize]}>타이틀로</Text>
+            </TouchableOpacity>
+            <PaperButton label="닫기" onPress={() => setPanel('none')} />
+          </ScrollView>
+        </View>
+      )}
+      {panel === 'dictionary' && <Dictionary fontScale={fontScale} onClose={() => setPanel('none')} />}
     </View>
+  );
+}
+
+function MenuButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.menuButton} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      <Text style={styles.menuButtonText}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -1038,6 +1063,9 @@ function TurnButton({ glyph, label, onPress, wide, disabled }: { glyph: string; 
 }
 
 const PLAN_CELL = 13;
+// the minimap's width (Minimap.tsx: nine cells of 13, its padding and border), and the three buttons over it
+const MENU_W = 122;
+const MENU_BUTTON_W = (MENU_W - 6) / 3;
 const PLAN_COLOR: Record<string, string> = { '&': '#8f8a7e', '^': '#8f8a7e', '#': '#23211e', '=': '#6d695f', '+': AMBER, E: '#3f5d78', S: '#3f5d78', N: '#8f8a7e' };
 
 /** The floor seen from above. The map button's picture, and the whole view where 3D can't run. */
@@ -1060,22 +1088,26 @@ function FloorPlan({ pose }: { pose: Pose }) {
 }
 
 const styles = StyleSheet.create({
-  settingsPanel: { position: 'absolute', left: 16, right: 16, top: 40, bottom: 40, backgroundColor: 'rgba(0,0,0,0.92)', borderWidth: 1.5, borderColor: '#f2f2f2', zIndex: 15 },
+  panelScroll: { alignSelf: 'stretch', flexGrow: 0 },
   settingsInner: { padding: 18, gap: 10, alignItems: 'center' },
   wrap: { flex: 1, backgroundColor: '#000' },
   view: { flex: 1, minHeight: 200, overflow: 'hidden', backgroundColor: '#0a0a09' },
   fill: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
   noView: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  goal: { position: 'absolute', left: 10, top: 10, right: 72, gap: 2, pointerEvents: 'none' },
+  // v1.00: clear of the buttons and the minimap down the right (MENU_W)
+  goal: { position: 'absolute', left: 10, top: 10, right: MENU_W + 20, gap: 2, pointerEvents: 'none' },
   belowDev: { marginTop: 44 },
   dayLabel: { position: 'absolute', left: 12, top: 10, color: '#fff', fontSize: 15, fontFamily: 'serif', textShadowColor: '#000', textShadowRadius: 4 },
-  place: { color: 'rgba(255,255,255,0.8)', fontFamily: 'serif', textShadowColor: '#000', textShadowRadius: 3 },
+  // v1.00: on a dark strip of its own: over a pale wall or a bright sky it couldn't be read
+  place: { alignSelf: 'flex-start', color: 'rgba(255,255,255,0.88)', fontFamily: 'serif', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 6, paddingVertical: 1 },
   goalRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2', paddingHorizontal: 9, paddingVertical: 5 },
   goalArrow: { color: AMBER, fontSize: 20, fontWeight: '700', lineHeight: 22 },
   goalText: { color: '#fff', fontFamily: 'serif', flexShrink: 1 },
-  minimap: { position: 'absolute', right: 10, top: 52 },
-  mapButton: { position: 'absolute', right: 10, top: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2' },
-  mapButtonText: { color: '#fff', fontSize: 14, fontFamily: 'serif' },
+  minimap: { position: 'absolute', right: 10, top: 50 },
+  // v1.00: 사전 · 설정 · 지도 in a row as wide as the minimap under it
+  menu: { position: 'absolute', right: 10, top: 10, flexDirection: 'row', gap: 3 },
+  menuButton: { width: MENU_BUTTON_W, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: 1.5, borderColor: '#f2f2f2' },
+  menuButtonText: { color: '#fff', fontSize: 13, fontFamily: 'serif' },
   bottomStack: { position: 'absolute', left: 14, right: 14, bottom: 12, gap: 8 },
   // the remembered day's thoughts: across the middle of the view, on a soft dark band
   thoughts: { position: 'absolute', left: 0, right: 0, top: '30%', paddingHorizontal: 22, paddingVertical: 14, gap: 6, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center' },
@@ -1098,7 +1130,8 @@ const styles = StyleSheet.create({
   note: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },
   noteInLesson: { paddingBottom: 8, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.18)' },
   // Above whoever the view has come in on, its tail pointing down at them.
-  bubbleWrap: { position: 'absolute', left: 20, right: 20, top: 40, alignItems: 'center' },
+  // v1.00: below the buttons at the top right (34 high from 10)
+  bubbleWrap: { position: 'absolute', left: 20, right: 20, top: 52, alignItems: 'center' },
   bubble: { alignSelf: 'stretch', backgroundColor: '#f7f7f4', borderWidth: 2.5, borderColor: '#111', paddingHorizontal: 18, paddingVertical: 12, borderTopLeftRadius: 22, borderTopRightRadius: 8, borderBottomRightRadius: 26, borderBottomLeftRadius: 12 },
   bubbleName: { color: '#7a5a18', fontSize: 12, textAlign: 'center', marginBottom: 3, fontFamily: 'serif' },
   bubbleText: { color: '#111', textAlign: 'center', fontFamily: 'serif' },
@@ -1109,7 +1142,7 @@ const styles = StyleSheet.create({
   sceneLine: { color: '#e8c77d', textAlign: 'center', fontFamily: 'serif' },
   transit: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
   transitText: { color: '#fff', fontSize: 30, fontFamily: 'serif', letterSpacing: 4 },
-  panel: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.94)', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 18 },
+  panel: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.96)', zIndex: 20, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 18 },
   title: { color: '#fff', fontFamily: 'serif', marginBottom: 4 },
   text: { color: 'rgba(255,255,255,0.75)', textAlign: 'center', fontFamily: 'serif' },
   link: { paddingVertical: 4 },
@@ -1122,7 +1155,6 @@ const styles = StyleSheet.create({
   floorText: { color: '#f2f2f2', fontSize: 14, fontFamily: 'serif' },
   floorTextHere: { color: '#111', fontWeight: '700' },
   controls: { paddingHorizontal: 12, paddingTop: 8, gap: 8, backgroundColor: '#000' },
-  hidden: { opacity: 0 },
   shop: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   talkChoices: { alignSelf: 'stretch', gap: 6 },
   writeInput: { alignSelf: 'stretch', minHeight: 64, color: '#fff', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)', padding: 10, fontFamily: 'serif', textAlignVertical: 'top' },

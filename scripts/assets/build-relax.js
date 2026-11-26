@@ -1,7 +1,7 @@
 // The pictures for relaxing together (v0.93, BreatheTogether.tsx): each Gemini drawing (generate-hospital-art.js relax-*)
 // is two panels, tensing on the left and letting go on the right; each half is trimmed to its panel, made grey and
 // small, its plain ground cut away (v0.96), and written to src/assets/visit/relax/<part>-tense.png and -calm.png.
-//   node scripts/assets/build-relax.js
+//   node scripts/assets/build-relax.js [part ...]
 // The shoulders are the exception: asked for whole, the shrug kept coming with the hands behind the head, so the calm
 // half of one drawing is kept and the shrug made from it here, the head moved down onto the shoulders.
 const fs = require('fs');
@@ -85,7 +85,10 @@ async function finish(buffer, name) {
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
+  // v1.00: `node scripts/assets/build-relax.js feet` for just those parts
+  const only = process.argv.slice(2);
   for (const part of PARTS) {
+    if (only.length && !only.includes(part)) continue;
     if (part === 'shoulders') {
       const pair = await shrug();
       await finish(pair.tense, `${part}-tense.png`);

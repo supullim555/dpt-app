@@ -1,8 +1,9 @@
 // The first-person view: one floor at a time, built from hospitalMap.ts. Only draws while something moves.
-// three.js loads here and nowhere else, so it costs nothing until you reach the hospital.
+// three.js comes in through threeKit.ts and nowhere else, so the first screens never wait for it (v1.00: fetched ahead
+// from the title, preloadHospital).
 import { charAt, currentPlace, DX, DY, GIRL_FRONT, ROOM_ENTRY, turn, walkable, type Cell, type Dir, type FloorNo, type Pose } from './hospitalMap';
 import type { Place } from './places';
-import { FLOOR_CELL, FLOOR_ROW, FLOOR_ROW_OF_TILE, FLOOR_VARIANTS, MEMORY_SKYLINE, SKY_H, SKY_STRIP, type Sky, MEMORY2_PART, MEMORY_PART, MEMORY_TILES, DECOR_PART, DECOR_SKIN, type DecorPart, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
+import { FLOOR_CELL, FLOOR_ROW, FLOOR_ROW_OF_TILE, FLOOR_VARIANTS, MEMORY_SKYLINE, SKY_H, SKY_STRIP, type Sky, MEMORY2_PART, MEMORY_PART, MEMORY_TILES, DECOR_PART, DECOR_SKIN, type DecorPart, WINDOW_TILE, EXTRA_PART, FURNITURE_PART, GIRL_PART, loadSheets, prefetchSheets, LYING_PART, PERSON2_SLOT, PERSON_SLOT, PROP, SHEET, SKIN, SLOT_H, SLOT_W, tileAt, TILE, TILES, type ExtraPart, type FurniturePart, type GirlPart, type LyingPart, type PersonLook, type Memory2Part, type MemoryPart, type SkinFace } from './hospitalArt';
 
 const STEP_MS = 280;
 const FOCUS_MS = 420;
@@ -429,23 +430,44 @@ const hash = (x: number, y: number, d: number) => {
   return n - Math.floor(n);
 };
 
+// v1.00: asked once a visit. Each ask made a WebGL context of its own that nothing let go of, one more every time the view
+// was built (every day, every remembered day), until the browser started dropping the oldest.
+let webgl2: boolean | null = null;
+function hasWebgl2() {
+  if (webgl2 === null) {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    webgl2 = !!gl;
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+  return webgl2;
+}
+
+let kit: Promise<typeof import('./threeKit')> | null = null;
+const loadKit = () => {
+  kit ??= import('./threeKit');
+  kit.catch(() => (kit = null));
+  return kit;
+};
+
+/** v1.00: three.js and the drawings, fetched ahead (on the title and the day's black card), so going in through the front
+ * door doesn't wait for them. Safe to call any number of times; a failure here is tried again on the way in. */
+export function preloadHospital(decode = false) {
+  if (typeof document === 'undefined' || !hasWebgl2()) return;
+  loadKit().catch(() => {});
+  (decode ? loadSheets() : prefetchSheets()).catch(() => {});
+}
+
 /** Null where there's no WebGL 2, so the screen can fall back to the plan. */
 export async function createHospitalScene(host: HTMLElement, dayLight: string): Promise<HospitalScene | null> {
-  const probe = document.createElement('canvas');
-  if (!probe.getContext('webgl2')) return null;
+  if (!hasWebgl2()) return null;
   // v0.93: three.js's own examples (three/examples/jsm, from its GitHub): the bloom pass for the glow of the windows and
-  // lamps; the water and the lens flare load only for the places that have them (buildExtras)
-  const [THREE, sheets, { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }, { CopyShader }] = await Promise.all([
-    import('three'),
-    loadSheets(),
-    import('three/examples/jsm/postprocessing/EffectComposer.js'),
-    import('three/examples/jsm/postprocessing/RenderPass.js'),
-    import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
-    import('three/examples/jsm/postprocessing/ShaderPass.js'),
-    import('three/examples/jsm/shaders/CopyShader.js'),
-  ]);
+  // lamps, the water, the lens flare and the mirror (threeKit.ts)
+  const [{ THREE, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, CopyShader, Water, Lensflare, LensflareElement, Reflector }, sheets] = await Promise.all([loadKit(), loadSheets()]);
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' });
+  // What the glow's passes always gave the screen: the colours as worked out, with no conversion on the way. Drawing
+  // straight to the screen (no glow) has to do the same, or the built-in materials (the bars, the mirror) come out paler.
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   let quality: Quality = 'normal';
   let floorShown: FloorNo = 1;
   const PIXEL_RATIO: Record<Quality, number> = { high: 2, normal: 1.5, low: 1 };
@@ -646,7 +668,9 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       held.mesh.scale.setScalar(1 + (HOLD_SIZE - 1) * t);
       held.mesh.rotation.y = cam.yaw;
     }
-    if (composer) composer.render();
+    // v1.00: through the glow's passes only when there's a glow; otherwise straight to the screen, one whole-screen copy less
+    // a frame (the colours come out the same: the output is linear either way, see outputColorSpace)
+    if (composer && bloom?.enabled) composer.render();
     else renderer.render(scene, camera);
   };
 
@@ -983,7 +1007,8 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     const water: Cell[] = [];
     place.map.forEach((row, y) => [...row].forEach((ch, x) => ch === '~' && water.push({ x, y })));
     if (water.length && quality !== 'low') {
-      void import('three/examples/jsm/objects/Water2.js').then(({ Water }) => {
+      // after the rest of the place is built, as when this was loaded on its own
+      void Promise.resolve().then(() => {
         if (currentPlace() !== place) return;
         const beyond = place.outdoors ? OPEN_BEYOND : 0;
         const xs = water.map((c) => c.x);
@@ -1016,7 +1041,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     // the low sun over the summer beach and the market at dusk, flaring as you face it (three.js Lensflare)
     const sun = place.sky === 'dusk' ? { x: place.map[0].length / 2, y: 5, z: -14 } : place.sky === 'summer' && place.southWall === 'sea' ? { x: 22, y: 7, z: place.map.length / 2 } : null;
     if (sun) {
-      void import('three/examples/jsm/objects/Lensflare.js').then(({ Lensflare, LensflareElement }) => {
+      void Promise.resolve().then(() => {
         if (currentPlace() !== place) return;
         const light = new THREE.PointLight(0xffffff, 0, 0);
         light.position.set(sun.x, sun.y, sun.z);
@@ -1061,7 +1086,7 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
     if (place.mirror) {
       const m = place.mirror;
       // three.js's own Reflector (three/examples/jsm/objects/Reflector.js): the room drawn again from the mirror's side
-      void import('three/examples/jsm/objects/Reflector.js').then(({ Reflector }) => {
+      void Promise.resolve().then(() => {
         if (currentPlace() !== place) return;
         const width = m.x1 - m.x0;
         const mirror = new Reflector(new THREE.PlaneGeometry(width, 0.95), { textureWidth: 512, textureHeight: 512, color: 0xd2d0ca });
@@ -1415,7 +1440,11 @@ export async function createHospitalScene(host: HTMLElement, dayLight: string): 
       shadowMaterial.dispose();
       for (const m of Object.values(materials)) m.dispose();
       for (const t of Object.values(textures)) t.dispose();
+      bloom?.dispose();
+      composer?.dispose();
       renderer.dispose();
+      // v1.00: and the context itself, at once, not whenever the browser gets round to it
+      renderer.forceContextLoss();
       canvas.remove();
     },
   };

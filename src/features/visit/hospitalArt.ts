@@ -589,25 +589,44 @@ async function decode(blob: Blob): Promise<CanvasImageSource> {
   }
 }
 
-/** Fetched only on reaching the hospital, all the sheets in one file (scripts/assets/pack-hospital-sheets.js). If it
- * can't be, the caller falls back to the floor plan. Once fetched it stays for the rest of the visit, so going in again
- * fetches nothing. */
-let fetched: Promise<Record<(typeof SHEET_ORDER)[number], Uint8Array>> | null = null;
-function loadAll() {
-  fetched ??= (async () => {
+/** All the sheets in one file (scripts/assets/pack-hospital-sheets.js), fetched ahead from the title (v1.00, before that
+ * only on reaching the hospital). If it can't be, the caller falls back to the floor plan. Once read it stays for the rest
+ * of the visit, so going in again fetches and decodes nothing. */
+let downloaded: Promise<Blob> | null = null;
+/** v1.00: just the file, ahead of time (the title screen): no decoding yet, so nothing on screen stutters for it. */
+export function prefetchSheets(): Promise<unknown> {
+  if (decoded) return decoded;
+  return fileOfSheets();
+}
+function fileOfSheets() {
+  downloaded ??= (async () => {
     const res = await fetch(SHEETS_URL);
     if (!res.ok) throw new Error(`${SHEETS_URL}: HTTP ${res.status}`);
-    const img = await decode(await res.blob());
-    const out = {} as Record<(typeof SHEET_ORDER)[number], Uint8Array>;
-    SHEET_ORDER.forEach((name, i) => (out[name] = toChannel((c) => c.drawImage(img, 0, i * SHEET, SHEET, SHEET, 0, 0, SHEET, SHEET))));
-    if ('close' in img) img.close();
-    return out;
+    return res.blob();
   })();
-  fetched.catch(() => (fetched = null));
-  return fetched;
+  downloaded.catch(() => (downloaded = null));
+  return downloaded;
 }
 
-export const loadSheets = async () => {
-  const { structure: drawnWalls, ...sheets } = await loadAll();
-  return { ...sheets, structure: toChannel((c) => paintStructure(c, drawnWalls)) };
-};
+// v1.00: the finished sheets, her walls painted in too, kept for the rest of the visit: building the view again (each day,
+// back from a remembered day) used to paint and read back the walls every time.
+type Sheets = Record<(typeof SHEET_ORDER)[number], Uint8Array>;
+let decoded: Promise<Sheets> | null = null;
+export function loadSheets() {
+  decoded ??= (async () => {
+    const img = await decode(await fileOfSheets());
+    const out = {} as Sheets;
+    for (const [i, name] of SHEET_ORDER.entries()) {
+      out[name] = toChannel((c) => c.drawImage(img, 0, i * SHEET, SHEET, SHEET, 0, 0, SHEET, SHEET));
+      // a few at a time, the screen getting a turn in between: all at once it held up a tap on 들어가기 for a moment
+      if (i % 3 === 2) await new Promise((r) => setTimeout(r, 0));
+    }
+    if ('close' in img) img.close();
+    out.structure = toChannel((c) => paintStructure(c, out.structure));
+    // the file's own bytes aren't needed again once read
+    downloaded = null;
+    return out;
+  })();
+  decoded.catch(() => (decoded = null));
+  return decoded;
+}

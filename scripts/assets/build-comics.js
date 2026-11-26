@@ -1,7 +1,7 @@
 // v0.98: the comic panels told after her memories and at the happy ending (generate-hospital-art.js mono-*, end-*).
 // Each was drawn as one panel with a thin black border on whatever ground came: cut to that border, then written as a
 // jpg to src/assets/visit/comics/. No API calls.
-//   node scripts/assets/build-comics.js
+//   node scripts/assets/build-comics.js [name ...]
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
@@ -11,6 +11,8 @@ const ART = path.join(GENERATED_DIR, 'hospital-art');
 const OUT = path.join(ASSETS_DIR, 'visit', 'comics');
 const SIZE = 720;
 const NAMES = fs.readdirSync(ART).filter((f) => /^(mono-|end-|title-after).*-raw\.png$/.test(f)).map((f) => f.replace(/-raw\.png$/, ''));
+// v1.00: `node scripts/assets/build-comics.js mono-collar-2 end-cry` for just those
+const ONLY = process.argv.slice(2);
 
 /** The panel: the box inside which most rows and columns are no longer the ground at the corners. */
 async function panelBox(file) {
@@ -36,6 +38,7 @@ async function panelBox(file) {
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   for (const name of NAMES) {
+    if (ONLY.length && !ONLY.includes(name)) continue;
     const file = path.join(ART, `${name}-raw.png`);
     // the credits' sky is a whole picture, not a panel
     const box = name === 'end-sky' || name === 'title-after' ? null : await panelBox(file);

@@ -13,6 +13,7 @@ export type Beat = { text: string; bg?: string; ink?: string; image?: ImageSourc
 
 // If the film hasn't started by then, the cards it stands in for are shown instead.
 const VIDEO_START_MS = 5000;
+const VIDEO_LOADING_MS = 15000;
 
 // A cutscene of words, tap through: her memories and the way down to the tree. Some moments are filmed
 // (scripts/assets/build-cutscenes.js); the film plays in place of the cards it covers, and if it can't be played
@@ -80,9 +81,20 @@ function Film({ src, onEnd, onFail }: { src: string; onEnd: () => void; onFail: 
       el.play().catch(() => {});
     });
   };
+  // v1.00: on a slow connection the film was given up after five seconds even while it was still coming in; now that only
+  // happens if nothing of it has arrived by then, and one that's arriving gets until VIDEO_LOADING_MS
+  const arriving = useRef(false);
   useEffect(() => {
-    const t = setTimeout(() => started.current || fail(), VIDEO_START_MS);
-    return () => clearTimeout(t);
+    let later: ReturnType<typeof setTimeout> | undefined;
+    const t = setTimeout(() => {
+      if (started.current) return;
+      if (!arriving.current) return fail();
+      later = setTimeout(() => started.current || fail(), VIDEO_LOADING_MS - VIDEO_START_MS);
+    }, VIDEO_START_MS);
+    return () => {
+      clearTimeout(t);
+      if (later) clearTimeout(later);
+    };
   }, [fail]);
   return (
     <View style={styles.wrap}>
@@ -94,6 +106,8 @@ function Film({ src, onEnd, onFail }: { src: string; onEnd: () => void; onFail: 
           playsInline: true,
           preload: 'auto',
           onPlaying: () => (started.current = true),
+          onLoadedMetadata: () => (arriving.current = true),
+          onProgress: () => (arriving.current = true),
           onEnded: end,
           onError: fail,
           style: { width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#000', pointerEvents: 'none' },

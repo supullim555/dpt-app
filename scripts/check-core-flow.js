@@ -177,9 +177,16 @@ async function main() {
         return t.hasText('닫기');
       })());
       await t.shot('walk_map.png');
-      // v0.96: the map's 설정: text, sound, graphics, the dictionary, the way to the title
-      t.note('병문안: 지도에 설정', await t.clickText('설정'));
-      t.note('병문안: 게임 속 설정에 화질과 사전', (await t.waitText('화질', 2000)) && (await t.hasText('사전')) && (await t.hasText('타이틀로')));
+      await t.clickText('닫기');
+      await sleep(200);
+      // v1.00: the settings and the dictionary have buttons of their own on the game screen, beside the map's
+      t.note('병문안: 게임 화면에 사전·설정·지도 버튼', await t.evalJs(`['사전', '설정', '지도'].every((l) => !!document.querySelector('[aria-label="' + l + '"]'))`));
+      await t.clickText('설정');
+      t.note('병문안: 게임 속 설정에 화질과 타이틀로', (await t.waitText('화질', 2000)) && (await t.hasText('타이틀로')));
+      await t.shot('game_settings.png');
+      await t.clickText('닫기');
+      await sleep(200);
+      t.note('병문안: 설정을 닫으면 게임으로', !(await t.hasText('화질')));
       await t.clickText('사전');
       t.note('병문안: 사전에 인지치료 개념', (await t.waitText('인지치료란', 2000)) && (await t.hasText('파국화')));
       await t.clickText('파국화');
@@ -187,12 +194,10 @@ async function main() {
       await t.shot('dictionary.png');
       await t.clickText('목록으로');
       await sleep(200);
-      await t.clickText('닫기');
+      // Escape closes it, as it closes any panel
+      await t.evalJs("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' })), true");
       await sleep(200);
-      await t.clickText('돌아가기');
-      await sleep(200);
-      await t.clickText('닫기');
-      await sleep(200);
+      t.note('병문안: 사전은 Esc 키로도 닫힘', !(await t.hasText('인지치료란')));
       await t.clickText('엘리베이터 타기');
       await t.waitText('몇 층으로 갈까', 2000);
       await t.clickText('4층');
@@ -217,6 +222,7 @@ async function main() {
       t.note('병문안: 소녀의 첫마디는 말풍선', await t.waitText('진짜 왔네. 당첨자.', 3000));
       await sleep(600);
       await t.shot('visit_bubble.png');
+      t.note('병문안: 소녀 앞에서도 사전과 설정 (지도는 없음)', await t.evalJs(`!!document.querySelector('[aria-label="사전"]') && !!document.querySelector('[aria-label="설정"]') && !document.querySelector('[aria-label="지도"]')`));
       await t.clickText('진짜 왔네. 당첨자.');
       t.note('병문안: 들려줄 이야기를 먼저 물음', await t.waitText('아무 얘기나 해 줘', 3000));
       t.note('병문안: 튜토리얼이 들려주는 법을 설명', await t.hasText('쓰고 싶은 만큼만 쓰면'));
@@ -467,6 +473,8 @@ async function main() {
         await t.waitText('병원 정문 앞에 서 있다.', 3000);
       };
       const showMemory = async (name, title, thenText) => {
+        // v1.00: the memory plays over the room, which is still the same room (the same 3D view) after it
+        await t.evalJs(`(document.querySelector('canvas') && (document.querySelector('canvas').dataset.room = '${name}'), true)`);
         await t.clickText(name);
         const ok = await t.waitText(title, 3000);
         // v0.92: after her second line the remembered day is filmed
@@ -487,6 +495,7 @@ async function main() {
           await t.shot(`memory_comic_${name}.png`);
         }
         await tapUntil(thenText);
+        t.note(`병문안: ${name} 회상 뒤에도 같은 병실 화면`, await t.evalJs(`document.querySelector('canvas')?.dataset.room === '${name}'`));
         return ok;
       };
 

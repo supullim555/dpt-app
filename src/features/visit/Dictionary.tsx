@@ -130,7 +130,8 @@ export default function Dictionary({ fontScale, onClose }: { fontScale: number; 
 }
 
 const styles = StyleSheet.create({
-  shade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.92)', zIndex: 20 },
+  // v1.00: all but opaque: over the game, its words underneath showed through the page's own
+  shade: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.97)', zIndex: 20 },
   page: { padding: 20, gap: 12, alignItems: 'center' },
   heading: { color: '#fff', fontFamily: 'serif', marginTop: 8 },
   picture: { width: 240, height: 240, borderRadius: 6 },

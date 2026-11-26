@@ -17,6 +17,7 @@ import { MEMORY_FILM } from './cutscenes';
 import { play, setSoundOn, unlockSound } from './sound';
 import { VISIT_DEV } from './flag';
 import Hospital from './Hospital';
+import { preloadHospital } from './hospitalScene';
 import { findKeyword } from './keyword';
 import Notebook, { type Told } from './Notebook';
 import type { TutorialStep } from './hospitalMap';
@@ -24,7 +25,6 @@ import Opening from './Opening';
 import PaperButton from './PaperButton';
 import { dayInRun, endingFor, girlAppearsIn, happyUnlocked, TOTAL_DAYS, type ClueId, type EndingId } from './progress';
 import { REQUESTS } from './requests';
-import { loadAiOptIn, setAiOptIn, type AiOptIn } from '@/features/ai';
 import { soundsLikeCrisis } from './safety';
 import {
   ARRIVAL_LINES,
@@ -122,6 +122,12 @@ const INITIAL: VisitState = { noticeSeen: false, openingSeen: false, run: 1, sta
 
 type Phase = 'notice' | 'title' | 'settings' | 'opening' | 'door' | 'walk' | 'arrive' | 'greet' | 'tell' | 'reply' | 'emotion' | 'ack' | 'give' | 'gift' | 'memory' | 'descent' | 'bye' | 'staff' | 'outside' | 'ending' | 'notebook' | 'fairy';
 
+/** v1.00: a new story that keeps what's set (text size, sound, graphics): starting again turned the sound back on in the
+ * settings while it stayed off, and put the graphics back to 보통. */
+function fresh(s: VisitState, keep: Partial<VisitState>): VisitState {
+  return { ...INITIAL, noticeSeen: true, fontScale: s.fontScale, sound: s.sound, graphics: s.graphics, ...keep };
+}
+
 function currentDay(s: VisitState) {
   return dayInRun(s.run, s.startDate ? daysBetween(s.startDate, localDateKey()) : 0, s.skippedDays);
 }
@@ -154,12 +160,7 @@ export default function VisitScreen() {
   const [memory, setMemory] = useState<ClueId>('collar');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
-  // The app's own AI switch (the same one as its free chat): on, and people a request is about can be written to.
-  const [ai, setAi] = useState<AiOptIn>('unset');
-  useAsyncEffect(async (isCancelled) => {
-    const v = await loadAiOptIn();
-    if (!isCancelled()) setAi(v);
-  }, []);
+  // v1.00: the AI switch's stored value isn't read at start any more: nothing has used it since v0.96 took the AI talk out
 
   useAsyncEffect(async (isCancelled) => {
     const saved = await loadEntryOr<unknown>(STORAGE_KEY, null);
@@ -178,6 +179,18 @@ export default function VisitScreen() {
 
   // Before paint, so a new phase never shows for a frame with the last phase's line number.
   useLayoutEffect(() => setLineIndex(0), [phase]);
+
+  // v1.00: the hospital's three.js and drawings, fetched while the title is up (a moment in, so the title itself comes
+  // first), and made ready on the day's black card, so 들어가기 opens onto the hospital without a wait
+  useEffect(() => {
+    if (phase === 'door') {
+      preloadHospital(true);
+      return;
+    }
+    if (phase !== 'title' && phase !== 'opening') return;
+    const t = setTimeout(() => preloadHospital(false), 1500);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   if (!state) return <View style={styles.screen} />;
   const day = currentDay(state);
@@ -275,7 +288,7 @@ export default function VisitScreen() {
   };
 
   const startOver = () => {
-    setState({ ...INITIAL, noticeSeen: true, openingSeen: true, floorsSeen: state.floorsSeen, tutorial: 'done', fontScale: state.fontScale, run: state.run + 1, afterHappy: state.afterHappy });
+    setState(fresh(state, { openingSeen: true, floorsSeen: state.floorsSeen, tutorial: 'done', run: state.run + 1, afterHappy: state.afterHappy }));
     setPhase('door');
   };
 
@@ -340,7 +353,7 @@ export default function VisitScreen() {
     </View>
   );
 
-  // v0.96: text size, sound and graphics, the same on the title's settings and in the game's own (the map's 설정)
+  // v0.96: text size, sound and graphics, the same on the title's settings and in the game's own (v1.00: its 설정 button)
   const settingsRows = state && (
     <>
             <Text style={[styles.settingsLabel, { fontSize: 14 * scale }]}>글자 크기</Text>
@@ -439,7 +452,7 @@ export default function VisitScreen() {
               label={state.startDate && state.ending !== 'happy' ? '이어하기' : '이야기 시작'}
               onPress={() => {
                 unlockSound();
-                go(state.ending === 'happy' ? { ...INITIAL, noticeSeen: true, openingSeen: true, tutorial: 'done', fontScale: state.fontScale, sound: state.sound, graphics: state.graphics, afterHappy: true } : state);
+                go(state.ending === 'happy' ? fresh(state, { openingSeen: true, tutorial: 'done', afterHappy: true }) : state);
               }}
             />
             <PaperButton label="설정" onPress={() => setPhase('settings')} />
@@ -469,7 +482,7 @@ export default function VisitScreen() {
               style={styles.settingsLink}
               onPress={async () => {
                 if (await confirmDestructive('처음부터 다시 시작할까요?', '지금까지 들려준 이야기가 모두 사라지고, 되돌릴 수 없어요.')) {
-                  setState({ ...INITIAL, noticeSeen: true, fontScale: state.fontScale });
+                  setState(fresh(state, {}));
                   setPhase('title');
                 }
               }}
@@ -525,16 +538,6 @@ export default function VisitScreen() {
     );
   }
 
-  if (phase === 'memory') {
-    return (
-      <View style={styles.screen}>
-        <RoomColumn>
-          <CardScene title={CLUE_TEXT[memory].memory} beats={memoryBeats(memory)} fontScale={scale} onDone={afterGiving} />
-        </RoomColumn>
-      </View>
-    );
-  }
-
   if (phase === 'descent') {
     return (
       <View style={styles.screen}>
@@ -544,7 +547,7 @@ export default function VisitScreen() {
             fontScale={scale}
             onDone={() => {
               // v0.98: and from now on the title is her room in colour, empty, the window open on the tree
-              setState({ ...INITIAL, noticeSeen: true, openingSeen: true, tutorial: 'done', fontScale: state.fontScale, afterHappy: true });
+              setState(fresh(state, { openingSeen: true, tutorial: 'done', afterHappy: true }));
               setPhase('title');
             }}
           />
@@ -698,6 +701,13 @@ export default function VisitScreen() {
         />
         {devBar}
         <CrisisFooter tone="dark" alert={crisisInRoom || hospitalCrisis} />
+        {/* v1.00: her memory over the room rather than in place of it, so the room is still there after it, not built
+            again from nothing (a new 3D view each time) */}
+        {phase === 'memory' && (
+          <View style={styles.over}>
+            <CardScene title={CLUE_TEXT[memory].memory} beats={memoryBeats(memory)} fontScale={scale} onDone={afterGiving} />
+          </View>
+        )}
       </RoomColumn>
     </KeyboardAvoidingView>
   );
@@ -705,6 +715,7 @@ export default function VisitScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#000' },
+  over: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 30, backgroundColor: '#000' },
   sceneImage: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' },
   moreLight: { color: 'rgba(255,255,255,0.6)', fontSize: 10, textAlign: 'right', marginTop: 4 },
   tutorialTip: { color: '#fff', textAlign: 'center', fontFamily: 'serif', borderWidth: 1.5, borderColor: AMBER, backgroundColor: 'rgba(0,0,0,0.88)', padding: 8 },

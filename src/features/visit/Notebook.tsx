@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { play } from './sound';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { VISIT_SCRIBBLES } from '@/assets/visitUi';
 import { NOTEBOOK_PAGES, NOTEBOOK_TITLE } from './script';
 
@@ -16,8 +16,10 @@ export default function Notebook({ told, fontScale, doneLabel = '병원을 나�
   const heard = told.find((t) => t.day === page.day);
   const last = index === NOTEBOOK_PAGES.length - 1;
 
+  // v1.00: scrolls when a page is taller than the screen (a long day written in your own words, or large text): it pushed
+  // the button to turn the page off the bottom, and there was no going on
   return (
-    <View style={styles.wrap}>
+    <ScrollView key={index} style={styles.scroll} contentContainerStyle={styles.wrap}>
       <Text style={styles.title}>{NOTEBOOK_TITLE}</Text>
       {/* v0.96: a notebook's page, not a sheet of paper: ruled lines, a red margin, the holes of its binding */}
       <View style={[styles.page, { transform: [{ rotate: `${page.tilt}deg` }] }]}>
@@ -61,12 +63,13 @@ export default function Notebook({ told, fontScale, doneLabel = '병원을 나�
         }}>
         <Text style={styles.turnText}>{last ? doneLabel : '다음 장 ›'}</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, justifyContent: 'center', padding: 20, gap: 18 },
+  scroll: { flex: 1 },
+  wrap: { flexGrow: 1, justifyContent: 'center', padding: 20, gap: 18 },
   title: { color: 'rgba(255,255,255,0.7)', fontSize: 14, textAlign: 'center', fontFamily: 'serif' },
   page: { minHeight: 440, paddingLeft: 52, paddingRight: 22, paddingVertical: 30, justifyContent: 'center', overflow: 'hidden', backgroundColor: '#f4f1e8', borderRadius: 3, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8 },
   rules: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
