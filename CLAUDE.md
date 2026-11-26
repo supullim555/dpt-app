@@ -15,6 +15,13 @@ for direction and art (learn structure and mood, copy nothing): `docs/병문안_
 The old plan and planning docs are in `docs/archive/`, for history only. Where code goes is in
 **`src/README.md`**.
 
+## Project skills
+
+`.claude/skills/` holds this game's own skills: **visit-map** (where everything is, state, dev hooks, time-wasting
+habits to avoid — read it before exploring), **visit-playtest** (headless walkthroughs with screenshots, contact
+sheets, loading checks), **visit-art** (Gemini art with the reality check and asset rebuilds), **visit-ship** (the
+seven steps below, run efficiently in the background).
+
 ## Ship workflow — follow this for every change, every time
 
 1. Implement.
